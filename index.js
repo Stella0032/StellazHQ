@@ -38,51 +38,38 @@
 // });
 
 
+// index.js
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
-import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-analytics.js";
-import { getAuth, createUserWithEmailAndPassword} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
-import { getFirestore, doc, setDoc} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
-
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+// Your Firebase config (public values only)
 const firebaseConfig = {
     apiKey: "AIzaSyA35BdFVlIVLS4Qz16nDplkuD2BNZuoDu8",
     authDomain: "stellazhq-bb090.firebaseapp.com",
     projectId: "stellazhq-bb090",
-    storageBucket: "stellazhq-bb090.firebasestorage.app",
+    storageBucket: "stellazhq-bb090.appspot.com",
     messagingSenderId: "952515321392",
     appId: "1:952515321392:web:0fb1af669529827d7097f5",
-    measurementId: "G-QPG6L33CK4"
 };
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+
+// Init Firebase
+const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore(app);
 
-//Input fields
-const username = document.getElementById("username").value;
-const password = document.getElementById("password").value;
+// Attach click handler *after* the DOM loads
+window.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("loginButton").addEventListener("click", async () => {
+        const email    = document.getElementById("username").value;
+        const password = document.getElementById("password").value;
 
-createUserWithEmailAndPassword(auth, email, password)
-    .then((userCredential) => {
-        // Signed up 
-        const user = userCredential.user;
-        setDoc(doc(db,"users", user.uid), {
-            email: user.email,
-
-        })
-
-
-        window.location.href="Lobby.html";
-    })
-    .catch((error) => {
-        const errorCode = error.code;
-        const errorMessage = error.message;
-        alert(ErrorMessage);
+        try {
+            // Sign in, not sign up
+            await signInWithEmailAndPassword(auth, email, password);
+            // On success, redirect
+            window.location.href = "Lobby.html";
+        } catch (err) {
+        // Show the error message
+            alert(err.message);
+        }
     });
+});
