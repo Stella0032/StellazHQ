@@ -8,7 +8,7 @@
 
 //     // Replace this with real validation later
 //     // Checks if username and password match the values I want
-//     if (username === "admin" && password === "Zarazira12") {
+//     if (username === "" && password === "") {
 //         // Redirect to the lobby page
 //         window.location.href = "Lobby.html";
 //     } else {
@@ -42,7 +42,9 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-analytics.js";
-import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+import { getAuth, createUserWithEmailAndPassword} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+import { getFirestore, doc, setDoc} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
 
@@ -61,6 +63,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
 const auth = getAuth(app);
+const db = getFirestore(app);
 
 //Input fields
 const username = document.getElementById("username").value;
@@ -70,10 +73,16 @@ createUserWithEmailAndPassword(auth, email, password)
     .then((userCredential) => {
         // Signed up 
         const user = userCredential.user;
+        setDoc(doc(db,"users", user.uid), {
+            email: user.email,
+
+        })
+
+
         window.location.href="Lobby.html";
     })
     .catch((error) => {
         const errorCode = error.code;
         const errorMessage = error.message;
-        // ..
+        alert(ErrorMessage);
     });
