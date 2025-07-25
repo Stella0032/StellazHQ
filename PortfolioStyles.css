@@ -1,0 +1,86 @@
+* {   /* Universal selector */
+  box-sizing: border-box;   /* Includes padding and border in element's total width and height */
+  margin: 0;    /* remove default margins */
+  padding: 0;   /* remove default padding*/
+}
+
+html {    /* Control page wide behavior */
+  scroll-behavior: smooth;    /* smooth transition when pressing a link in the page */
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* sets a font for the page */
+}
+
+section {   /* <section> */
+  height: 100vh;    /* 100% viewport height */
+  display: flex;    /* flexbox layout AKA let's you arrange items in the sections */
+  justify-content: center;    /* centers the items horizontally */
+  align-items: center;    /* Centers the items vertically */
+  padding: 2rem;    /* add spacing inside the section */
+  text-align: center;   /* Centers text inside the section */
+}
+
+.intro {    /* Intro page with my face */
+  background-image: url(images/PortfolioFirstPage.jpg);   /* Bakcground image for intro section */
+  color: black;   /* make text black */
+}
+
+.introOverlay{    /* space for information and picture (maybe add top sections) */
+  background-color: rgba(254, 254, 254, 0.9); /* Semi transparent white overlay */
+  padding: 2rem;    /* space inside the overlay */
+  border-radius: 8px;   /* rounded corners */
+  max-width: 700px;   /* set width */
+  text-align: center;   /* Center text horizontally */
+}
+
+.cactusProject {    /* cactus project section */
+  background: url("images/PlantWateringSystemBackground.png") center center / cover no-repeat;    /* cactus project image */
+  height: 100vh;    /* 100% viewport height */
+  display: flex;    /* flexbox */
+  justify-content: flex-end;    /* align items to the right of the container */
+  align-items: flex-end;    /* align items to the bottom of the container */
+}
+
+.projectInfo {
+  max-width: 500px;
+  background-color: rgba(255, 255, 255, 0.85);
+  padding: 2rem;
+  border-radius: 8px;
+  color: #111;
+  text-align: left;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.more-projects {
+  background: #f5f5f5;
+  color: #333;
+  flex-direction: column;
+}
+
+.footer {
+  background: #1e1e2f;
+  color: white;
+  flex-direction: column;
+}
+
+h1, h2 {
+  margin-bottom: 1rem;
+}
+
+p {
+  max-width: 600px;
+  font-size: 1.1rem;
+}
+
+a.button {
+  margin-top: 2rem;
+  display: inline-block;
+  padding: 0.75rem 1.5rem;
+  background-color: #007bff;
+  color: white;
+  text-decoration: none;
+  border-radius: 5px;
+  font-weight: bold;
+}
+
+a.button:hover {
+  background-color: #0056b3;
+}

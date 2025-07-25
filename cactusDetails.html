@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cactus Details</title>
+    <link rel="stylesheet" href="cactusDetailsStyles.css">
+</head>
+<body>
+
+    <!-- Navigation bar with back button and title -->
+    <nav class="navbar">
+        <a href="Portfolio.html" class="back-button">Portfolio</a>
+        <h1>Cactus Project Details</h1>
+    </nav>
+
+    <!-- Intro section with video and summary -->
+    <section class="intro-section">
+        <video class="video" controls autoplay muted loop>
+            <source src="finalAssemblyVideo.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+
+            <section class="bubble">
+                <h2>Project Summary</h2>
+                <p>This project is a fully automated plant care solution designed around the ESP32-CAM microcontroller. It features:</p>
+                <ul>
+                    <li>Capacitive soil moisture sensors for accurate hydration monitoring</li>
+                    <li>A servo motor that rotates the plant to ensure even exposure</li>
+                    <li>A water pump that activates when moisture drops below a set threshold</li>
+                    <li>A custom 3D-printed enclosure, designed in SolidWorks and printed using the ELEGOO Neptune 3 Pro</li>
+                    <li>An integrated LCD display showing real-time moisture, angle, and elapsed time</li>
+                    <li>A responsive web interface (local and remote) built with HTML, CSS, and JavaScript, for manual control and status monitoring</li>
+                </ul>
+            </section>
+    </section>
+
+        <!-- Live telemetry section -->
+        <section class="bubble">
+            <section class="live-telemetry">
+            <h2>Live Telemetry</h2>
+            <div class="telemetry-container">
+                <div class="telemetry-item">
+                <span class="label">Moisture</span>
+                <div class="bar"><div class="fill" style="width: 75%;"></div></div>
+                </div>
+                <div class="telemetry-item">
+                <span class="label">Angle</span>
+                <div class="bar"><div class="fill" style="width: 30%;"></div></div>
+                </div>
+                <div class="telemetry-item">
+                <span class="label">Time</span>
+                <div class="bar"><div class="fill" style="width: 50%;"></div></div>
+                </div>
+            </div>
+            </section>
+        </section>
+
+        <!-- Circuit and circuit description here-->
+        <section class="circuitSection">
+            <div class="bubble">
+                <figure class="partFigure">
+                    <figcaption>Water Dispenser Circuit</figcaption>
+                    <a href="#circuit-img">
+                        <img src="images/WaterDispencerCircuit.jpg" alt="Circuit image" class="circuit-image"/>
+                    </a>
+                </figure>
+            </div>
+            <div id="circuit-img" class="lightbox">
+                <a href="#">
+                    <img src="images/WaterDispencerCircuit.jpg" alt="fullscreen image">
+                </a>
+            </div>
+
+
+            <div class="bubble">
+                <h2>Circuit description</h2>
+                <ul>
+                    <li> This circuit uses an ESP32 as its brains to monitor soil moisture, rotate the plant, and dispense water as needed. </li>
+                    <li> The whole system is powered by a 5V, 2Amp wall adapter. </li>
+                    <li> Two capacitive soil moisture probes feed analog signals into the ESP32’s ADC pins, and a small MOSFET switches the 5 V water pump on and off. </li>
+                    <li> A micro-servo connected to another GPIO rotates the plant container for even exposure. </li>
+                    <li> Real-time data moisture level, rotation angle, and elapsed time since last watering is shown on a standard 16×2 LCD hooked up via six data pins. </li>
+                    <li> A potentiometer provides contrast control for the LCD, and a few pull-down resistors and decoupling capacitors keep everything stable.</li>
+                </ul>
+            </div>
+        </section>
+
+    <!-- Parts section-->
+    <section class="imageGrid">
+
+        <div class="bubble">
+            <section class="partSection">
+                <figure class="partFigure">
+                    <figcaption>Assembly Case</figcaption>
+                    <a href="#img1">
+                        <img src="images/CaseAssembly.JPG" alt="Case Assembly Technical Drawing" class="PartsImage">
+                    </a>
+                </figure>
+            </section>
+        </div>
+        <div id="img1" class="lightbox">
+            <a href="#">
+                <img src="images/CaseAssembly.JPG" alt="fullscreen image">
+            </a>
+        </div>
+
+        <div class="bubble">
+            <section class="partSection">
+                <figure class="partFigure">
+                    <figcaption>Electionics Case</figcaption>
+                    <a href="#img2">
+                        <img src="images/electronicsCase.JPG" alt="ELectronics case" class="PartsImage">
+                    </a>
+                </figure>
+            </section>
+        </div>
+        <div id="img2" class="lightbox">
+            <a href="#">
+                <img src="images/electronicsCase.JPG" alt="fullscreen image">
+            </a>
+        </div>
+
+        <div class="bubble">
+            <section class="partSection">
+                <figure class="partFigure">
+                    <figcaption>Electronics Cover</figcaption>
+                    <a href="#img3">
+                        <img src="images/electronicsCover.JPG" alt="ELectronics case" class="PartsImage">
+                    </a>
+                </figure>
+            </section>
+        </div>
+        <div id="img3" class="lightbox">
+            <a href="#">
+                <img src="images/electronicsCover.JPG" alt="fullscreen image">
+            </a>
+        </div>
+        
+        <div class="bubble">
+            <section class="partSection">
+                <figure class="partFigure">
+                    <figcaption>Plant Case</figcaption>
+                    <a href="#img4">
+                        <img src="images/plantCase.JPG" alt="ELectronics case" class="PartsImage">
+                    </a>
+                </figure>
+            </section>
+        </div>
+        <div id="img4" class="lightbox">
+            <a href="#">
+                <img src="images/plantCase.JPG" alt="fullscreen image">
+            </a>
+        </div>
+
+        <div class="bubble">
+            <section class="partSection">
+                <figure class="partFigure">
+                    <figcaption>Plant Case Cover</figcaption>
+                    <a href="#img5">
+                        <img src="images/plantCover.JPG" alt="ELectronics case" class="PartsImage">
+                    </a>
+            </section>
+        </div>
+        <div id="img5" class="lightbox">
+            <a href="#">
+                <img src="images/plantCover.JPG" alt="fullscreen image">
+            </a>
+        </div>
+
+        <div class="bubble">
+            <section class="partSection">
+                <figure class="partFigure">
+                    <figcaption>Water Tank</figcaption>
+                    <a href="#img6">
+                        <img src="images/waterTank.JPG" alt="ELectronics case" class="PartsImage">
+                    </a>
+                </figure>
+            </section>
+        </div>
+        <div id="img6" class="lightbox">
+            <a href="#">
+                <img src="images/waterTank.JPG" alt="fullscreen image">
+            </a>
+        </div>
+
+        <div class="bubble">
+            <section class="partSection">
+                <figure class="partFigure">
+                    <figcaption>Water Tank Cover</figcaption>
+                    <a href="#img7">
+                        <img src="images/waterTankCover.JPG" alt="ELectronics case" class="PartsImage">
+                    </a>
+                </figure>
+            </section>
+        </div>
+        <div id="img7" class="lightbox">
+            <a href="#">
+                <img src="images/waterTankCover.JPG" alt="fullscreen image">
+            </a>
+        </div>
+
+        <div class="bubble">
+            <section class="partSection">
+                <figure class="partFigure">
+                    <figcaption>Hinge Part 1</figcaption>
+                    <a href="#img8">
+                        <img src="images/hingePart1.JPG" alt="ELectronics case" class="PartsImage">
+                    </a>
+                </figure>
+            </section>
+        </div>
+        <div id="img8" class="lightbox">
+            <a href="#">
+                <img src="images/hingePart1.JPG" alt="fullscreen image">
+            </a>
+        </div>
+
+        <div class="bubble">
+            <section class="partSection">
+                <figure class="partFigure">
+                    <figcaption>Hinge Part 2</figcaption>
+                    <a href="#img9">
+                        <img src="images/hingePart2.JPG" alt="ELectronics case" class="PartsImage">
+                    </a>
+                </figure>
+            </section>
+        </div>
+        <div id="img9" class="lightbox">
+            <a href="#">
+                <img src="images/hingePart2.JPG" alt="fullscreen image">
+            </a>
+        </div>
+
+
+    </section>
+
+</body>
+</html>

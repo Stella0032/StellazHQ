@@ -1,0 +1,242 @@
+/* General Page Setup */
+body{
+    /* background: linear-gradient(135deg, #202336, #373b60); */
+    background: linear-gradient(135deg, #6B7A89, #CDBCA8); /* Subtle dusty blue to beige gradient */
+    /* color: white; */
+    color: #CDBCA8;
+    margin: 0;    /* Outside Space */
+    font-family: "Segoe UI", "Helvetica Neue", sans-serif;  /* define font */
+}
+/* Main title */
+h1 {
+    font-size: 1.8rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+    margin: 8px;
+}
+/* Bubble headers */
+h2{
+    font-size: 1.8rem;
+    margin-top: 0.2rem;
+    margin-bottom: 5px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    margin: 0px;
+}
+
+p{
+    margin-left: 0.8rem;
+}
+/* Section for the title and Back button */
+.navbar {
+    display: flex;  /* Flexbox display */
+    align-items: center;    /* vertically center */
+    margin: 1rem;      /* rem instead of px, more responsive to screen size */
+
+    background-color: #201E1F;
+    color: #CDBCA8;
+    border-radius: 10px;
+    padding: 10px;
+}
+/*  back button */
+a.back-button {
+    background-color: #201E1F; /* almost black */
+    color: #CDBCA8; /* beige text */
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    text-decoration: none;
+    border-radius: 5px;
+    font-weight: bold;
+    margin: 8px;
+}
+a.back-button:hover {
+    background-color: #675C5A; /* dark brown-gray on hover */
+}
+/* Intro section */
+.intro-section{
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    margin: 20px;
+}
+/* all imbeded videos */
+.video {
+    max-width: 55rem; /* Limit width */
+    width: 100%;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+/* Text bubbles */
+.bubble {
+    background-color: rgba(32, 30, 31, 0.7);
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+
+    padding: 1.5rem;
+    font-size: 1.3rem;
+    margin-left: 10px;
+}
+ul.bubble {
+    padding-left: 30px;
+    width: 600px;
+}
+li.bubble {
+    padding-left: 10px;
+}
+
+.circuitSection {
+    display: flex;
+    justify-content: center;
+    margin: 2rem;
+}
+
+.circuit-image{
+    border-radius: 10px;
+    margin: 8px;
+    height: 537px;
+    width: 800px;
+    padding: 0px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease; /* enable hover animation */
+}
+
+.partFigure a:hover .circuit-image {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 4px rgba(205,188,168,0.8);
+}
+
+.PartsImage{
+    max-width: 100%;
+    height: auto;
+    border-radius: 6px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    transition: transform 0.3s ease, box-shadow 0.3s ease; /* enable hover animation */
+}
+
+.partFigure a:hover .PartsImage {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 4px rgba(205,188,168,0.8);
+}
+
+.imageGrid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+    padding: 0 20px; /* padding on left and right */
+}
+
+.partSection {
+    flex: 1 1 45%; /* keep 2 per row with margin space */
+    max-width: 500px; /* prevent it from expanding too far */
+    box-sizing: border-box;
+    display: flex;
+    justify-content: center;
+}
+
+
+/* Hover effect: image scales up and outline lights up */
+.partFigure a:hover .PartsImage {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 4px rgba(205,188,168,0.8);
+}
+
+.lightbox {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0,0,0,0.85);
+    justify-content: center;
+    align-items: center;
+}
+
+.lightbox img {
+    width: auto;
+    height: auto;
+    max-width: 90vw;
+    max-height: 90vh;
+    object-fit: contain;
+    box-shadow: 0 0 15px #000;
+    border-radius: 6px;
+}
+
+.lightbox:target {
+    display: flex;
+}
+
+.partFigure {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0;
+}
+.partFigure figcaption {
+    margin-top: 8px;
+    font-size: 2rem;
+    color: #201E1F;
+    text-align: center;
+    font-weight: bold !important;
+    margin-bottom: 1rem;
+}
+
+/* Phone Adaptation */
+@media (max-width: 768px) {
+    .partSection {
+        flex: 1 1 100%;
+        max-width: 100%;
+    }
+
+    .image-grid {
+        padding: 0 10px;
+    }
+}
+
+.live-telemetry {
+    max-width: 900px;
+    margin: 2rem auto;
+    text-align: center;           /* Center the H2 */
+}
+.live-telemetry h2 {
+    margin-bottom: 1rem;
+}
+
+.telemetry-container {
+    display: flex;                /* Side-by-side */
+    justify-content: space-around;/* Even spacing */
+    flex-wrap: wrap;              /* Wrap on small screens */
+    gap: 1.5rem;
+    align-items: center;
+}
+
+.telemetry-item {
+    flex: 1 1 200px;              /* Base width 200px, but shrink/grow */
+}
+
+.telemetry-item .label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.bar {
+    position: relative;
+    background: rgba(32,30,31, 0.2); /* dark translucent track */
+    height: 1rem;
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+.fill {
+    background: #CDBCA8;           /* your warm-beige fill */
+    height: 100%;
+    width: 0;                       /* dynamic */
+    border-radius: 0.5rem 0 0 0.5rem;
+    transition: width 0.5s ease;
+}
