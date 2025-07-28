@@ -1,6 +1,6 @@
 const esp32Base = "https://cents-saints-mar-suspected.trycloudflare.com"; // Replace with your ESP32's actual IP
 
-const streamURL = "http://192.168.18.24:81/stream"; // Stream runs on port 81
+const streamURL = "https://workout-solution-helena-luck.trycloudflare.com"; // Stream runs on port 81
 const camContainer = document.getElementById('camContainer');
 const streamImg = document.createElement('img');
 streamImg.src = streamURL;
