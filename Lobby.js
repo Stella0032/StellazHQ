@@ -1,4 +1,4 @@
-const esp32IP = "http://192.168.18.21"; // Replace with your ESP32's actual IP
+const esp32Base = "https://cents-saints-mar-suspected.trycloudflare.com"; // Replace with your ESP32's actual IP
 
 const streamURL = "http://192.168.18.24:81/stream"; // Stream runs on port 81
 const camContainer = document.getElementById('camContainer');
@@ -18,7 +18,7 @@ const elapsedDisplay = document.getElementById('elapsedValue');
 
 // Send request to trigger pump
 pumpButton.addEventListener('click', () => {
-    fetch(esp32IP + '/PUMP')
+    fetch(esp32Base + '/PUMP')
         .then(response => {
             if (!response.ok){
                 throw new Error("Pump request failed");
@@ -31,7 +31,7 @@ pumpButton.addEventListener('click', () => {
 
 // Fetch moisture level
 function fetchMoisture(){
-    fetch(esp32IP + '/moisture')
+    fetch(esp32Base + '/moisture')
         .then(res => res.text())
         .then(data => {
             moistureDisplay.textContent = data;
@@ -41,7 +41,7 @@ function fetchMoisture(){
 
 // Fetch angle
 function fetchAngle() {
-    fetch(esp32IP + '/angle')
+    fetch(esp32Base + '/angle')
         .then(res => res.text())
         .then(data => {
             angleDisplay.textContent = data;
@@ -51,7 +51,7 @@ function fetchAngle() {
 
 // Send request to trigger LED
 led_button.addEventListener('click', () => {
-    fetch(esp32IP + '/LED')
+    fetch(esp32Base + '/LED')
         .then(response => {
             if (!response.ok){
                 throw new Error("Led request failed");
@@ -63,7 +63,7 @@ led_button.addEventListener('click', () => {
 });
 
 function fetchElapsed(){
-    fetch(esp32IP + '/elapsed')
+    fetch(esp32Base + '/elapsed')
     .then(r => r.text())
     .then(msStr => {
         let ms = parseInt(msStr, 10);
