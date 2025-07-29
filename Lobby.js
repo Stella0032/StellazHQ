@@ -1,6 +1,6 @@
 const esp32Base = "https://esp32.stellaz.org"; // Replace with your ESP32's actual IP
 
-const streamURL = "https://treaty-helen-chinese-privileges.trycloudflare.com/stream"; // Stream runs on port 81
+const streamURL = "https://esp32.stellaz.org/stream"; // Stream runs on port 81
 const camContainer = document.getElementById('camContainer');
 const streamImg = document.createElement('img');
 streamImg.src = streamURL;
