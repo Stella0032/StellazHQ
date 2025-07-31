@@ -94,6 +94,13 @@ nav.navbar a:hover {
   margin-top: 2rem;
 }
 
+.face-pic {
+    background-image: url("images/face-pic.png");
+    background-size: cover;
+    width: 200px;
+    height: 200px;
+}
+
 .face-pic img {
   width: 400px;               /* set desired size */
   height: 500px;              /* make it a square */
