@@ -1,6 +1,6 @@
-const esp32Base = "https://esp32.stellaz.org"; // Replace with your ESP32's actual IP
+const esp32Base = "https://camera.stellaz.org"; // Replace with your ESP32's actual IP
 
-const streamURL = "https://camera.stellaz.org/stream"; // Stream runs on port 81
+const streamURL = esp32Base + '/stream'; // Stream runs on port 81
 const camContainer = document.getElementById('camContainer');
 const streamImg = document.createElement('img');
 streamImg.src = streamURL;
