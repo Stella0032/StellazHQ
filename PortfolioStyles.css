@@ -23,27 +23,27 @@ section {
 }
 
 section.introduction-section {    /* Main Page */
-    background-color: #F9FAFB;    /* color scheme #2 */
+    background-color: #0F172A;    /* color scheme #2 */
 }
 
 
 nav.navbar {
-    background-color: #FFFFFF;
+    background-color: #273548;
     display: flex;
     justify-content: space-between;  /*Push first item left, rest right */
     align-items: center;    /* Vertical center */
     padding: 0.5rem 2rem;   /* spacing around content */
     border-radius: 2rem;
-    border-bottom: 1px solid #E5E7EB; /* Thin light gray border */
+    border-bottom: 1px solid #2c3e50; /* subtle separation */
 }
 
 nav.navbar h1 {
-    color: #1F2937;
+    color: #3B82F6;
     font-size: 1.5rem;
 }
 
 nav.navbar a {
-    color: #1F2937;
+    color: #F4D03F;
     text-decoration: none;
     margin-left: 1.5rem;
     font-weight: bold;
@@ -54,15 +54,15 @@ nav.navbar a:hover {
 }
 
 div.introOverlay h1 {
-    color: #2563EB;
+    color: #38BDF8;
 }
 
 div.introOverlay h2 {
-    color: #4B5563;
+    color: #38BDF8;
 }
 
 div.introOverlay p, li {
-    color: #374151;
+    color: #CBD5E1;
 }
 
 .personal-description {
@@ -92,7 +92,7 @@ div.introOverlay p, li {
     width: 65px;
     height: 65px;
     /*background-color: #333;  bubble color */
-    color: #6EE7B7; /* icon color */
+    color: #FACC15; /* icon color */
     border-radius: 50%;
     text-decoration: none;
     font-size: 70px; /* icon size */
@@ -100,7 +100,7 @@ div.introOverlay p, li {
 }
 
 .icon-circle:hover {
-    background-color: #007bff; /* color on hover */
+    background-color: #2563EB; /* color on hover */
 }
 
 .face-section {
@@ -126,7 +126,7 @@ div.introOverlay p, li {
     border-radius: 8px;   /* rounded corners */
     max-width: auto;   /* set width */
     text-align: left;   /* Center text horizontally */
-    color: #1F2937;
+    color: #F8FAFC;
 }
 
 .cactusProject {    /* cactus project section */
@@ -173,7 +173,7 @@ a.button {
     margin-top: 2rem;
     display: inline-block;
     padding: 0.75rem 1.5rem;
-    background-color: #2563EB;
+    background-color: #3B82F6;
     color: white;
     text-decoration: none;
     border-radius: 5px;
@@ -181,5 +181,5 @@ a.button {
 }
 
 a.button:hover {
-    background-color: #1E40AF;
+    background-color: #2563EB;
 }
