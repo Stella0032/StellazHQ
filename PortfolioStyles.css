@@ -22,7 +22,7 @@ section {
     text-align: center;
 }
 
-section.introduction {    /* Main Page */
+.introduction {    /* Main Page */
     background-color: #0F172A;    /* color scheme #2 */
 }
 
