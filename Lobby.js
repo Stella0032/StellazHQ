@@ -1,6 +1,6 @@
-const esp32Base = "https://camera.stellaz.org"; // Replace with your ESP32's actual IP
+const esp32Base = "https://stellaz.org/api";
 
-const streamURL = esp32Base + '/stream'; // Stream runs on port 81
+const streamURL = esp32Base + '/stream';
 const camContainer = document.getElementById('camContainer');
 const streamImg = document.createElement('img');
 streamImg.src = streamURL;
@@ -82,7 +82,7 @@ function fetchElapsed(){
     .catch(console.error);
 }
 
-// Update both every 5 seconds
+// Update all values every 5 seconds
 setInterval(() => {
     fetchMoisture();
     fetchAngle();
