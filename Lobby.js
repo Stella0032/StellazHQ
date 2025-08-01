@@ -1,4 +1,4 @@
-const esp32Base = "https://stellaz.org/api";
+const esp32Base = "https://api.stellaz.org";
 
 const streamURL = esp32Base + '/stream';
 const camContainer = document.getElementById('camContainer');
