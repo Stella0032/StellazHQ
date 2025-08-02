@@ -85,6 +85,12 @@ p {
     object-fit: cover;
     border-radius: 12px;
     box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    cursor: pointer; /* lets user know it's clickable */
+    transition: transform 0.2s ease;
+}
+
+#camContainer img:hover {
+    transform: scale(1.02);
 }
 
 .liveCameraStream {
@@ -93,4 +99,5 @@ p {
     align-items: center;
     gap: 10px;
     margin-top: 20px;
+
 }
