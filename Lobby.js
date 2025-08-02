@@ -16,6 +16,18 @@ const angleDisplay = document.getElementById('angleValue');
 const led_button = document.getElementById('led_button');
 const elapsedDisplay = document.getElementById('elapsedValue');
 
+// Make stream fullscreen on click
+streamImg.addEventListener('click', () => {
+    if (streamImg.requestFullscreen) {
+        streamImg.requestFullscreen();
+    } else if (streamImg.webkitRequestFullscreen) { /* Safari */
+        streamImg.webkitRequestFullscreen();
+    } else if (streamImg.msRequestFullscreen) { /* IE11 */
+        streamImg.msRequestFullscreen();
+    }
+});
+
+
 // Send request to trigger pump
 pumpButton.addEventListener('click', () => {
     fetch(esp32Base + '/PUMP')
@@ -93,3 +105,4 @@ setInterval(() => {
 fetchMoisture();
 fetchAngle();
 fetchElapsed();
+
