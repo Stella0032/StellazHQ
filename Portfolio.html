@@ -1,85 +1,120 @@
-<html lang="en">
+<!doctype html>
+<html lang="en" id="top">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Justin's Portfolio</title>
-  <link rel="styleSheet" href="PortfolioStyles.css?v=2">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Sora:wght@600;700&display=swap" rel="stylesheet">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="Portfolio2.css" />
 </head>
 <body>
 
-  <section class="introduction">
-    <nav class="navbar">
-      <h1>Justin Dessureault</h1>
-      <div class="nav-links">
-        <a href="">ABOUT</a>
-        <a href="">RESUME</a>
-        <a href="">PROJECTS</a>
-        <a href="">CONTACT</a>
-      </div>
-    </nav>
+  <!-- Thin top bar, sits under the real nav -->
+  <!-- (implemented with body::before in CSS) -->
 
-    <div class="personal-description">
-      <div class="face-section">
-        <div class="face-pic">
-          <img src="images/face-pic.png">
-        </div>
+  <!-- NAV -->
+  <nav class="navbar">
+    <div class="container nav-text">
+      <a class="initials" href="#top" aria-label="Back to top">JD</a>
+      
+      <div class="nav-links">
+        <a href="#top">About</a>
+        <a href="#">Skills</a>
+        <a href="#project1">Projects</a>
+        <a href="#">Resume</a>
+        <a href="#">Contact</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="container hero-inner">
+      <div class="introOverlay">
+        <h1>Justin Dessureault</h1>
+        <h3>Designing the future of robotics, one project at a time.</h3>
+        <h2>Electrical Engineering Student · Robotics & Embedded Systems · IoT & 3D Design</h2>
+        <p>
+          I’m an electrical engineering student specializing in robotics and automation,
+          passionate about blending electronics, programming, and 3D design to build
+          innovative solutions. From IoT systems and embedded programming to CAD modeling
+          and 3D printing, I thrive on turning concepts into functional prototypes.
+        </p>
+
+        <h2>Skills & Tools</h2>
+        <ul>
+          <li>Hardware: ESP32, Arduino, sensors, servos, motor drivers, LCDs</li>
+          <li>Software: C++, JavaScript, Node.js, HTML/CSS, GitHub</li>
+          <li>Design: SolidWorks, Cura, 3D printing, enclosure design</li>
+          <li>Specialties: IoT development, automation, mechatronics</li>
+        </ul>
+
+        <h2>Education</h2>
+        <ul>
+          <li>B.Eng — Electrical Engineering (Robotics & Automation), in progress</li>
+          <li>Coursework: Control Systems, Embedded Programming, IoT Systems, Electronics</li>
+        </ul>
+
+        <a href="#project1" class="button">🚀 Explore My Projects</a>
+      </div>
+
+      <div class="hero-photo">
+        <img src="images/face-pic.png" alt="Portrait of Justin Dessureault" />
         <div class="social-links">
-          <a href="https://github.com/Stella0032" target="_blank" class="icon-circle"> <!-- target="_blank" open in new page -->
+          <a href="https://github.com/Stella0032" target="_blank" class="icon-circle" aria-label="GitHub">
             <i class="fa-brands fa-github"></i>
           </a>
-          <a href="https://www.linkedin.com/in/justin-dessureault-a58284292/" target="_blank" class="icon-circle"> <!-- target="_blank" open in new page -->
+          <a href="https://www.linkedin.com/in/justin-dessureault-a58284292/" target="_blank" class="icon-circle" aria-label="LinkedIn">
             <i class="fa-brands fa-linkedin"></i>
           </a>
         </div>
       </div>
-
-      <div class="introOverlay">
-        <h2>B.Eng. Student | Robotics & Automation Enthusiast | Embedded Systems Developer</h2>
-        <p>I’m an electrical engineering student specializing in robotics and automation, with a strong interest in combining electronics, programming, and 3D design to create practical, innovative solutions.</p>
-        <p>My current focus is developing an automatic plant watering system that integrates an ESP32 microcontroller, capacitive soil moisture sensors, servo-driven plant rotation, and a water pump. The system features a custom 3D-printed enclosure and a web-based dashboard for real-time monitoring and control.</p>
-        <h2>Through this and other academic projects, I’ve built hands-on skills in:</h2>
-        <ul>
-          <li>Hardware: ESP32, Arduino, electronics prototyping, sensor integration</li>
-          <li>Software: C++, JavaScript, Node.js, HTML/CSS</li>
-          <li>Design: SolidWorks, Cura, 3D printing, enclosure design</li>
-          <li>Specialties: IoT development, automation, and mechatronics</li>
-        </ul>
-        <h2>Education</h2>
-        <ul>
-          <li>Bachelor of Electrical Engineering, Robotics and Automation (in progress)</li>
-          <li>Coursework: Control Systems, Embedded Programming, IoT Systems, Electronics</li>
-        </ul>
-        <a href="#project1" class="button">View My Work</a> <!-- # brings to section id-->
-      </div>
     </div>
   </section>
 
+  <!-- Sentinel used by the sticky-nav observer -->
+  <div id="nav-sentinel" aria-hidden="true"></div>
+
+  <!-- PROJECT 1 -->
   <section class="cactusProject" id="project1">
-    <div class="projectOverlay">
-      <div class="projectInfo">
+    <div class="container project-inner">
+      <div class="cactus-image" aria-hidden="true"></div>
+
+      <article class="projectInfo">
         <h2>Automatic Plant Watering System</h2>
-        <p>This project features an ESP32, soil sensors, servo rotation, LCD display, and custom 3D-printed parts. It automates hydration based on moisture levels and time constraints.</p>
-        <a href="#more" class="button">More Projects</a>
-        <a href="cactusDetails.html" class="button">Project Details</a>
-      </div>
+        <p>
+          ESP32-based system with soil moisture sensing, timed servo actuation,
+          LCD status display, and custom 3D-printed parts. Hydrates plants based
+          on moisture thresholds and schedules.
+        </p>
+        <div class="actions">
+          <a href="#more" class="button">More Projects</a>
+          <a href="cactusDetails.html" class="button">Project Details</a>
+        </div>
+      </article>
     </div>
   </section>
 
+  <!-- MORE PROJECTS -->
   <section class="more-projects" id="more">
-    <div>
+    <div class="container">
       <h2>Other Projects Coming Soon</h2>
-      <p>I’m working on documenting additional prototypes, circuit diagrams, and SolidWorks builds. Check back soon!</p>
+      <p>I’m documenting additional prototypes, circuit diagrams, and SolidWorks builds.</p>
     </div>
   </section>
 
-  <section class="footer">
-    <div>
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="container">
       <h2>Contact</h2>
-      <p>Reach out via LinkedIn or email for collaboration or work opportunities.</p>
+      <p>Reach out via LinkedIn or email for collaboration or opportunities.</p>
       <p>&copy; 2025 Justin. All rights reserved.</p>
     </div>
-  </section>
+  </footer>
 
-</body>
-</html>
+  <!-- Icons (Font Awesome) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/js/all.min.js" defer></script>
