@@ -9,7 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Sora:wght@600;700&display=swap" rel="stylesheet">
 
   <!-- Styles -->
-  <link rel="stylesheet" href="PortfolioStyles.css" />
+  <link rel="stylesheet" href="PortfolioStyles2.css" />
 </head>
 <body>
 
@@ -19,8 +19,12 @@
   <!-- NAV -->
   <nav class="navbar">
     <div class="container nav-text">
-      <a class="initials" href="#top" aria-label="Back to top">JD</a>
-      
+      <!-- <a class="brand chip" href="#top" aria-label="Back to top">
+        JD
+      </a> -->
+      <div class="initials">
+        <img src="images/Initials.png" alt="initals" />
+      </div>
       <div class="nav-links">
         <a href="#top">About</a>
         <a href="#">Skills</a>
@@ -30,10 +34,23 @@
       </div>
     </div>
   </nav>
-
+  
   <!-- HERO -->
   <section class="hero">
     <div class="container hero-inner">
+
+      <div class="hero-photo">
+        <img class="avatar avatar--glow" src="images/face-pic.png" alt="Portrait of Justin Dessureault" />
+        <!-- <div class="social-links">
+          <a href="https://github.com/Stella0032" target="_blank" class="icon-circle" aria-label="GitHub">
+            <i class="fa-brands fa-github"></i>
+          </a>
+          <a href="https://www.linkedin.com/in/justin-dessureault-a58284292/" target="_blank" class="icon-circle" aria-label="LinkedIn">
+            <i class="fa-brands fa-linkedin"></i>
+          </a>
+        </div> -->
+      </div>
+
       <div class="introOverlay">
         <h1>Justin Dessureault</h1>
         <h3>Designing the future of robotics, one project at a time.</h3>
@@ -44,35 +61,16 @@
           innovative solutions. From IoT systems and embedded programming to CAD modeling
           and 3D printing, I thrive on turning concepts into functional prototypes.
         </p>
-
-        <h2>Skills & Tools</h2>
-        <ul>
-          <li>Hardware: ESP32, Arduino, sensors, servos, motor drivers, LCDs</li>
-          <li>Software: C++, JavaScript, Node.js, HTML/CSS, GitHub</li>
-          <li>Design: SolidWorks, Cura, 3D printing, enclosure design</li>
-          <li>Specialties: IoT development, automation, mechatronics</li>
-        </ul>
-
+        
         <h2>Education</h2>
         <ul>
           <li>B.Eng — Electrical Engineering (Robotics & Automation), in progress</li>
           <li>Coursework: Control Systems, Embedded Programming, IoT Systems, Electronics</li>
         </ul>
 
-        <a href="#project1" class="button">🚀 Explore My Projects</a>
+        <a href="#project1" class="project-button">🚀 Explore My Projects</a>
       </div>
 
-      <div class="hero-photo">
-        <img src="images/face-pic.png" alt="Portrait of Justin Dessureault" />
-        <div class="social-links">
-          <a href="https://github.com/Stella0032" target="_blank" class="icon-circle" aria-label="GitHub">
-            <i class="fa-brands fa-github"></i>
-          </a>
-          <a href="https://www.linkedin.com/in/justin-dessureault-a58284292/" target="_blank" class="icon-circle" aria-label="LinkedIn">
-            <i class="fa-brands fa-linkedin"></i>
-          </a>
-        </div>
-      </div>
     </div>
   </section>
 
@@ -118,4 +116,3 @@
 
   <!-- Icons (Font Awesome) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/js/all.min.js" defer></script>
-
