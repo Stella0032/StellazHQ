@@ -1,4 +1,4 @@
-/* ---------- Theme colors ---------- */
+/* #region */ /* ^ ---------- root values ---------- */
 :root {
     /* Dark navy base + teal accent, glassy overlays */
     --background: #0b1220;                   /* page background */
@@ -11,8 +11,9 @@
     --linkPaint:       var(--bubble);
     --linkPaintHeight: .45em;
 }
+/* #endregion */
 
-/* ---------- Basic stuff ---------- */
+/* #region */ /* ^ ---------- Basic stuff ---------- */
 * {
     box-sizing: border-box;     /* Sizing of the box will include everything, ex: 100px width will include border, margins ect.. */
     margin: 0;      /* space outside the border */
@@ -39,18 +40,20 @@ section {
     min-height: 100svh; 
     display: flex;
     align-items: start;
-    padding: 2rem;
+    padding: 0rem;
 }
+/* #endregion */
 
-/* Shared container */
+/* #region */ /* ^ ---------- Shared container ---------- */
 .container {
     max-width: 1320px;
     margin-inline: auto;
     padding-inline: clamp(16px, 4vw, 40px);
     width: 100%;
 }
+/* #endregion -- Shared container -- */
 
-/* ---------- Navbar ---------- */
+/* #region */ /* ^ ---------- Navbar ---------- */
 nav.navbar {
     position: relative;
     z-index: 1000;
@@ -64,32 +67,64 @@ nav.navbar {
     padding-block: clamp(.5rem, .3rem + .6vw, .9rem);
 }
 
-/* JD badge */
-.initials {
-    display: inline-grid; 
-    place-items: center;
-    padding: .25rem .6rem;
-    outline: 2px inset var(--text);
-    border-radius: .5rem;
-    color: var(--text);
-    text-decoration: none;
-    font-weight: 800; line-height: 1;
-    font-size: clamp(1.1rem, .9rem + .6vw, 1.6rem);
-    transition: background-color .2s ease, box-shadow .2s ease, transform .08s ease;
-}
-.initials:hover,
-.initials:focus-visible {
-    background-color: var(--heading);
-    box-shadow: 0 0 0 .15rem var(--accent) inset;
-}
-.initials:active {
-    transform: translateY(1px) scale(.98);
+/* #region */ /* ^ -- initials -- */
+
+div.initials img {
+    width: 5rem;
+    height: 5rem; 
+
 }
 
-/* Nav links */
+/* JD badge */
+.brand{
+    display:inline-flex; 
+    align-items:center; 
+    justify-content:center;
+    font-family:"Sora", Inter, system-ui, sans-serif;
+    font-weight:800; 
+    letter-spacing:.02em; 
+    line-height:1;
+    color:var(--highlight);
+    text-decoration:none;
+}
+
+/* #region -- */ /* ^ bubble brand -- */
+.brand.bubble{
+  width:40px; height:40px; border-radius:999px; position:relative; isolation:isolate;
+  display:inline-grid; place-items:center;
+  background: radial-gradient(120% 120% at 30% 20%, rgba(255,255,255,.07), rgba(255,255,255,.02));
+  border:1px solid rgba(255,255,255,.14);
+  color:var(--highlight); text-decoration:none;
+  font-weight:800; font-family:"Sora", Inter, system-ui, sans-serif;
+  font-size: clamp(.95rem, .75rem + .6vw, 1.1rem);
+}
+.brand.bubble::after{
+  content:""; position:absolute; inset:-3px; border-radius:inherit; z-index:-1;
+  background: conic-gradient(from 200deg, rgba(100,255,218,.6), rgba(59,130,246,.4), transparent 70%);
+  filter: blur(10px); opacity:.35; transition:opacity .2s ease, filter .2s ease;
+}
+.brand.bubble:hover{ color:var(--accent); }
+.brand.bubble:hover::after{ opacity:.55; filter: blur(6px); }
+/* #endregion -- bubble brand -- */
+
+/* #region */ /* ^ -- wordmark brand -- */
+.brand.wordmark{
+  font-family:"Sora", Inter, system-ui, sans-serif;
+  font-weight:700; letter-spacing:-.02em;
+  color:var(--highlight); text-decoration:none;
+  font-size: clamp(1rem, .8rem + .8vw, 1.4rem);
+}
+.brand.wordmark span{ color:var(--accent); }
+.brand.wordmark:hover{ color:var(--accent); }
+/* #endregion -- wordmark brand -- */
+
+/* #endregion -- initials */
+
+/* #region */ /* ^ -- Nav links -- */
 .nav-links {
     display: flex; 
     gap: clamp(.8rem, 2.4vw, 2rem);
+    font-size: 1.2rem;
 }
 .nav-links a {
     color: var(--highlight);
@@ -109,8 +144,9 @@ nav.navbar {
     color: var(--accent);
     background-size: 100% var(--linkPaintHeight);
 }
+/* #endregion -- Nav links -- */
 
-/* Sticky (glassy) state */
+/* #region */ /* ^ -- pop up -- */
 nav.navbar.is-stuck {
     position: fixed; top: 0; left: 0; right: 0;
     transform: translateY(-100%);
@@ -125,21 +161,24 @@ nav.navbar.is-stuck.pop-up {
 nav.navbar.is-stuck .nav-links a {
     color: var(--highlight);
 }
+/* #endregion -- pop up -- */
 
-/* ---------- Hero ---------- */
+/* #endregion ---------- Navbar ---------- */
+
+/* #region */ /* ^ ---------- Hero ---------- */
 .hero {
     background-color: transparent;
 }
 
 .hero-inner {
     display: grid;
-    align-items: center;
+    justify-items: center;
     width: 100%;
     gap: clamp(16px, 4vw, 48px);
-    grid-template-columns: 1.3fr .7fr; /* text | photo */
+    grid-template-rows: 0.6fr 1.3fr;
 }
 
-/* Text column */
+/* #region */ /* ^ -- Mini description of me -- */
 .introOverlay {
     color: var(--highlight); 
     text-align: left;
@@ -148,7 +187,7 @@ nav.navbar.is-stuck .nav-links a {
     font-family: "Sora", "Inter", system-ui, sans-serif;
     font-weight: 700; 
     letter-spacing: -0.02em;
-    font-size: clamp(28px, 2.4vw, 56px);
+    font-size: clamp(28px, 2vw, 56px);
     margin: 0 0 .25rem;
     color: var(--highlight);
 }
@@ -167,7 +206,7 @@ nav.navbar.is-stuck .nav-links a {
 }
 .introOverlay p {
     line-height: 1.68; 
-    max-width: 65ch; 
+    max-width: 150ch; 
     color: var(--text);
 }
 .introOverlay ul {
@@ -175,37 +214,36 @@ nav.navbar.is-stuck .nav-links a {
     line-height: 1.65; 
     color: var(--text);
 }
+/* #endregion -- mini description of me -- */
 
-/* CTA button */
-.button {
-    display: inline-flex; align-items: center; gap: .5rem;
-    padding: .6rem 1rem; border-radius: .6rem;
-    background: var(--accent); color: #0b1a1a;
-    font-weight: 700; text-decoration: none;
-    box-shadow: 0 2px 0 rgba(0,0,0,.22);
-    transition: transform .1s ease, box-shadow .1s ease, background .15s ease;
-}
-.button:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 6px 14px rgba(0,0,0,.2);
+/* #region */ /* ^ -- Photo -- */
+
+/* Base circle avatar */
+.avatar {
+    --size: clamp(12rem, 22vw, 18rem); /* tweak this to resize everywhere */
+    width: var(--size);
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: 50%;
+    display: block;
+    }
+
+.avatar--glow {
+  border: 1px solid rgba(255,255,255,.14);
+  box-shadow:
+    0 8px 28px rgba(0,0,0,.35),          /* depth */
+    0 0 0 6px rgba(100,255,218,.08);     /* soft teal halo */
 }
 
-/* Photo column */
-.hero-photo {
-    text-align: center;
-}
-.hero-photo img{
-    width: min(420px, 85%); aspect-ratio: 1/1; object-fit: cover;
-    border-radius: 24px;
-    border: 1px solid rgba(255,255,255,.14);
-    box-shadow: 0 20px 60px rgba(0,0,0,.35);
-    display: inline-block;
-}
+/* #endregion -- Photo -- */
+
 .social-links {
     display: flex; gap: 1rem;
     justify-content: center;
     margin-top: 1rem;
 }
+
+/* #region -- Icon links -- */
 .icon-circle {
     display: inline-flex; justify-content: center; align-items: center;
     width: 56px; height: 56px; border-radius: 50%;
@@ -217,8 +255,25 @@ nav.navbar.is-stuck .nav-links a {
     color: #0b1a1a;
     transform: translateY(-1px);
 }
+/* #endregion -- Icon links -- */
 
-/* ---------- Project Section ---------- */
+/* #region -- buttons -- */
+.project-button {
+    display: inline-flex; align-items: center; gap: .5rem;
+    padding: .6rem 1rem; border-radius: .6rem;
+    background: var(--accent); color: #0b1a1a;
+    font-weight: 700; text-decoration: none;
+    box-shadow: 0 2px 0 rgba(0,0,0,.22);
+    transition: transform .1s ease, box-shadow .1s ease, background .15s ease;
+}
+.project-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 14px rgba(0,0,0,.2);
+}
+/* #endregion -- buttons -- */
+/* #endregion -------- hero -------- */
+
+/* #region */ /* ^ ---------- Projects Section ---------- */
 .cactusProject {
     background-color: transparent;
 }
@@ -258,8 +313,9 @@ nav.navbar.is-stuck .nav-links a {
     gap: .75rem;
     flex-wrap: wrap;
 }
+/* #endregion ---------- Projects Section ---------- */ 
 
-/* ---------- More Projects + Footer ---------- */
+/* #region */ /* ^ ---------- More Projects + Footer ---------- */
 .more-projects {
     background: #0f1720;
     color: #c9d7e3;
@@ -268,14 +324,17 @@ nav.navbar.is-stuck .nav-links a {
     background: #0b1320;
     color: #cfe2ec;
 }
+/* #endregion -- more projects + footer -- */
 
-/* ---------- Utilities ---------- */
+/* #region */ /* ^ ---------- Utilities ---------- */
 #nav-sentinel {
     height: 1px;
 }
+/* #endregion ---------- Utilities ---------- */
 
-/* ---------- Responsive ---------- */
+/* #region */ /* ^ ---------- Responsive to phone ---------- */
 @media (max-width: 900px) {
   .hero-inner, .project-inner { grid-template-columns: 1fr; }
   .nav-links { gap: 1rem; }
 }
+/* #endregion ---------- Responsive to phone ---------- */
