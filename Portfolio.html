@@ -9,14 +9,14 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Sora:wght@600;700&display=swap" rel="stylesheet">
 
   <!-- Styles -->
-  <link rel="stylesheet" href="PortfolioStyles.css" />
+  <link rel="stylesheet" href="PortfolioStyles2.css" />
 </head>
 <body>
 
   <!-- Thin top bar, sits under the real nav -->
   <!-- (implemented with body::before in CSS) -->
 
-  <!-- NAV -->
+  <!--! NAV -->
   <nav class="navbar">
     <div class="container nav-text">
       <!-- <a class="brand chip" href="#top" aria-label="Back to top">
@@ -27,7 +27,7 @@
       </div>
       <div class="nav-links">
         <a href="#top">About</a>
-        <a href="#">Skills</a>
+        <a href="#skills">Skills</a>
         <a href="#project1">Projects</a>
         <a href="#">Resume</a>
         <a href="#">Contact</a>
@@ -35,7 +35,7 @@
     </div>
   </nav>
   
-  <!-- HERO -->
+  <!--! HERO -->
   <section class="hero">
     <div class="container hero-inner">
 
@@ -74,10 +74,82 @@
     </div>
   </section>
 
-  <!-- Sentinel used by the sticky-nav observer -->
+  <!--! Sentinel used by the sticky-nav observer -->
   <div id="nav-sentinel" aria-hidden="true"></div>
 
-  <!-- PROJECT 1 -->
+  <!--! Skill Section -->
+  <section id="skills" class="skills">
+    <div class="container">
+          <!-- Software -->
+      <h2 id="skills-software-title" class="skills-title">Software</h2>
+
+      <div class="skills-grid" role="tablist" aria-label="Software skills">
+        <button class="skill-chip" role="tab" aria-controls="panel-cpp" aria-selected="true" data-panel="panel-cpp">C++</button>
+        <button class="skill-chip" role="tab" aria-controls="panel-js"  aria-selected="false" data-panel="panel-js">JavaScript</button>
+        <button class="skill-chip" role="tab" aria-controls="panel-node" aria-selected="false" data-panel="panel-node">Node.js</button>
+        <button class="skill-chip" role="tab" aria-controls="panel-htmlcss" aria-selected="false" data-panel="panel-htmlcss">HTML/CSS</button>
+        <button class="skill-chip" role="tab" aria-controls="panel-git" aria-selected="false" data-panel="panel-git">Git/GitHub</button>
+      </div>
+
+      <div class="skills-panels">
+        <article id="panel-cpp"  role="tabpanel" class="skill-panel is-open">I use C++ for embedded and performance-critical parts (ESP32/Arduino, drivers, and control loops).</article>
+        <article id="panel-js"   role="tabpanel" class="skill-panel" hidden>JS for quick prototyping, UI interactions, and small tools that glue hardware + web together.</article>
+        <article id="panel-node" role="tabpanel" class="skill-panel" hidden>Node.js for APIs, dashboards, and small IoT backends that talk to devices over Wi-Fi/serial.</article>
+        <article id="panel-htmlcss" role="tabpanel" class="skill-panel" hidden>Semantic HTML + modern CSS for responsive pages and componentized UI patterns.</article>
+        <article id="panel-git"  role="tabpanel" class="skill-panel" hidden>Daily Git/GitHub—branches, PRs, issues; comfortable with CLI and basic CI workflows.</article>
+      </div>
+
+      <h2 id="skills-design-title" class="skills-title">Design</h2>
+
+      <div class="skills-grid" role="tablist" aria-label="Design tools">
+        <button class="skill-chip" role="tab" aria-controls="panel-solidworks" aria-selected="true" data-panel="panel-solidworks">SolidWorks</button>
+        <button class="skill-chip" role="tab" aria-controls="panel-cura"        aria-selected="false" data-panel="panel-cura">Cura</button>
+        <button class="skill-chip" role="tab" aria-controls="panel-fdm"         aria-selected="false" data-panel="panel-fdm">FDM 3D Printing</button>
+        <button class="skill-chip" role="tab" aria-controls="panel-enclosures"  aria-selected="false" data-panel="panel-enclosures">Enclosures</button>
+      </div>
+
+      <div class="skills-panels">
+        <article id="panel-solidworks" role="tabpanel" class="skill-panel is-open">CAD for brackets, mounts, and full assemblies; motion studies and print-ready models.</article>
+        <article id="panel-cura"       role="tabpanel" class="skill-panel" hidden>Cura profiles tuned for PLA/PETG; wall/shell strategies for strength and tolerances.</article>
+        <article id="panel-fdm"        role="tabpanel" class="skill-panel" hidden>Printer setup, bed leveling, material selection, and failure troubleshooting.</article>
+        <article id="panel-enclosures" role="tabpanel" class="skill-panel" hidden>Snap-fits, heat-set inserts, and cable management for neat, serviceable builds.</article>
+      </div>
+
+      <h2 id="skills-hw-title" class="skills-title">Hardware & Electronics</h2>
+
+      <div class="skills-grid" role="tablist" aria-label="Hardware skills">
+        <button class="skill-chip" role="tab" aria-controls="panel-esp32"   aria-selected="true" data-panel="panel-esp32">ESP32</button>
+        <button class="skill-chip" role="tab" aria-controls="panel-sensors" aria-selected="false" data-panel="panel-sensors">Sensors</button>
+        <button class="skill-chip" role="tab" aria-controls="panel-servos"  aria-selected="false" data-panel="panel-servos">Servos/Motors</button>
+        <button class="skill-chip" role="tab" aria-controls="panel-lcd"     aria-selected="false" data-panel="panel-lcd">LCD/UI</button>
+      </div>
+
+      <div class="skills-panels">
+        <article id="panel-esp32"  role="tabpanel" class="skill-panel is-open">Wi-Fi/BLE, FreeRTOS basics, low-power modes; sensor fusion + control on ESP32.</article>
+        <article id="panel-sensors" role="tabpanel" class="skill-panel" hidden>Analog/digital sensors, debouncing, calibration, and filtering for stable readings.</article>
+        <article id="panel-servos"  role="tabpanel" class="skill-panel" hidden>Servo control, motor drivers, PWM tuning, torque vs. speed trade-offs.</article>
+        <article id="panel-lcd"     role="tabpanel" class="skill-panel" hidden>Basic menus/status UIs on small LCDs; UX that works for embedded constraints.</article>
+      </div>
+
+      <h2 id="skills-spec-title" class="skills-title">Specialties</h2>
+
+      <div class="skills-grid" role="tablist" aria-label="Specialties">
+        <button class="skill-chip" role="tab" aria-controls="panel-iot"   aria-selected="true" data-panel="panel-iot">IoT</button>
+        <button class="skill-chip" role="tab" aria-controls="panel-auto"  aria-selected="false" data-panel="panel-auto">Automation</button>
+        <button class="skill-chip" role="tab" aria-controls="panel-mech"  aria-selected="false" data-panel="panel-mech">Mechatronics</button>
+        <button class="skill-chip" role="tab" aria-controls="panel-proto" aria-selected="false" data-panel="panel-proto">Rapid Prototyping</button>
+      </div>
+
+      <div class="skills-panels">
+        <article id="panel-iot"   role="tabpanel" class="skill-panel is-open">ESP32 + APIs/dashboards for remote monitoring, notifications, and control.</article>
+        <article id="panel-auto"  role="tabpanel" class="skill-panel" hidden>Timers, state machines, and safety interlocks for dependable behavior.</article>
+        <article id="panel-mech"  role="tabpanel" class="skill-panel" hidden>Electromechanical design: sensors → control → actuation with clean wiring.</article>
+        <article id="panel-proto" role="tabpanel" class="skill-panel" hidden>Idea → schematic → code → printed part—fast loops and documented iterations.</article>
+      </div>
+
+  </section>
+
+  <!--! PROJECT 1 -->
   <section class="cactusProject" id="project1">
     <div class="container project-inner">
       <div class="cactus-image" aria-hidden="true"></div>
@@ -97,7 +169,7 @@
     </div>
   </section>
 
-  <!-- MORE PROJECTS -->
+  <!--! MORE PROJECTS -->
   <section class="more-projects" id="more">
     <div class="container">
       <h2>Other Projects Coming Soon</h2>
@@ -105,7 +177,7 @@
     </div>
   </section>
 
-  <!-- FOOTER -->
+  <!--! FOOTER -->
   <footer class="footer">
     <div class="container">
       <h2>Contact</h2>
@@ -116,4 +188,4 @@
 
   <!-- Icons (Font Awesome) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/js/all.min.js" defer></script>
-
+  <script src="Portfolio2.js"> </script>
