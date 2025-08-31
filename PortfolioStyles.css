@@ -33,6 +33,7 @@ body {
         radial-gradient(900px 600px at 110% 10%, rgba(59,130,246,.07), transparent 55%),
         radial-gradient(800px 520px at 85% 120vh, rgba(100,255,218,.07), transparent 60%),
         radial-gradient(900px 600px at 10% 210vh, rgba(59,130,246,.06), transparent 60%),
+
         /* background gradient color shift */
         linear-gradient(180deg, #0b1220 0%, #0a0f1a 100%);
 }
@@ -67,7 +68,7 @@ nav.navbar {
     padding-block: clamp(.5rem, .3rem + .6vw, .9rem);
 }
 
-/* #region */ /* ^ -- initials -- */
+/* #region */ /* & -- initials -- */
 
 div.initials img {
     width: 5rem;
@@ -120,7 +121,7 @@ div.initials img {
 
 /* #endregion -- initials */
 
-/* #region */ /* ^ -- Nav links -- */
+/* #region */ /* & -- Nav links -- */
 .nav-links {
     display: flex; 
     gap: clamp(.8rem, 2.4vw, 2rem);
@@ -146,7 +147,7 @@ div.initials img {
 }
 /* #endregion -- Nav links -- */
 
-/* #region */ /* ^ -- pop up -- */
+/* #region */ /* & -- pop up -- */
 nav.navbar.is-stuck {
     position: fixed; top: 0; left: 0; right: 0;
     transform: translateY(-100%);
@@ -168,6 +169,7 @@ nav.navbar.is-stuck .nav-links a {
 /* #region */ /* ^ ---------- Hero ---------- */
 .hero {
     background-color: transparent;
+    min-height: clamp(560px, 72vh, 900px);
 }
 
 .hero-inner {
@@ -178,7 +180,7 @@ nav.navbar.is-stuck .nav-links a {
     grid-template-rows: 0.6fr 1.3fr;
 }
 
-/* #region */ /* ^ -- Mini description of me -- */
+/* #region */ /* & -- Mini description of me -- */
 .introOverlay {
     color: var(--highlight); 
     text-align: left;
@@ -216,7 +218,7 @@ nav.navbar.is-stuck .nav-links a {
 }
 /* #endregion -- mini description of me -- */
 
-/* #region */ /* ^ -- Photo -- */
+/* #region */ /* & -- Photo -- */
 
 /* Base circle avatar */
 .avatar {
@@ -272,6 +274,94 @@ nav.navbar.is-stuck .nav-links a {
 }
 /* #endregion -- buttons -- */
 /* #endregion -------- hero -------- */
+
+/* #region */ /* ^ ---------- Skills ---------- */
+
+/* #region */ /* & -- skills section -- */
+section.skills {
+    padding-block: clamp(32px, 7vw, 80px);
+}
+.skills-title {
+    font-family: "Sora", inter, system-ui, sans-serif;
+    margin-bottom: .5rem;
+}
+.skills-lead {
+    color: var(--text);
+    margin-bottom: 1rem;
+}
+/* #endregion -- skills section -- */
+
+/* #region */ /* & -- chip grid -- */
+.skills-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: clamp(.5rem, 1.5vw, .9rem);
+}
+/* #endregion -- chip grid -- */
+
+/* #region */ /* & -- individual chip -- */
+.skill-chip {
+    appearance: none;
+    cursor: pointer;
+    padding: .65rem 1rem;
+    border-radius: .75rem;
+    font-weight: 700;
+    color: var(--highlight);
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.12);
+    backdrop-filter: blur(6px);
+    transition: transform .08s ease, background .2s ease, color .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+.skill-chip:hover,
+.skill-chip:focus-visible {
+    outline: none;
+    background: rgba(255,255,255,.08);
+    color: var(--accent);
+    box-shadow: 0 6px 18px rgba(0,0,0,.24);
+    border-color: rgba(100,255,218,.35);
+}
+.skill-chip[aria-selected="true"]{
+    color: #0b1a1a;
+    background: var(--accent);
+    border-color: transparent;
+}
+/* #endregion -- individual chip -- */
+
+/* #region */ /* & -- Panels stack */
+.skill-panels {
+    margin-top: clamp(12px, 2.5vw, 20px);
+    display: grid;
+    gap: .75rem;
+}
+/* #endregion -- panels stack -- */
+
+/* #region */ /* & -- panel cards with smooth open/close -- */
+.skill-panel{
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 12px;
+    padding: clamp(14px, 2.2vw, 22px);
+    color: var(--highlight);
+    line-height: 1.65;
+    margin: 1rem;
+
+    /* transition open/close */
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height .32s ease, opacity .25s ease;
+}
+.skill-panel.is-open{
+    max-height: 260px;   /* raise if your copy is longer */
+    opacity: 1;
+}
+.skill-panel h3{
+    margin: 0 0 .35rem;
+    font-family: "Sora", Inter, system-ui, sans-serif;
+}
+/* #endregion -- panel cards with smooth open/close -- */
+
+/* #endregion ---------- skills ---------- */
 
 /* #region */ /* ^ ---------- Projects Section ---------- */
 .cactusProject {
