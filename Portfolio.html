@@ -28,9 +28,9 @@
       <div class="nav-links">
         <a href="#top">About</a>
         <a href="#skills">Skills</a>
-        <a href="#project1">Projects</a>
-        <a href="#">Resume</a>
-        <a href="#">Contact</a>
+        <a href="#projects">Projects</a>
+        <a href="Assets/English-Resume.pdf" target="_blank">Resume</a>
+        <a href="#footer">Contact</a>
       </div>
     </div>
   </nav>
@@ -40,15 +40,7 @@
     <div class="container hero-inner">
 
       <div class="hero-photo">
-        <img class="avatar avatar--glow" src="images/face-pic.png" alt="Portrait of Justin Dessureault" />
-        <!-- <div class="social-links">
-          <a href="https://github.com/Stella0032" target="_blank" class="icon-circle" aria-label="GitHub">
-            <i class="fa-brands fa-github"></i>
-          </a>
-          <a href="https://www.linkedin.com/in/justin-dessureault-a58284292/" target="_blank" class="icon-circle" aria-label="LinkedIn">
-            <i class="fa-brands fa-linkedin"></i>
-          </a>
-        </div> -->
+          <img class="avatar avatar--glow" src="images/Self-image2.png" alt="Portrait of me." />
       </div>
 
       <div class="introOverlay">
@@ -81,6 +73,7 @@
   <section id="skills" class="skills">
     <div class="container">
           <!-- Software -->
+      <h1> Skills </h1>
       <h2 id="skills-software-title" class="skills-title">Software</h2>
 
       <div class="skills-grid" role="tablist" aria-label="Software skills">
@@ -92,27 +85,87 @@
       </div>
 
       <div class="skills-panels">
-        <article id="panel-cpp"  role="tabpanel" class="skill-panel is-open">I use C++ for embedded and performance-critical parts (ESP32/Arduino, drivers, and control loops).</article>
-        <article id="panel-js"   role="tabpanel" class="skill-panel" hidden>JS for quick prototyping, UI interactions, and small tools that glue hardware + web together.</article>
-        <article id="panel-node" role="tabpanel" class="skill-panel" hidden>Node.js for APIs, dashboards, and small IoT backends that talk to devices over Wi-Fi/serial.</article>
-        <article id="panel-htmlcss" role="tabpanel" class="skill-panel" hidden>Semantic HTML + modern CSS for responsive pages and componentized UI patterns.</article>
-        <article id="panel-git"  role="tabpanel" class="skill-panel" hidden>Daily Git/GitHub—branches, PRs, issues; comfortable with CLI and basic CI workflows.</article>
+        <article id="panel-cpp"  role="tabpanel" class="skill-panel is-open">
+          <strong>C++ (ESP32/Arduino)</strong>
+            <ul>
+              <li><em>Plant Watering System:</em> sensor drivers (capacitive moisture), moving-average filtering, pump/servo control, safety interlocks, LCD status.</li>
+            <li><em>Robotic Arm:</em> 2-link inverse kinematics (atan2, law-of-cosines), servo mapping/limits, homing routine, serial protocol to PC for live tuning.</li>
+          </ul>
+        </article>
+        <article id="panel-js"   role="tabpanel" class="skill-panel" hidden>
+          <strong>JavaScript</strong>
+            <ul>
+              <li><em>Portfolio site:</em> sticky nav + IntersectionObserver, accessible tab UI for skills, fluid layout with <code>clamp()</code>.</li>
+              <li><em>IoT UI:</em> local & remote control pages for ESP32 (water now / rotate / thresholds), fetch calls to a Node proxy to avoid CORS.</li>
+            </ul>
+        </article>
+        <article id="panel-node" role="tabpanel" class="skill-panel" hidden>
+          <strong>Node.js (Express)</strong>
+            <ul>
+              <li><em>Sensor/actuator proxy:</em> REST endpoints that forward to ESP32 over LAN; simple auth + rate limiting; JSON logs.</li>
+              <li><em>Infra:</em> two Cloudflare named tunnels (camera stream and proxy) with separate DNS names.</li>
+            </ul>
+        </article>
+        <article id="panel-htmlcss" role="tabpanel" class="skill-panel" hidden>
+          <strong>HTML/CSS</strong>
+            <ul>
+              <li>Responsive grids, CSS variables, fluid type with <code>clamp()</code>, glassy cards, and accessible semantics/ARIA.</li>
+              <li>Componentized patterns (chips, cards, buttons) reused across sections.</li>
+            </ul>
+        </article>
+        <article id="panel-git"  role="tabpanel" class="skill-panel" hidden>
+          <strong>Git/GitHub</strong>
+            <ul>
+              <li>Feature branches + PRs, issue tracking, and GitHub Pages for static sites.</li>
+              <li>Daily CLI use for structured commits and clean history.</li>
+            </ul>
+        </article>
       </div>
 
       <h2 id="skills-design-title" class="skills-title">Design</h2>
 
       <div class="skills-grid" role="tablist" aria-label="Design tools">
         <button class="skill-chip" role="tab" aria-controls="panel-solidworks" aria-selected="true" data-panel="panel-solidworks">SolidWorks</button>
-        <button class="skill-chip" role="tab" aria-controls="panel-cura"        aria-selected="false" data-panel="panel-cura">Cura</button>
-        <button class="skill-chip" role="tab" aria-controls="panel-fdm"         aria-selected="false" data-panel="panel-fdm">FDM 3D Printing</button>
+        <button class="skill-chip" role="tab" aria-controls="panel-cura" aria-selected="false" data-panel="panel-cura">
+          Cura
+        </button>
+        <button class="skill-chip" role="tab" aria-controls="panel-fdm" aria-selected="false" data-panel="panel-fdm">FDM 3D Printing</button>
         <button class="skill-chip" role="tab" aria-controls="panel-enclosures"  aria-selected="false" data-panel="panel-enclosures">Enclosures</button>
       </div>
 
       <div class="skills-panels">
-        <article id="panel-solidworks" role="tabpanel" class="skill-panel is-open">CAD for brackets, mounts, and full assemblies; motion studies and print-ready models.</article>
-        <article id="panel-cura"       role="tabpanel" class="skill-panel" hidden>Cura profiles tuned for PLA/PETG; wall/shell strategies for strength and tolerances.</article>
-        <article id="panel-fdm"        role="tabpanel" class="skill-panel" hidden>Printer setup, bed leveling, material selection, and failure troubleshooting.</article>
-        <article id="panel-enclosures" role="tabpanel" class="skill-panel" hidden>Snap-fits, heat-set inserts, and cable management for neat, serviceable builds.</article>
+        <article id="panel-solidworks" role="tabpanel" class="skill-panel is-open">
+            <strong>SolidWorks</strong>
+              <ul>
+                <li><em>Robotic Arm:</em> multi-body assemblies with servo mounts, gear clearances, and motion studies to verify reach and collisions.</li>
+                <li><em>Plant System:</em> enclosure with standoffs, cable channels, and heat-set-insert bosses; print-ready orientation and split lines.</li>
+                <li>Tolerance tables (+/-0.2–0.4 mm), fastener/BOM exports, and drawing packs for prints.</li>
+              </ul>
+        </article>
+        <article id="panel-cura" role="tabpanel" class="skill-panel" hidden>
+          <strong>Cura</strong>
+            <ul>
+              <li>Profiles for PLA/PETG on Neptune 3 Pro: flow/retraction tuned to eliminate stringing and elephant’s foot.</li>
+              <li>Strength-first strategies: walls before infill, cubic sub-division, ≤0.2 mm layer heights for gears/hinges.</li>
+              <li>Tree supports, custom support blockers, seam alignment, ironing for top surfaces.</li>
+            </ul>
+        </article>
+        <article id="panel-fdm" role="tabpanel" class="skill-panel" hidden>
+            <strong>Enclosures</strong>
+              <ul>
+                <li>Snap-fits + M3 heat-set inserts, captive nuts, and removable lids for serviceability.</li>
+                <li>Vent patterns near hot components, strain-relief paths, and hidden wire raceways.</li>
+                <li>Board alignment features: datum ribs, chamfers, and self-locating bosses.</li>
+              </ul>
+        </article>
+        <article id="panel-enclosures" role="tabpanel" class="skill-panel" hidden>
+            <strong>LCD / UI</strong>
+              <ul>
+                <li>I²C character LCD for live status, error codes, and threshold readouts.</li>
+                <li>Menu flows that work within embedded constraints (noisy I/O, low RAM).</li>
+                <li>Readable formatting: units, icons, and progress/animation for actions.</li>
+              </ul>
+        </article>
       </div>
 
       <h2 id="skills-hw-title" class="skills-title">Hardware & Electronics</h2>
@@ -125,10 +178,38 @@
       </div>
 
       <div class="skills-panels">
-        <article id="panel-esp32"  role="tabpanel" class="skill-panel is-open">Wi-Fi/BLE, FreeRTOS basics, low-power modes; sensor fusion + control on ESP32.</article>
-        <article id="panel-sensors" role="tabpanel" class="skill-panel" hidden>Analog/digital sensors, debouncing, calibration, and filtering for stable readings.</article>
-        <article id="panel-servos"  role="tabpanel" class="skill-panel" hidden>Servo control, motor drivers, PWM tuning, torque vs. speed trade-offs.</article>
-        <article id="panel-lcd"     role="tabpanel" class="skill-panel" hidden>Basic menus/status UIs on small LCDs; UX that works for embedded constraints.</article>
+        <article id="panel-esp32"  role="tabpanel" class="skill-panel is-open">
+            <strong>ESP32</strong>
+              <ul>
+                <li><em>Plant System:</em> sensor sampling with moving-average filtering, timed pump control, LCD updates, and safety interlocks.</li>
+                <li><em>Robotic Arm:</em> servo control loops, homing routine, angle mapping, and serial protocol for live tuning.</li>
+                <li>Wi-Fi endpoints to a Node/Express proxy; basic FreeRTOS task splitting (UI vs control).</li>
+              </ul>
+        </article>
+        <article id="panel-sensors" role="tabpanel" class="skill-panel" hidden>
+            <strong>Sensors</strong>
+              <ul>
+                <li>Capacitive soil moisture: baseline calibration, noise filtering, and threshold-based watering.</li>
+                <li>End-stop / limit detection for arm homing; debounced digital inputs.</li>
+                <li>Analog reading linearization and simple low-pass filters for stability.</li>
+              </ul>
+        </article>
+        <article id="panel-servos"  role="tabpanel" class="skill-panel" hidden>
+            <strong>Servos / Motors</strong>
+              <ul>
+                <li>SG90/standard servo PWM (µs) → angle mapping; speed/torque trade-offs and travel limits.</li>
+                <li>Elbow-down IK using law-of-cosines and <code>atan2</code>; soft limits to protect linkages.</li>
+                <li>Mechanical choices: horn geometry, backlash management, and load paths.</li>
+              </ul>
+        </article>
+        <article id="panel-lcd" role="tabpanel" class="skill-panel" hidden>
+            <strong>LCD / UI</strong>
+              <ul>
+                <li>I²C character LCD for live status, error codes, and threshold readouts.</li>
+                <li>Menu flows that work within embedded constraints (noisy I/O, low RAM).</li>
+                <li>Readable formatting: units, icons, and progress/animation for actions.</li>
+              </ul>
+        </article>
       </div>
 
       <h2 id="skills-spec-title" class="skills-title">Specialties</h2>
@@ -141,47 +222,149 @@
       </div>
 
       <div class="skills-panels">
-        <article id="panel-iot"   role="tabpanel" class="skill-panel is-open">ESP32 + APIs/dashboards for remote monitoring, notifications, and control.</article>
-        <article id="panel-auto"  role="tabpanel" class="skill-panel" hidden>Timers, state machines, and safety interlocks for dependable behavior.</article>
-        <article id="panel-mech"  role="tabpanel" class="skill-panel" hidden>Electromechanical design: sensors → control → actuation with clean wiring.</article>
-        <article id="panel-proto" role="tabpanel" class="skill-panel" hidden>Idea → schematic → code → printed part—fast loops and documented iterations.</article>
+        <article id="panel-iot"   role="tabpanel" class="skill-panel is-open">
+            <strong>IoT</strong>
+              <ul>
+                <li>Local web UI + remote access via Node/Express proxy and Cloudflare tunnel (camera stream + API).</li>
+                <li>REST endpoints for commands (water now, rotate, thresholds) and simple JSON logging.</li>
+              </ul>
+        </article>
+        <article id="panel-auto"  role="tabpanel" class="skill-panel" hidden>
+            <strong>Automation</strong>
+              <ul>
+                <li>State machines for watering schedules and safety interlocks (dry run, timeout, low tank).</li>
+                <li>Timers, debouncing, watchdog behavior, and recoverable error states.</li>
+              </ul>
+        </article>
+        <article id="panel-mech"  role="tabpanel" class="skill-panel" hidden>
+            <strong>Mechatronics</strong>
+              <ul>
+                <li>Sensor → control → actuation pipelines with tidy wiring and accessible service points.</li>
+                <li>Test jigs and motion studies to validate ranges, collisions, and cable slack.</li>
+              </ul>
+        </article>
+        <article id="panel-proto" role="tabpanel" class="skill-panel" hidden>
+            <strong>Rapid Prototyping</strong>
+              <ul>
+                <li>Idea → schematic → firmware → printed enclosure in short loops with documented iterations.</li>
+                <li>Versioned CAD, BOMs, and wiring notes for reproducibility.</li>
+              </ul>
+        </article>
       </div>
 
   </section>
 
-  <!--! PROJECT 1 -->
-  <section class="cactusProject" id="project1">
-    <div class="container project-inner">
-      <div class="cactus-image" aria-hidden="true"></div>
+  <!--! PROJECTS -->
+  <section class="projects" id="projects">
+    <div class="container">
+      <h1>Main Projects</h1>
+      <div class="container project-row">
+        <div class="project-media" style="background-image:url('images/PlantWateringSystemBackground.png')"></div>
+        <article class="project-info">
+          <h2>Automatic Plant Watering System</h2>
+          <p>
+            ESP32-based system with soil moisture sensing, timed servo actuation,
+            LCD status display, and custom 3D-printed parts. Hydrates plants based
+            on moisture thresholds and schedules.
+          </p>
+          <div class="actions">
+            <a href="cactusDetails.html" class="project-button">Project Details</a>
+          </div>
+        </article>
+      </div>
 
-      <article class="projectInfo">
-        <h2>Automatic Plant Watering System</h2>
-        <p>
-          ESP32-based system with soil moisture sensing, timed servo actuation,
-          LCD status display, and custom 3D-printed parts. Hydrates plants based
-          on moisture thresholds and schedules.
-        </p>
-        <div class="actions">
-          <a href="#more" class="button">More Projects</a>
-          <a href="cactusDetails.html" class="button">Project Details</a>
-        </div>
-      </article>
+      <div class="container project-row">
+        <div class="project-media" style="background-image:url('images/RoboticArmImage.jpg')"></div>
+        <article class="project-info">
+          <h2>Inverse Kinametics Robotic Arm</h2>
+          <p>
+            ESP32-based system with 5 SG90 servo's for joint movements. Movements are calculated using inverse kinematics for smooth movements. The robotic arm is able to track a 5x5 acUro with a esp32-cam. 
+          </p>
+          <div class="actions">
+            <a href="cactusDetails.html" class="project-button">Project Details</a>
+          </div>
+        </article>
+      </div>
     </div>
   </section>
 
-  <!--! MORE PROJECTS -->
+  <!--! SMALL PROJECTS -->
   <section class="more-projects" id="more">
     <div class="container">
-      <h2>Other Projects Coming Soon</h2>
-      <p>I’m documenting additional prototypes, circuit diagrams, and SolidWorks builds.</p>
+      <h1>Mini Projects</h1>
+
+      <h2>Real parts made in SolidWorks</h2>
+
+      <div class="mini-carousel" data-carousel>
+        <button class="mini-arrow prev" aria-label="Scroll left" data-prev>&lsaquo;</button>
+
+        <div class="mini-track" data-track tabindex="0"> <!-- role = "button" & data-drawing is for javascript -->
+          <a class="mini-item" href="images/Battery-9V-Drawing.PNG" role="button" aria-label="9V Battery CAD Image" data-drawing="images/Battery-9V-Drawing.PNG">
+            <img src="images/Battery 9V.PNG" alt="9V battery render" loading="lazy" decoding="async" />
+          </a>
+
+          <a class="mini-item" href="images/Servo-SG90-drawing.PNG" role="button" aria-label="Servo CAD Image." data-drawing="images/Servo-SG90-drawing.PNG">
+            <img src="images/Servo SG90.PNG" alt="Servo render" loading="lazy" decoding="async" />
+          </a>
+
+          <a class="mini-item" href="images/ESP32-drawing.PNG" role="button" aria-label="ESP32 CAD Image." data-drawing="images/ESP32-drawing.PNG">
+            <img src="images/ESP32.PNG" alt="ESP32 render" loading="lazy" decoding="async" />
+          </a>
+
+          <a class="mini-item" href="images/Capacitive Soil Moisture Sensor v1.2-drawing.PNG" role="button" aria-label="soil sensor CAD Image." data-drawing="images/Capacitive Soil Moisture Sensor v1.2-drawing.PNG">
+            <img src="images/Capacitive Soil Moisture Sensor v1.2.PNG" alt="soil sensor render" loading="lazy" decoding="async" />
+          </a>
+
+          <a class="mini-item" href="images/LCD-drawing.PNG" role="button" aria-label="LCD CAD Image." data-drawing="images/LCD-drawing.PNG">
+            <img src="images/LCD Screen.PNG" alt="LCD render" loading="lazy" decoding="async" />
+          </a>
+
+          <a class="mini-item" href="images/Pump-drawing.PNG" role="button" aria-label="pump CAD Image." data-drawing="images/Pump-drawing.PNG">
+            <img src="images/Pump.PNG" alt="Pump render" loading="lazy" decoding="async" />
+          </a>
+
+          <a class="mini-item" href="images/Medium-Protoboard-drawing.PNG" role="button" aria-label="medium protoboard CAD Image." data-drawing="images/Medium-Protoboard-drawing.PNG">
+            <img src="images/Medium Protoboard.PNG" alt="Protoboard render" loading="lazy" decoding="async" />
+          </a>
+
+          <a class="mini-item" href="images/Mini-Protoboard-drawing.PNG" role="button" aria-label="mini protoboard CAD Image." data-drawing="images/Mini-Protoboard-drawing.PNG">
+            <img src="images/Mini Protoboard.PNG" alt="mini protoboard render" loading="lazy" decoding="async" />
+          </a>
+
+        </div>
+
+        <button class="mini-arrow next" aria-label="Scroll right" data-next>&rsaquo;</button>
+
+      </div>
+      <h2>SolidWorks/3D printed projects</h2>
+
+      <div class="mini-carousel" data-carousel>
+        <button class="mini-arrow prev" aria-label="Scroll left" data-prev>&lsaquo;</button>
+
+        <div class="mini-track" data-track tabindex="0">
+          <!-- Image-only items (transparent PNG/WebP recommended) -->
+          <a class="mini-item" href="storageDetails.html" aria-label="9V Battery CAD Image">
+            <img src="images/Storage-Assembly.PNG" alt="9V battery render" loading="lazy" decoding="async" />
+          </a>
+
+          <a class="mini-item" href="plantPotDetails.html" aria-label="Plant pot CAD Image.">
+            <img src="images/Flower Pot Assembly.PNG" alt="Servo render" loading="lazy" decoding="async" />
+          </a>
+          <!-- duplicate mini-item blocks for more thumbs -->
+          <!-- <a class="mini-item" href="..."><img src="images/part2.png" alt="..."></a> -->
+        </div>
+
+        <button class="mini-arrow next" aria-label="Scroll right" data-next>&rsaquo;</button>
+      </div>
     </div>
+
   </section>
 
   <!--! FOOTER -->
-  <footer class="footer">
+  <footer class="footer" id="footer">
     <div class="container">
       <h2>Contact</h2>
-      <p>Reach out via LinkedIn or email for collaboration or opportunities.</p>
+      <p>Reach out via email: Dess0032@gmail.com or LinkedIn for collaboration or opportunities.</p>
       <p>&copy; 2025 Justin. All rights reserved.</p>
     </div>
   </footer>
@@ -190,3 +373,24 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/js/all.min.js" defer></script>
   <script src="Portfolio.js"> </script>
 
+  <aside class="fixed-social" arial-label="Social Links">
+    <ul>
+      <li>
+        <a class="social-icon" href="mailto:dess0032@gmail.com" aria-label="Email">
+          <i class="fa-solid fa-envelope"></i><span class="sr-only">Email</span>
+        </a>
+      </li>
+      <li>
+        <a class="social-icon" href="https://github.com/Stella0032" target="_blank" rel="noopener" arial-label="GitHub">
+          <i class="fa-brands fa-github"></i><span class="sr-only">GitHub</span>
+        </a>
+      </li>
+      <li>
+        <a class="social-icon" href="https://www.linkedin.com/in/justin-dessureault-a58284292/" target="_blank" rel="noopener" aria-label="LinkedIn">
+          <i class="fa-brands fa-linkedin-in"></i><span class="sr-only">LinkedIn</span>
+        </a>
+      </li>
+    </ul>
+  </aside>
+
+</body>
