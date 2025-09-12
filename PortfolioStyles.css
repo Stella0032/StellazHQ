@@ -10,6 +10,9 @@
 
     --linkPaint:       var(--bubble);
     --linkPaintHeight: .45em;
+
+    --container-max: -1320px;                     /* same as .container max-width */
+    --container-pad: clamp(16px, 4vw, 40px);     /* same as .container padding */
 }
 /* #endregion */
 
@@ -220,22 +223,48 @@ nav.navbar.is-stuck .nav-links a {
 
 /* #region */ /* & -- Photo -- */
 
-/* Base circle avatar */
-.avatar {
-    --size: clamp(12rem, 22vw, 18rem); /* tweak this to resize everywhere */
-    width: var(--size);
-    aspect-ratio: 1;
-    object-fit: cover;
-    border-radius: 50%;
-    display: block;
-    }
-
-.avatar--glow {
-  border: 1px solid rgba(255,255,255,.14);
-  box-shadow:
-    0 8px 28px rgba(0,0,0,.35),          /* depth */
-    0 0 0 6px rgba(100,255,218,.08);     /* soft teal halo */
+.hero-photo{
+  position: relative;
+  display: grid;
+  place-items: center;
 }
+
+/* Base circle avatar */
+.avatar{
+  /* back to old size */
+  width: clamp(12rem, 14vw, 18rem);
+  height: auto;
+  display: block;
+  background: transparent;
+  object-fit: contain;       /* no zoom/crop */
+  filter:
+    drop-shadow(0 18px 42px rgba(0,0,0,.38))
+    drop-shadow(0 0 22px rgba(100,255,218,.06));
+
+  /* round ONLY the bottom */
+  border-radius: 0 0 20px 20px;             /* fallback */
+  clip-path: inset(0 round 0 0 20px 20px);  /* precise rounding */
+}
+
+/* If .avatar--glow exists anywhere, neutralize it */
+.avatar--glow{
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Optional: a faint ambient glow behind the photo that blends with your page */
+.hero-photo::before{
+  content: "";
+  position: absolute;
+  inset: -8% -10%;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(60% 60% at 55% 35%, rgba(255,255,255,.04), transparent 60%),
+    radial-gradient(70% 70% at 30% 80%, rgba(100,255,218,.05), transparent 70%);
+  filter: blur(0.5px);
+}
+.hero-photo > .avatar{ z-index: 1; }
 
 /* #endregion -- Photo -- */
 
@@ -287,6 +316,10 @@ section.skills {
 }
 .skills-lead {
     color: var(--text);
+    margin-bottom: 1rem;
+}
+.skills h1 {
+    font-size: 2rem;
     margin-bottom: 1rem;
 }
 /* #endregion -- skills section -- */
@@ -352,7 +385,7 @@ section.skills {
     transition: max-height .32s ease, opacity .25s ease;
 }
 .skill-panel.is-open{
-    max-height: 260px;   /* raise if your copy is longer */
+    max-height: 900px;   /* raise if your copy is longer */
     opacity: 1;
 }
 .skill-panel h3{
@@ -364,10 +397,49 @@ section.skills {
 /* #endregion ---------- skills ---------- */
 
 /* #region */ /* ^ ---------- Projects Section ---------- */
-.cactusProject {
+
+/* #region */ /* & -- global classes -- */
+
+.projects .project-row{
+    display: grid;
+    align-items: center;
+    column-gap: clamp(16px, 4vw, 48px);
+    margin-block: clamp(24px, 5vw, 56px);
+    grid-template-columns: minmax(340px, 1.15fr) 1fr;
+    grid-template-areas: "media copy";
+}
+
+.projects .project-row .project-info{ 
+    grid-area: copy; 
+    max-width: 540px;
+}
+
+.projects .project-row .project-media{
+    grid-area: media;
+    aspect-ratio: 4 / 3;
+    border-radius: 24px;
+    border: 1px solid rgba(255,255,255,.14);
+    box-shadow: 0 20px 60px rgba(0,0,0,.35);
+    background-position: 70% 50%;
+    background-size: cover;
+}
+
+.projects .project-row:nth-of-type(even){
+    grid-template-areas: "copy media";
+}
+
+section.projects{
+  display: block;           /* or: display: grid; row-gap: 48px; */
+}
+
+
+/* #endregion -- global classes -- */
+
+/* #region */ /* & -- Cactus Project -- */
+.projects {
     background-color: transparent;
 }
-.project-inner {
+.project-row {
     display: grid; align-items: center; width: 100%;
     gap: clamp(16px, 4vw, 48px);
     grid-template-columns: 1fr 1fr;
@@ -403,18 +475,250 @@ section.skills {
     gap: .75rem;
     flex-wrap: wrap;
 }
+/* #endregion -- cactus Project -- */
+
+/* #region */ /* & -- Robotic Arm Project -- */
+
+.robotic-arm-image {
+    background: url("images/RoboticArmImage.jpg") 70% 50% / cover no-repeat;
+    width: 100%; aspect-ratio: 3 / 2;
+    border-radius: 24px;
+    border: 1px solid rgba(255,255,255,.14);
+    box-shadow: 0 20px 60px rgba(0,0,0,.35);
+}
+
+/* #endregion -- Robotic Arm Project -- */
+
 /* #endregion ---------- Projects Section ---------- */ 
 
-/* #region */ /* ^ ---------- More Projects + Footer ---------- */
-.more-projects {
-    background: #0f1720;
-    color: #c9d7e3;
+/* #region */ /* ^ ---------- More Projects ---------- */
+section.more-projects {
+    display: block;
+    padding-block: clamp(32px, 7vw, 80px);
 }
+
+/* carousel shell + fading edges */
+/* carousel shell + fading edges */
+.mini-carousel{
+  --arrow-size: 44px;          /* keep your current size */
+  --arrow-gap: 10px;           /* space between arrow and images */
+  --edge-pad: clamp(10px, 2vw, 16px); /* your original edge padding */
+  position:relative;
+  margin-top:clamp(12px,2vw,20px);
+  isolation:isolate;
+}
+.mini-carousel::before,
+.mini-carousel::after{
+  content:""; position:absolute; top:0; bottom:0; width:60px; pointer-events:none; z-index:2;
+}
+.mini-carousel::before{ left:0;  background:linear-gradient(90deg, rgba(11,18,32,1), rgba(11,18,32,0)); }
+.mini-carousel::after { right:0; background:linear-gradient(-90deg, rgba(11,18,32,1), rgba(11,18,32,0)); }
+
+/* horizontal track */
+.mini-track{
+  display:flex; align-items:center; gap:clamp(14px,2.4vw,22px);
+  overflow-x:auto; overflow-y:hidden;
+  scroll-snap-type:x mandatory;
+  scroll-padding-inline: clamp(10px,2vw,16px);
+  /* 6px vertical padding; horizontal paddings reserve arrow space */
+  padding: 6px max(var(--edge-pad), calc(var(--arrow-size) + var(--arrow-gap)))
+           6px max(var(--edge-pad), calc(var(--arrow-size) + var(--arrow-gap)));
+}
+.mini-track::-webkit-scrollbar{ display:none; } .mini-track{ scrollbar-width:none; }
+
+/* image-only items (no background box) */
+.mini-item{ flex:0 0 auto; scroll-snap-align:start; display:grid; place-items:center; }
+.mini-item img{
+  height: clamp(96px, 14vw, 160px);   /* consistent visual size */
+  width: auto;                        /* keeps silhouette aspect */
+  display:block;
+
+  /* shadow + (on hover) glow that follows transparency */
+  filter: drop-shadow(0 4px 10px rgba(0,0,0,.25));
+  transition: transform .18s ease, filter .18s ease;
+}
+.mini-item:hover img,
+.mini-item:focus-visible img{
+  transform: scale(1.07);
+  filter:
+    drop-shadow(0 10px 24px rgba(0,0,0,.35))
+    drop-shadow(0 0 14px rgba(100,255,218,.45));   /* teal highlight that hugs edges */
+  outline: none;                                    /* no rectangular outline */
+}
+
+/* arrows */
+.mini-arrow{
+    position:absolute; top:50%;
+    transform:translateY(-50%);
+    z-index:3;
+    width:var(--arrow-size); height:var(--arrow-size);
+    border-radius:999px; display:grid; place-items:center;
+    background: rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18);
+    backdrop-filter: blur(10px);
+    color:var(--highlight); cursor:pointer;
+    transition: transform .12s ease, background .15s ease, border-color .15s ease, opacity .15s ease;
+    pointer-events:auto;  /* make sure clicks always land */
+}
+
+.mini-arrow:hover{
+  transform:translateY(-50%) scale(1.06);
+  background:rgba(255,255,255,.12); border-color:rgba(100,255,218,.35); color:var(--accent);
+}
+.mini-arrow.prev{ left: var(--arrow-gap); } .mini-arrow.next{ right: var(--arrow-gap); }
+.mini-arrow[disabled]{ opacity:.35; cursor:default; }
+
+/* small screens — slightly smaller thumbs */
+@media (max-width:560px){ .mini-item img{ height: clamp(80px, 18vw, 120px); } }
+
+/* Drawer under each mini-carousel */
+.mini-viewer{
+  margin-top: 10px;
+  transition: max-height .32s ease, opacity .22s ease, transform .22s ease;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transform: translateY(-4px);
+}
+
+.mini-viewer.is-open{
+  max-height: 90vh;   /* enough for tall drawings */
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.mini-viewer-inner{
+  position: relative;
+  padding: clamp(8px, 1.2vw, 14px);
+  border-radius: 14px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.12);
+  backdrop-filter: blur(8px);
+}
+
+.mini-viewer img{
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 75vh;
+  object-fit: contain;
+  border-radius: 10px;
+  box-shadow: 0 14px 40px rgba(0,0,0,.35);
+}
+
+/* small toolbar */
+.mini-close{
+  position: absolute;
+  top: 8px; right: 10px;
+  width: 36px; height: 36px; border-radius: 999px;
+  background: rgba(255,255,255,.10);
+  border: 1px solid rgba(255,255,255,.18);
+  color: var(--highlight);
+  font-size: 22px; line-height: 1;
+  cursor: pointer;
+  transition: transform .1s ease, background .15s ease, color .15s ease;
+}
+.mini-close:hover{ transform: scale(1.06); color: var(--accent); background: rgba(255,255,255,.16); }
+
+.mini-openfull{
+  display: inline-block;
+  margin-top: 8px;
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 700;
+}
+.mini-openfull:hover{ text-decoration: underline; }
+
+/* #endregion ---------- More Projects ---------- */
+
+/* #region */ /* ^ ---------- Footer ---------- */
 .footer {
-    background: #0b1320;
     color: #cfe2ec;
+    margin: 2rem;
 }
-/* #endregion -- more projects + footer -- */
+/* #endregion -- footer -- */
+
+/* #region */ /* ^ ---------- Social Links ---------- */
+
+/* screen-reader only text utility (if you don't already have one) */
+.sr-only{
+    position:absolute;
+    width:1px;
+    height:1px;
+    padding:0;
+    margin:-1px;
+    overflow:hidden;
+    clip:rect(0,0,0,0);
+    white-space:nowrap;border:0;
+}
+
+/* fixed social rail – aligned to the container's left edge */
+.fixed-social{
+  position: fixed;
+  /* when the container is centered, this computes its left edge,
+     otherwise it falls back to the page padding on small screens */
+  left: max(var(--container-pad),
+            calc((100vw - var(--container-max)) / 2 + var(--container-pad)));
+  bottom: clamp(24px, 3vh, 48px);
+  z-index: 1200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.fixed-social ul{
+  list-style: none;
+  margin: 0 0 12px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+
+/* slightly larger, auto-scaling icons */
+.social-icon{
+  display: inline-grid; place-items: center;
+  width: clamp(44px, 2.8vw, 54px);
+  height: clamp(44px, 2.8vw, 54px);
+  font-size: clamp(18px, 1.6vw, 22px);
+  border-radius: 999px;
+  color: var(--highlight);
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.14);
+  backdrop-filter: blur(8px);
+  text-decoration: none;
+  transition: transform .12s ease, color .15s ease,
+              background .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.social-icon:hover,
+.social-icon:focus-visible{
+  color: var(--accent);
+  transform: translateY(-3px);
+  border-color: rgba(100,255,218,.45);
+  background: rgba(255,255,255,.10);
+  box-shadow: 0 8px 22px rgba(0,0,0,.28);
+  outline: none;
+}
+
+.fixed-social::after{
+  content: "";
+  display: block;
+  width: 1px;
+  height: 110px;                /* a bit longer to balance larger icons */
+  background: rgba(255,255,255,.22);
+  margin: 12px auto 10px;
+}
+
+/* keep visible on phones; remove this if you want them hidden on very small screens */
+@media (max-width: 600px){
+  .fixed-social{ 
+    left: var(--container-pad); /* hug padding on small screens */
+    bottom: 16px;
+  }
+}
+
+
+/* #endregion ---- social links ----- */
 
 /* #region */ /* ^ ---------- Utilities ---------- */
 #nav-sentinel {
@@ -424,7 +728,19 @@ section.skills {
 
 /* #region */ /* ^ ---------- Responsive to phone ---------- */
 @media (max-width: 900px) {
-  .hero-inner, .project-inner { grid-template-columns: 1fr; }
-  .nav-links { gap: 1rem; }
+    .hero-inner, .project-inner {
+        grid-template-columns: 1fr; }
+    .nav-links { gap: 1rem; }
+}
+
+/* 4) Mobile: stack image then text */
+@media (max-width: 900px){
+    .projects .project-row{
+        grid-template-columns: 1fr;
+        grid-template-areas:
+        "media"
+        "copy";
+        row-gap: clamp(12px, 3vh, 24px);
+    }
 }
 /* #endregion ---------- Responsive to phone ---------- */
