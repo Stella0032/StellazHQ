@@ -1,6 +1,6 @@
-const esp32Base = "https://api.stellaz.org";
+const esp32Base = "http://192.168.18.21";
 
-const streamURL = esp32Base + '/stream';
+const streamURL = "http://192.168.18.24:81/stream"; // Stream runs on port 81
 const camContainer = document.getElementById('camContainer');
 const streamImg = document.createElement('img');
 streamImg.src = streamURL;
@@ -26,7 +26,6 @@ streamImg.addEventListener('click', () => {
         streamImg.msRequestFullscreen();
     }
 });
-
 
 // Send request to trigger pump
 pumpButton.addEventListener('click', () => {
@@ -94,7 +93,7 @@ function fetchElapsed(){
     .catch(console.error);
 }
 
-// Update all values every 5 seconds
+// Update both every 5 seconds
 setInterval(() => {
     fetchMoisture();
     fetchAngle();
@@ -105,4 +104,3 @@ setInterval(() => {
 fetchMoisture();
 fetchAngle();
 fetchElapsed();
-
