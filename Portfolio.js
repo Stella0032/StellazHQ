@@ -1,11 +1,9 @@
-document.addEventListener('DOMContentLoaded', () => {
-  /* =========================
-   *  Skills tabs
-   * ========================= */
-  const chips  = [...document.querySelectorAll('.skill-chip')];
-  const panels = [...document.querySelectorAll('.skill-panel')];
+document.addEventListener('DOMContentLoaded', () => {   //? wait until the HTML is parsed
+  // #region // ^ Skills tabs 
+  const chips  = [...document.querySelectorAll('.skill-chip')];   //? Array of all tab buttons
+  const panels = [...document.querySelectorAll('.skill-panel')];  //? Array of all tab panels
 
-  function openPanel(id, chip) {
+  function openPanel(id, chip) {    //? Show one panel + mark its chip active
     panels.forEach(p => {
       const open = p.id === id;
       p.hidden = !open;
@@ -30,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   if (chips[0]) openPanel(chips[0].dataset.panel, chips[0]);
-
+  // #endregion skills tab
 
   /* =========================
    *  Carousels (arrows/keys)
