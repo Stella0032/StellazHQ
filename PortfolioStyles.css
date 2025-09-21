@@ -290,10 +290,16 @@ nav.navbar.is-stuck .nav-links a {
 
 /* #region -- buttons -- */
 .project-button {
-    display: inline-flex; align-items: center; gap: .5rem;
-    padding: .6rem 1rem; border-radius: .6rem;
-    background: var(--accent); color: #0b1a1a;
-    font-weight: 700; text-decoration: none;
+    display: inline-flex; 
+    align-items: center;
+    gap: .5rem;
+    padding: .6rem 1rem;
+    border-radius: .6rem;
+    margin: .6rem;
+    background: var(--accent); 
+    color: #0b1a1a;
+    font-weight: 700; 
+    text-decoration: none;
     box-shadow: 0 2px 0 rgba(0,0,0,.22);
     transition: transform .1s ease, box-shadow .1s ease, background .15s ease;
 }
@@ -675,6 +681,14 @@ section.more-projects {
   align-items: center;
 }
 
+.fixed-social::after{
+  content: "";
+  display: block;
+  width: 1px;
+  height: 110px;                /* a bit longer to balance larger icons */
+  background: rgba(255,255,255,.22);
+  margin: 12px auto 10px;
+}
 /* slightly larger, auto-scaling icons */
 .social-icon{
   display: inline-grid; place-items: center;
@@ -700,14 +714,6 @@ section.more-projects {
   outline: none;
 }
 
-.fixed-social::after{
-  content: "";
-  display: block;
-  width: 1px;
-  height: 110px;                /* a bit longer to balance larger icons */
-  background: rgba(255,255,255,.22);
-  margin: 12px auto 10px;
-}
 
 /* keep visible on phones; remove this if you want them hidden on very small screens */
 @media (max-width: 600px){
