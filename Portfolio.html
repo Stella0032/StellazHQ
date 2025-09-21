@@ -4,24 +4,18 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Justin's Portfolio</title>
-
-  <!-- Fonts -->
+  <!--! Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Sora:wght@600;700&display=swap" rel="stylesheet">
 
-  <!-- Styles -->
+  <!--! Styles -->
   <link rel="stylesheet" href="PortfolioStyles.css" />
 </head>
 <body>
 
-  <!-- Thin top bar, sits under the real nav -->
-  <!-- (implemented with body::before in CSS) -->
-
   <!--! NAV -->
+  <!--? Contains my initals and links to skills, projects, resume and contacts-->
   <nav class="navbar">
     <div class="container nav-text">
-      <!-- <a class="brand chip" href="#top" aria-label="Back to top">
-        JD
-      </a> -->
       <div class="initials">
         <img src="images/Initials.png" alt="initals" />
       </div>
@@ -29,20 +23,19 @@
         <a href="#top">About</a>
         <a href="#skills">Skills</a>
         <a href="#projects">Projects</a>
-        <a href="Assets/English-Resume.pdf" target="_blank">Resume</a>
+        <a href="Assets/English_Resume.pdf" target="_blank">Resume</a>
         <a href="#footer">Contact</a>
       </div>
     </div>
   </nav>
   
   <!--! HERO -->
+  <!--? Contains my picture, education and small description-->
   <section class="hero">
     <div class="container hero-inner">
-
       <div class="hero-photo">
           <img class="avatar avatar--glow" src="images/Self-image2.png" alt="Portrait of me." />
       </div>
-
       <div class="introOverlay">
         <h1>Justin Dessureault</h1>
         <h3>Designing the future of robotics, one project at a time.</h3>
@@ -53,29 +46,26 @@
           innovative solutions. From IoT systems and embedded programming to CAD modeling
           and 3D printing, I thrive on turning concepts into functional prototypes.
         </p>
-        
         <h2>Education</h2>
         <ul>
           <li>B.Eng — Electrical Engineering (Robotics & Automation), in progress</li>
-          <li>Coursework: Control Systems, Embedded Programming, IoT Systems, Electronics</li>
+          Coursework: Control Systems, Embedded Programming, IoT Systems, Electronics
+          <li>Electrical Engineering Technician Diploma, Algonquin College — 2022</li>
+          Dean’s Honor List
         </ul>
-
         <a href="#project1" class="project-button">🚀 Explore My Projects</a>
       </div>
-
     </div>
   </section>
 
-  <!--! Sentinel used by the sticky-nav observer -->
-  <div id="nav-sentinel" aria-hidden="true"></div>
-
   <!--! Skill Section -->
+  <!--? Contains skills icons with descriptions attached-->
   <section id="skills" class="skills">
     <div class="container">
-          <!-- Software -->
       <h1> Skills </h1>
-      <h2 id="skills-software-title" class="skills-title">Software</h2>
 
+      <!--? Software skills icons-->
+      <h2 id="skills-software-title" class="skills-title">Software</h2>
       <div class="skills-grid" role="tablist" aria-label="Software skills">
         <button class="skill-chip" role="tab" aria-controls="panel-cpp" aria-selected="true" data-panel="panel-cpp">C++</button>
         <button class="skill-chip" role="tab" aria-controls="panel-js"  aria-selected="false" data-panel="panel-js">JavaScript</button>
@@ -84,12 +74,13 @@
         <button class="skill-chip" role="tab" aria-controls="panel-git" aria-selected="false" data-panel="panel-git">Git/GitHub</button>
       </div>
 
+      <!--? Software Skills descriptions-->
       <div class="skills-panels">
         <article id="panel-cpp"  role="tabpanel" class="skill-panel is-open">
           <strong>C++ (ESP32/Arduino)</strong>
             <ul>
-              <li><em>Plant Watering System:</em> sensor drivers (capacitive moisture), moving-average filtering, pump/servo control, safety interlocks, LCD status.</li>
-            <li><em>Robotic Arm:</em> 2-link inverse kinematics (atan2, law-of-cosines), servo mapping/limits, homing routine, serial protocol to PC for live tuning.</li>
+              <li><em>Plant Watering System:</em> sensor soil (capacitive moisture), pump/servo control, LCD status display, Camera monitoring & ESP32 web control interface.</li>
+            <li><em>Robotic Arm:</em> 2-link inverse kinematics (atan2, law-of-cosines), servo mapping/limits, serial protocol to PC for live tuning.</li>
           </ul>
         </article>
         <article id="panel-js"   role="tabpanel" class="skill-panel" hidden>
@@ -102,37 +93,37 @@
         <article id="panel-node" role="tabpanel" class="skill-panel" hidden>
           <strong>Node.js (Express)</strong>
             <ul>
-              <li><em>Sensor/actuator proxy:</em> REST endpoints that forward to ESP32 over LAN; simple auth + rate limiting; JSON logs.</li>
-              <li><em>Infra:</em> two Cloudflare named tunnels (camera stream and proxy) with separate DNS names.</li>
+              <li><em>Sensor/actuator proxy:</em> Built REST API gateway that relays web requests to ESP32 over LAN, with authentication, rate limiting, and JSON logs.</li>
+              <li><em>Infrastructure:</em> Deployed three Cloudflare named tunnels (ESP32-CAM stream, Node.js proxy, and ESP32 web UI) each with custom DNS for secure remote access.</li>
             </ul>
         </article>
         <article id="panel-htmlcss" role="tabpanel" class="skill-panel" hidden>
           <strong>HTML/CSS</strong>
             <ul>
-              <li>Responsive grids, CSS variables, fluid type with <code>clamp()</code>, glassy cards, and accessible semantics/ARIA.</li>
-              <li>Componentized patterns (chips, cards, buttons) reused across sections.</li>
+              <li>Designed and implemented the entire site (stellaz.org): fully responsive, semantic html, keyboard-accessible tabs.</li>
+              <li>Reusable components (chips/tabs, cards, buttons) styled with CSS variables; Grid/Flex layout; clamp() for fluid typography.</li>
+              <li>Deployed with GitHub Pages + custom domain via Cloudflare.</li>
             </ul>
         </article>
         <article id="panel-git"  role="tabpanel" class="skill-panel" hidden>
           <strong>Git/GitHub</strong>
             <ul>
-              <li>Feature branches + PRs, issue tracking, and GitHub Pages for static sites.</li>
-              <li>Daily CLI use for structured commits and clean history.</li>
+              <li>Version control with Git: feature branches, pull requests, and issue tracking.</li>
+              <li>Deployed projects via GitHub Pages for commits and history management.</li>
             </ul>
         </article>
       </div>
 
+      <!--? Design skill icons-->
       <h2 id="skills-design-title" class="skills-title">Design</h2>
-
       <div class="skills-grid" role="tablist" aria-label="Design tools">
         <button class="skill-chip" role="tab" aria-controls="panel-solidworks" aria-selected="true" data-panel="panel-solidworks">SolidWorks</button>
-        <button class="skill-chip" role="tab" aria-controls="panel-cura" aria-selected="false" data-panel="panel-cura">
-          Cura
-        </button>
+        <button class="skill-chip" role="tab" aria-controls="panel-cura" aria-selected="false" data-panel="panel-cura">Cura</button>
         <button class="skill-chip" role="tab" aria-controls="panel-fdm" aria-selected="false" data-panel="panel-fdm">FDM 3D Printing</button>
         <button class="skill-chip" role="tab" aria-controls="panel-enclosures"  aria-selected="false" data-panel="panel-enclosures">Enclosures</button>
       </div>
 
+      <!--? Design skill desciption-->
       <div class="skills-panels">
         <article id="panel-solidworks" role="tabpanel" class="skill-panel is-open">
             <strong>SolidWorks</strong>
@@ -151,25 +142,25 @@
             </ul>
         </article>
         <article id="panel-fdm" role="tabpanel" class="skill-panel" hidden>
-            <strong>Enclosures</strong>
+            <strong>FDM 3D Printing</strong>
               <ul>
-                <li>Snap-fits + M3 heat-set inserts, captive nuts, and removable lids for serviceability.</li>
-                <li>Vent patterns near hot components, strain-relief paths, and hidden wire raceways.</li>
-                <li>Board alignment features: datum ribs, chamfers, and self-locating bosses.</li>
+                <li>Cura profiles for PLA/PETG on Neptune 3 Pro; first-layer and flow calibration.</li>
+                <li>Part orientation, supports/bridges, seam alignment; minimize warping/stringing.</li>
+                <li>Dimensional tuning and tolerances ≈ ±0.2–0.4 mm; strength vs. surface trade-offs.</li>
               </ul>
         </article>
         <article id="panel-enclosures" role="tabpanel" class="skill-panel" hidden>
-            <strong>LCD / UI</strong>
+            <strong>Enclosures (Electronics)</strong>
               <ul>
-                <li>I²C character LCD for live status, error codes, and threshold readouts.</li>
-                <li>Menu flows that work within embedded constraints (noisy I/O, low RAM).</li>
-                <li>Readable formatting: units, icons, and progress/animation for actions.</li>
+                <li>Snap-fits, M3 heat-set inserts, captive nuts, standoffs; removable lids for service.</li>
+                <li>Cable channels, strain-relief features, and hidden wire raceways; vents near hot parts.</li>
+                <li>Alignment features (datum ribs, chamfers) and print-friendly split lines/fastener access.</li>
               </ul>
         </article>
       </div>
 
+      <!--? Hardware & electronics skill icons-->
       <h2 id="skills-hw-title" class="skills-title">Hardware & Electronics</h2>
-
       <div class="skills-grid" role="tablist" aria-label="Hardware skills">
         <button class="skill-chip" role="tab" aria-controls="panel-esp32"   aria-selected="true" data-panel="panel-esp32">ESP32</button>
         <button class="skill-chip" role="tab" aria-controls="panel-sensors" aria-selected="false" data-panel="panel-sensors">Sensors</button>
@@ -177,6 +168,7 @@
         <button class="skill-chip" role="tab" aria-controls="panel-lcd"     aria-selected="false" data-panel="panel-lcd">LCD/UI</button>
       </div>
 
+      <!--? Hardware & electronics skill descriptions-->
       <div class="skills-panels">
         <article id="panel-esp32"  role="tabpanel" class="skill-panel is-open">
             <strong>ESP32</strong>
@@ -197,8 +189,8 @@
         <article id="panel-servos"  role="tabpanel" class="skill-panel" hidden>
             <strong>Servos / Motors</strong>
               <ul>
-                <li>SG90/standard servo PWM (µs) → angle mapping; speed/torque trade-offs and travel limits.</li>
-                <li>Elbow-down IK using law-of-cosines and <code>atan2</code>; soft limits to protect linkages.</li>
+                <li>SG90/standard servo PWM → angle mapping; speed/torque trade-offs and travel limits.</li>
+                <li>Elbow-down inverse kinematics using law-of-cosines and <code>atan2</code>; soft limits to protect linkages.</li>
                 <li>Mechanical choices: horn geometry, backlash management, and load paths.</li>
               </ul>
         </article>
@@ -212,8 +204,8 @@
         </article>
       </div>
 
+      <!--? Specialities skill icons-->
       <h2 id="skills-spec-title" class="skills-title">Specialties</h2>
-
       <div class="skills-grid" role="tablist" aria-label="Specialties">
         <button class="skill-chip" role="tab" aria-controls="panel-iot"   aria-selected="true" data-panel="panel-iot">IoT</button>
         <button class="skill-chip" role="tab" aria-controls="panel-auto"  aria-selected="false" data-panel="panel-auto">Automation</button>
@@ -221,6 +213,7 @@
         <button class="skill-chip" role="tab" aria-controls="panel-proto" aria-selected="false" data-panel="panel-proto">Rapid Prototyping</button>
       </div>
 
+      <!--? Specialities skill descriptions-->
       <div class="skills-panels">
         <article id="panel-iot"   role="tabpanel" class="skill-panel is-open">
             <strong>IoT</strong>
@@ -254,7 +247,9 @@
 
   </section>
 
+
   <!--! PROJECTS -->
+  <!--? Contains all my major projects-->
   <section class="projects" id="projects">
     <div class="container">
       <h1>Main Projects</h1>
@@ -278,10 +273,10 @@
         <article class="project-info">
           <h2>Inverse Kinametics Robotic Arm</h2>
           <p>
-            ESP32-based system with 5 SG90 servo's for joint movements. Movements are calculated using inverse kinematics for smooth movements. The robotic arm is able to track a 5x5 acUro with a esp32-cam. 
+            ESP32-based system with 4 SG90 servo's for joint movements. Movements are calculated using inverse kinematics for smooth movements. The robotic arm is able to track a 5x5 acUro with a esp32-cam. 
           </p>
           <div class="actions">
-            <a href="cactusDetails.html" class="project-button">Project Details</a>
+            <a href="RobotArmDetails.html" class="project-button">Project Details</a>
           </div>
         </article>
       </div>
@@ -289,6 +284,7 @@
   </section>
 
   <!--! SMALL PROJECTS -->
+  <!--? contains smaller projects like CAD models-->
   <section class="more-projects" id="more">
     <div class="container">
       <h1>Mini Projects</h1>
@@ -361,6 +357,7 @@
   </section>
 
   <!--! FOOTER -->
+  <!--? Contains contact information-->
   <footer class="footer" id="footer">
     <div class="container">
       <h2>Contact</h2>
@@ -369,10 +366,12 @@
     </div>
   </footer>
 
-  <!-- Icons (Font Awesome) -->
+  <!--! Icons from (Font Awesome) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/js/all.min.js" defer></script>
+  <!--! JavaScript link-->
   <script src="Portfolio.js"> </script>
 
+  <!--! Social links-->
   <aside class="fixed-social" arial-label="Social Links">
     <ul>
       <li>
