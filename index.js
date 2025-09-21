@@ -1,24 +1,23 @@
- // Pressing "Enter" acts the same a pressing login button
- // "event" is to detect when a key is pressed.
- document.addEventListener("keydown", function (event){
-     // If the enter key has been pressed, do the following.
-     if (event.key === "Enter") {
-         // Get element with id="loginButton" and click it.
-         document.getElementById("loginButton").click();
-     }
- });
+// Pressing "Enter" acts the same a pressing login button
+// "event" is to detect when a key is pressed.
+document.addEventListener("keydown", function (event){
+    // If the enter key has been pressed, do the following.
+    if (event.key === "Enter") {
+        // Get element with id="loginButton" and click it.
+        document.getElementById("loginButton").click();
+    }
+});
 
- // This part is for the "showPassword" function
- // Get element with id="showPassword"
- document.getElementById("showPassword").addEventListener("change", function(){
-     const passwordInput = document.getElementById("password");
-     passwordInput.type = this.checked ? "text" : "password";
- });
+// This part is for the "showPassword" function
+// Get element with id="showPassword"
+document.getElementById("showPassword").addEventListener("change", function(){
+    const passwordInput = document.getElementById("password");
+    passwordInput.type = this.checked ? "text" : "password";
+});
 
- document.getElementById("portfolioButton").addEventListener("click", function(){
-     window.location.href = "Portfolio.html";
- });
-
+document.getElementById("portfolioButton").addEventListener("click", function(){
+    window.location.href = "Portfolio.html";
+});
 
 // index.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
