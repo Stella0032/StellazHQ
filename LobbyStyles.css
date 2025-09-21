@@ -1,4 +1,4 @@
-.mainBody {
+body {
     background: linear-gradient(135deg, #202336, #373b60);
     background-attachment: fixed;
     background-repeat: no-repeat;
@@ -99,5 +99,4 @@ p {
     align-items: center;
     gap: 10px;
     margin-top: 20px;
-
 }
