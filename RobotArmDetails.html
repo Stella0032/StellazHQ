@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Robotic Arm Details</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Sora:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="RobotArmDetailsStyles.css">
+</head>
+<body>
+
+    <!-- Navigation bar with back button and title -->
+    <nav class="navbar">
+        <a href="Portfolio.html" class="back-button">Portfolio</a>
+        <h1>Robotic Arm Project Details</h1>
+    </nav>
+
+    <!-- Intro section with video and summary -->
+    <section class="intro-section">
+        <video class="video" controls autoplay muted loop>
+            <source src="Prototype-3-Assembly-Video.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+
+            <section class="bubble">
+                <h2>Project Summary — Vision-Guided Robotic Arm</h2>
+                <p>
+                    A compact, 4-DOF desktop robotic arm that tracks a visual target in real time. 
+                    It marries an ESP32 servo controller with an ESP32-CAM and a small Python
+                    vision app to keep the camera centered on a printed ArUco marker.
+                </p>
+                <ul>
+                    <li><strong>4 servos</strong>: base, shoulder, elbow, and a tilt joint carrying the camera</li>
+                    <li><strong>ESP32 control</strong> (PlatformIO/C++), with smooth motion and joint-limit safety
+                    (elbow window coupled to shoulder angle)</li>
+                    <li><strong>ESP32-CAM</strong> provides an MJPEG stream (320×240) resolution for low-latency tracking</li>
+                    <li><strong>OpenCV (Python)</strong> detects a 5×5 ArUco marker and sends joint targets over USB serial
+                    using a simple <code> &lt;base&gt; &lt;shoulder&gt; &lt;elbow&gt; &lt;tilt&gt;</code> command</li>
+                    <li><strong>Visual servoing</strong>: per-frame corrections with deadband and rate limits to avoid jitter</li>
+                    <li><strong>Home/presets</strong>: on-board preferences remember the last pose; configurable “home” including tilt</li>
+                    <li><strong>3D-printed structure</strong> designed in SolidWorks; lightweight and easy to iterate</li>
+                    <li><strong>Modular code</strong>: swap vision sources or control modes (manual serial, scripted moves) without rewiring</li>
+                    <li><strong>Future add-ons</strong>: gripper, PID tuning, higher-res streaming, camera/arm calibration for 3D tasks</li>
+                </ul>
+            </section>
+    </section>
+
+        <!-- Circuit and circuit description here-->
+        <section class="circuitSection">
+            <div class="bubble">
+                <figure class="partFigure">
+                    <figcaption>Robotic Arm Circuit</figcaption>
+                    <a href="#circuit-img">
+                        <img src="images/Robotic_Arm_Ciruit.png" alt="Circuit image" class="circuit-image"/>
+                    </a>
+                </figure>
+            </div>
+            <div id="circuit-img" class="lightbox">
+                <a href="#">
+                </a>
+                <img src="images/WaterDispencerCircuit.jpg" alt="fullscreen image">
+            </div>
+
+
+            <div class="bubble">
+                <h2>Circuit description</h2>
+                <ul>
+                    <li>The ESP32 controls <strong>4x SG90 servos</strong> (base, shoulder, elbow, wrist, gripper) using PWM.</li>
+                    <li>An <strong>ESP32-CAM</strong> provides live video; the arm can <strong>track 5×5 ArUco markers</strong> from the camera feed.</li>
+                    <li>Servos are powered from a dedicated <strong>5 V rail</strong> with bulk/decoupling capacitors; logic power is isolated but shares a <strong>common ground</strong>.</li>
+                    <li>Optional <strong>limit switches</strong> on joints enable a homing routine; software limits prevent over-travel.</li>
+                    <li>A simple <strong>USB serial protocol</strong> supports live tuning (offsets/speeds) and streaming telemetry.</li>
+                </ul>
+            </div>
+        </section>
+
+    <!-- Parts section-->
+    <section class="imageGrid">
+
+        <div class="bubble">
+            <section class="partSection">
+                <figure class="partFigure">
+                    <figcaption>Arm Base/Gear</figcaption>
+                    <a href="#img1">
+                        <img src="images/Arm_Base_Gear_Drawing.PNG" alt="Drawing of base arm gear" class="PartsImage">
+                    </a>
+                </figure>
+            </section>
+        </div>
+        <div id="img1" class="lightbox">
+            <a href="#">
+                <img src="images/Arm_Base_Gear_Drawing.PNG" alt="fullscreen image">
+            </a>
+        </div>
+
+        <div class="bubble">
+            <section class="partSection">
+                <figure class="partFigure">
+                    <figcaption>Upper Arm</figcaption>
+                    <a href="#img2">
+                        <img src="images/Upper_Arm_Drawing.PNG" alt="Drawing of upper arm" class="PartsImage">
+                    </a>
+                </figure>
+            </section>
+        </div>
+        <div id="img2" class="lightbox">
+            <a href="#">
+                <img src="images/Upper_Arm_Drawing.PNG" alt="fullscreen image">
+            </a>
+        </div>
+
+        <div class="bubble">
+            <section class="partSection">
+                <figure class="partFigure">
+                    <figcaption>Upper Arm Servo Link</figcaption>
+                    <a href="#img3">
+                        <img src="images/Upper_Arm_Servo_Link_Drawing.PNG" alt="Drawing of upper arm servo link" class="PartsImage">
+                    </a>
+                </figure>
+            </section>
+        </div>
+        <div id="img3" class="lightbox">
+            <a href="#">
+                <img src="images/Upper_Arm_Servo_Link_Drawing.PNG" alt="fullscreen image">
+            </a>
+        </div>
+        
+        <div class="bubble">
+            <section class="partSection">
+                <figure class="partFigure">
+                    <figcaption>Upper Arm Main Link</figcaption>
+                    <a href="#img4">
+                        <img src="images/Upper_Arm_Main_Link_Drawing.PNG" alt="Drawing of upper arm main link" class="PartsImage">
+                    </a>
+                </figure>
+            </section>
+        </div>
+        <div id="img4" class="lightbox">
+            <a href="#">
+                <img src="images/Upper_Arm_Main_Link_Drawing.PNG" alt="fullscreen image">
+            </a>
+        </div>
+
+        <div class="bubble">
+            <section class="partSection">
+                <figure class="partFigure">
+                    <figcaption>Tilt Mechanism/ Camera Holder</figcaption>
+                    <a href="#img5">
+                        <img src="images/Tilt_Mechanism_Camera_Holder_Drawing.PNG" alt="Drawing of tilt mechanism / camera holder" class="PartsImage">
+                    </a>
+            </section>
+        </div>
+        <div id="img5" class="lightbox">
+            <a href="#">
+                <img src="images/Tilt_Mechanism_Camera_Holder_Drawing.PNG" alt="fullscreen image">
+            </a>
+        </div>
+
+        <div class="bubble">
+            <section class="partSection">
+                <figure class="partFigure">
+                    <figcaption>Main Base</figcaption>
+                    <a href="#img6">
+                        <img src="images/Main_Base_Drawing.PNG" alt="Drawing of main base" class="PartsImage">
+                    </a>
+                </figure>
+            </section>
+        </div>
+        <div id="img6" class="lightbox">
+            <a href="#">
+                <img src="images/Main_Base_Drawing.PNG" alt="fullscreen image">
+            </a>
+        </div>
+
+        <div class="bubble">
+            <section class="partSection">
+                <figure class="partFigure">
+                    <figcaption>Servo Holder for Driver Gear</figcaption>
+                    <a href="#img7">
+                        <img src="images/Servo_Holder_Driver_Gear_Drawing.PNG" alt="Drawing of servo holder for the driver gear" class="PartsImage">
+                    </a>
+                </figure>
+            </section>
+        </div>
+        <div id="img7" class="lightbox">
+            <a href="#">
+                <img src="images/Servo_Holder_Driver_Gear_Drawing.PNG" alt="fullscreen image">
+            </a>
+        </div>
+
+        <div class="bubble">
+            <section class="partSection">
+                <figure class="partFigure">
+                    <figcaption>Driver Gear</figcaption>
+                    <a href="#img8">
+                        <img src="images/Driver_Gear_Drawing.PNG" alt="Drawing of the driver gear" class="PartsImage">
+                    </a>
+                </figure>
+            </section>
+        </div>
+        <div id="img8" class="lightbox">
+            <a href="#">
+                <img src="images/Driver_Gear_Drawing.PNG" alt="fullscreen image">
+            </a>
+        </div>
+
+        <div class="bubble">
+            <section class="partSection">
+                <figure class="partFigure">
+                    <figcaption>Main Arm Part 1</figcaption>
+                    <a href="#img9">
+                        <img src="images/Main_Arm_1_Drawing.PNG" alt="Drawing of the main arm part 1" class="PartsImage">
+                    </a>
+                </figure>
+            </section>
+        </div>
+        <div id="img9" class="lightbox">
+            <a href="#">
+                <img src="images/Main_Arm_1_Drawing.PNG" alt="fullscreen image">
+            </a>
+        </div>
+
+        <div class="bubble">
+            <section class="partSection">
+                <figure class="partFigure">
+                    <figcaption>Main Arm Part 2</figcaption>
+                    <a href="#img10">
+                        <img src="images/Main_Arm_2_Drawing.PNG" alt="Drawing of the main arm part 2" class="PartsImage">
+                    </a>
+                </figure>
+            </section>
+        </div>
+        <div id="img10" class="lightbox">
+            <a href="#">
+                <img src="images/Main_Arm_2_Drawing.PNG" alt="fullscreen image">
+            </a>
+        </div>
+
+        
+        <div class="bubble">
+            <section class="partSection">
+                <figure class="partFigure">
+                    <figcaption>Gear Holder Left</figcaption>
+                    <a href="#img11">
+                        <img src="images/Arm_Base_Gear_Holder_1_Drawing.PNG" alt="Drawing of the left Gear Holder" class="PartsImage">
+                    </a>
+                </figure>
+            </section>
+        </div>
+        <div id="img11" class="lightbox">
+            <a href="#">
+                <img src="images/Arm_Base_Gear_Holder_1_Drawing.PNG" alt="fullscreen image">
+            </a>
+        </div>
+
+        <div class="bubble">
+            <section class="partSection">
+                <figure class="partFigure">
+                    <figcaption>Gear Holder Right</figcaption>
+                    <a href="#img12">
+                        <img src="images/Arm_Base_Gear_Holder_2_Drawing.PNG" alt="Drawing of the right Gear Holder" class="PartsImage">
+                    </a>
+                </figure>
+            </section>
+        </div>
+        <div id="img12" class="lightbox">
+            <a href="#">
+                <img src="images/Arm_Base_Gear_Holder_2_Drawing.PNG" alt="fullscreen image">
+            </a>
+        </div>
+
+    </section>
+
+</body>
+</html>
