@@ -1,6 +1,6 @@
 const esp32Base = "https://api.stellaz.org";
 
-const streamURL = "http://192.168.18.24:81/stream"; // Stream runs on port 81
+const streamURL = "https://api.stellaz.org/stream"; // Stream runs on port 81
 const camContainer = document.getElementById('camContainer');
 const streamImg = document.createElement('img');
 streamImg.src = streamURL;
@@ -104,4 +104,5 @@ setInterval(() => {
 fetchMoisture();
 fetchAngle();
 fetchElapsed();
+
 
