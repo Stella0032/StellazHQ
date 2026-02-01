@@ -1,3 +1,4 @@
+// --- Firebase Auth Gate ---
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 
@@ -28,14 +29,24 @@ onAuthStateChanged(auth, (user) => {
 });
 
 // --- Your existing code goes inside startLobby() ---
-function startLobby() {
+async function startLobby() {
   const esp32Base = "https://api.stellaz.org";
 
+//   const streamURL = "https://api.stellaz.org/stream";
   const streamURL = "https://cam.stellaz.org/video";
-  // const streamURL = "https://api.stellaz.org/stream";
   const camContainer = document.getElementById('camContainer');
   const streamImg = document.createElement('img');
-  streamImg.src = streamURL;
+  
+  const auth = getAuth();
+  const token = await auth.currentUser.getIdToken(true);
+  
+  streamImg.src = `${streamURL}?token=${encodeURIComponent(token)}`;
+
+  setInterval(async () => {
+    const t = await auth.currentUser.getIdToken(true);
+    streamImg.src = `${streamURL}?token=${encodeURIComponent(t)}&ts=${Date.now()}`;
+  }, 50*60*1000);
+
   streamImg.width = 640;
   streamImg.alt = "Live camera feed";
   streamImg.style.border = "2px solid black";
@@ -105,5 +116,3 @@ function startLobby() {
   fetchAngle();
   fetchElapsed();
 }
-
-
