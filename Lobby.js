@@ -18,7 +18,7 @@ document.documentElement.style.visibility = "hidden";
 onAuthStateChanged(auth, (user) => {
   if (!user) {
     // Not signed in → send to your existing login page
-    window.location.replace("LoginScreen.html?next=Lobby.html");
+    window.location.replace("index.html?next=Lobby.html");
     return;
   }
 
@@ -104,3 +104,4 @@ function startLobby() {
   fetchAngle();
   fetchElapsed();
 }
+
