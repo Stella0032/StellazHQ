@@ -1,108 +1,106 @@
-const esp32Base = "https://api.stellaz.org";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 
-const streamURL = "https://api.stellaz.org/stream"; // Stream runs on port 81
-const camContainer = document.getElementById('camContainer');
-const streamImg = document.createElement('img');
-streamImg.src = streamURL;
-streamImg.width = 640;
-streamImg.alt = "Live camera feed";
-streamImg.style.border = "2px solid black";
-streamImg.style.maxWidth = "100%";
-camContainer.appendChild(streamImg);
+// TODO: paste your real Firebase config here
+const firebaseConfig = {
+  apiKey: "AIzaSyA35BdFVlIVLS4Qz16nDplkuD2BNZuoDu8",
+  authDomain: "stellazhq-bb090.firebaseapp.com",
+  projectId: "stellazhq-bb090",
+  appId: "1:952515321392:web:0fb1af669529827d7097f5",
+};
 
-const pumpButton = document.getElementById('pumpButton');
-const moistureDisplay = document.getElementById('moistureValue');
-const angleDisplay = document.getElementById('angleValue');
-const led_button = document.getElementById('led_button');
-const elapsedDisplay = document.getElementById('elapsedValue');
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
 
-// Make stream fullscreen on click
-streamImg.addEventListener('click', () => {
-    if (streamImg.requestFullscreen) {
-        streamImg.requestFullscreen();
-    } else if (streamImg.webkitRequestFullscreen) { /* Safari */
-        streamImg.webkitRequestFullscreen();
-    } else if (streamImg.msRequestFullscreen) { /* IE11 */
-        streamImg.msRequestFullscreen();
-    }
+// Hide the page until we know auth status (prevents “flash”)
+document.documentElement.style.visibility = "hidden";
+
+onAuthStateChanged(auth, (user) => {
+  if (!user) {
+    // Not signed in → send to your existing login page
+    window.location.replace("LoginScreen.html?next=Lobby.html");
+    return;
+  }
+
+  // Signed in → show the page + run the lobby
+  document.documentElement.style.visibility = "visible";
+  startLobby();
 });
 
-// Send request to trigger pump
-pumpButton.addEventListener('click', () => {
-    fetch(esp32Base + '/PUMP')
-        .then(response => {
-            if (!response.ok){
-                throw new Error("Pump request failed");
-            }
-        })
-        .catch(error => {
-            console.error("Pump error:", error);
-        });
-});
+// --- Your existing code goes inside startLobby() ---
+function startLobby() {
+  const esp32Base = "https://api.stellaz.org";
 
-// Fetch moisture level
-function fetchMoisture(){
+  const streamURL = "https://api.stellaz.org/stream";
+  const camContainer = document.getElementById('camContainer');
+  const streamImg = document.createElement('img');
+  streamImg.src = streamURL;
+  streamImg.width = 640;
+  streamImg.alt = "Live camera feed";
+  streamImg.style.border = "2px solid black";
+  streamImg.style.maxWidth = "100%";
+  camContainer.appendChild(streamImg);
+
+  const pumpButton = document.getElementById('pumpButton');
+  const moistureDisplay = document.getElementById('moistureValue');
+  const angleDisplay = document.getElementById('angleValue');
+  const led_button = document.getElementById('led_button');
+  const elapsedDisplay = document.getElementById('elapsedValue');
+
+  streamImg.addEventListener('click', () => {
+    if (streamImg.requestFullscreen) streamImg.requestFullscreen();
+    else if (streamImg.webkitRequestFullscreen) streamImg.webkitRequestFullscreen();
+    else if (streamImg.msRequestFullscreen) streamImg.msRequestFullscreen();
+  });
+
+  pumpButton.addEventListener('click', () => {
+    fetch(esp32Base + '/PUMP').catch(console.error);
+  });
+
+  function fetchMoisture(){
     fetch(esp32Base + '/moisture')
-        .then(res => res.text())
-        .then(data => {
-            moistureDisplay.textContent = data;
-        })
-        .catch(err => console.error("Error fetching moisture:", err));
-}
+      .then(res => res.text())
+      .then(data => { moistureDisplay.textContent = data; })
+      .catch(console.error);
+  }
 
-// Fetch angle
-function fetchAngle() {
+  function fetchAngle() {
     fetch(esp32Base + '/angle')
-        .then(res => res.text())
-        .then(data => {
-            angleDisplay.textContent = data;
-        })
-        .catch(err => console.error("Error fetching angle:", err));
-}
+      .then(res => res.text())
+      .then(data => { angleDisplay.textContent = data; })
+      .catch(console.error);
+  }
 
-// Send request to trigger LED
-led_button.addEventListener('click', () => {
-    fetch(esp32Base + '/LED')
-        .then(response => {
-            if (!response.ok){
-                throw new Error("Led request failed");
-            }
-        })
-        .catch(error => {
-            console.error("Led error:", error);
-        });
-});
+  led_button.addEventListener('click', () => {
+    fetch(esp32Base + '/LED').catch(console.error);
+  });
 
-function fetchElapsed(){
+  function fetchElapsed(){
     fetch(esp32Base + '/elapsed')
-    .then(r => r.text())
-    .then(msStr => {
+      .then(r => r.text())
+      .then(msStr => {
         let ms = parseInt(msStr, 10);
         let totalSec = Math.floor(ms / 1000);
-        let days    = Math.floor(totalSec / 86400);
-        let hrs     = Math.floor((totalSec % 86400) / 3600);
-        let mins    = Math.floor((totalSec % 3600)  / 60);
-        let secs    = totalSec % 60;
-      // format as DD:HH:MM:SS
+        let days = Math.floor(totalSec / 86400);
+        let hrs  = Math.floor((totalSec % 86400) / 3600);
+        let mins = Math.floor((totalSec % 3600)  / 60);
+        let secs = totalSec % 60;
         elapsedDisplay.textContent =
-        String(days).padStart(2,'0') + ':' +
-        String(hrs ).padStart(2,'0') + ':' +
-        String(mins).padStart(2,'0') + ':' +
-        String(secs).padStart(2,'0');
-    })
-    .catch(console.error);
-}
+          String(days).padStart(2,'0') + ':' +
+          String(hrs ).padStart(2,'0') + ':' +
+          String(mins).padStart(2,'0') + ':' +
+          String(secs).padStart(2,'0');
+      })
+      .catch(console.error);
+  }
 
-// Update both every 5 seconds
-setInterval(() => {
+  setInterval(() => {
     fetchMoisture();
     fetchAngle();
     fetchElapsed();
-}, 5000);
+  }, 5000);
 
-// Initial fetch
-fetchMoisture();
-fetchAngle();
-fetchElapsed();
-
-
+  fetchMoisture();
+  fetchAngle();
+  fetchElapsed();
+}
