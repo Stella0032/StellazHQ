@@ -31,7 +31,8 @@ onAuthStateChanged(auth, (user) => {
 function startLobby() {
   const esp32Base = "https://api.stellaz.org";
 
-  const streamURL = "https://api.stellaz.org/stream";
+  const streamURL = "https://cam.stellaz.org/video";
+  // const streamURL = "https://api.stellaz.org/stream";
   const camContainer = document.getElementById('camContainer');
   const streamImg = document.createElement('img');
   streamImg.src = streamURL;
@@ -104,4 +105,5 @@ function startLobby() {
   fetchAngle();
   fetchElapsed();
 }
+
 
