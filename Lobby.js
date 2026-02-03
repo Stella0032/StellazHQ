@@ -28,16 +28,6 @@ onAuthStateChanged(auth, (user) => {
   startLobby();
 });
 
-async function setLed(state) {
-  const token = await auth.currentUser.getIdToken(true);
-
-  await fetch(`https://cam.stellaz.org/api/led?token=${encodeURIComponent(token)}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ state }) // "on" or "off"
-  });
-}
-
 // --- Your existing code goes inside startLobby() ---
 async function startLobby() {
   const esp32Base = "https://api.stellaz.org";
@@ -127,5 +117,6 @@ async function startLobby() {
   fetchElapsed();
 }
 */
+
 
 
