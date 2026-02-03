@@ -68,7 +68,7 @@ async function startLobby() {
   pumpButton.addEventListener('click', () => {
     fetch(esp32Base + '/PUMP').catch(console.error);
   });
-
+/*
   function fetchMoisture(){
     fetch(esp32Base + '/moisture')
       .then(res => res.text())
@@ -105,7 +105,7 @@ async function startLobby() {
       })
       .catch(console.error);
   }
-
+*/
   setInterval(() => {
     fetchMoisture();
     fetchAngle();
@@ -116,3 +116,4 @@ async function startLobby() {
   fetchAngle();
   fetchElapsed();
 }
+
