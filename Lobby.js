@@ -105,7 +105,7 @@ async function startLobby() {
       })
       .catch(console.error);
   }
-*/
+
   setInterval(() => {
     fetchMoisture();
     fetchAngle();
@@ -116,4 +116,5 @@ async function startLobby() {
   fetchAngle();
   fetchElapsed();
 }
+*/
 
