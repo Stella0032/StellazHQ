@@ -1,4 +1,4 @@
-const DEV_MODE = false;        // ? Set to false for live server editing
+const DEV_MODE = true;        // ? Set to false for live server editing
 
 //? -------------------------------
 //* ----- Firebase Auth Gate ------
@@ -37,9 +37,9 @@ if (DEV_MODE) {                                                //? Dev mode: no 
   });
 }
 
-// -------------------------------
-// Secure LED (tokened) - used in prod
-// -------------------------------
+//? -------------------------------
+//* --------- Secure LED ----------
+//? -------------------------------
 async function setLed(state) {
   const token = await auth.currentUser.getIdToken(true);
 
@@ -53,41 +53,48 @@ async function setLed(state) {
   );
 }
 
-// -------------------------------
-// Lobby logic
-// -------------------------------
+//? ----------------------------
+//* --------- Lobby Logic ------
+//? ----------------------------
 async function startLobby({ dev }) {
-  const esp32Base = "https://api.stellaz.org";
-  const streamURL = "https://cam.stellaz.org/video";
+  const esp32Base = "https://api.stellaz.org";                    //? ESP32 - cactus /moisture /elapsed /angle /LED /PUMP
+  const streamURL = "https://api.stellaz.org/stream";
 
-  const camContainer = document.getElementById("camContainer");
-  // const vortex_cam_container = getElementbyId("vortex_cam_container")
-  const streamImg = document.createElement("img");
 
-  // ------- Camera -------
-  let token = null;
-  if (!dev && auth.currentUser) {
+  const vortex_stream = "https://cam.stellaz.org/video";          //? 
+
+  //* cactus stream
+  const camContainer = document.getElementById("camContainer"); //? Get the <img> with id="camContainer"
+  const streamImg = document.createElement("img");              //? 
+
+  //* vortex stream
+  const vortex_cam_container = document.getElementById("vortex_cam_container"); //? Grab existing element from the HTML page
+  const vortex_streamImg = document.createElement("img");                       //? Create new element in Javascipt type "img"
+
+  //* Token logic
+  let token = null;                                       //? create token variable
+  if (!dev && auth.currentUser) {                         //? only give token while not dev and user logged in
     token = await auth.currentUser.getIdToken(true);
   }
 
   if (token) {
+    //* Get stream from the url
     streamImg.src = `${streamURL}?token=${encodeURIComponent(token)}`;
+    vortex_streamImg.src = `${vortex_stream}?token=${encodeURIComponent(token)}`;
 
-    // Refresh token occasionally
+    //* Refresh token occasionally
     setInterval(async () => {
       if (!auth.currentUser) return;
       const t = await auth.currentUser.getIdToken(true);
       streamImg.src = `${streamURL}?token=${encodeURIComponent(t)}&ts=${Date.now()}`;
+      vortex_streamImg.src = `${vortex_stream}?token=${encodeURIComponent(t)}&ts=${Date.now()}`;
     }, 50 * 60 * 1000);
   } else {
-    // Dev mode: don't break the UI if no token
     camContainer.innerHTML =
-      "<p style='text-align:center;'>DEV MODE: Login required to view camera.</p>";
+      "<p style='text-align:center;'>DEV MODE: Login required to view camera.</p>"; //? Dev mode: don't break the UI if no token
 
     vortex_cam_container.innerHTML =
-      "<p style='text-align:center;'>Mick is gay.</p>";
-    // If your camera endpoint ever supports no-token locally, you can use:
-    // streamImg.src = streamURL;
+      "<p style='text-align:center;'>DEV MODE: Login required to view camera.</p>";
   }
 
   streamImg.width = 640;
@@ -96,15 +103,21 @@ async function startLobby({ dev }) {
   streamImg.style.maxWidth = "100%";
   if (token) camContainer.appendChild(streamImg);
 
+  vortex_streamImg.width = 640;
+  vortex_streamImg.alt = "Live camera feed";
+  vortex_streamImg.style.border = "2px solid black";
+  vortex_streamImg.style.maxWidth = "100%";
+  if (token) vortex_cam_container.appendChild(vortex_streamImg);
 
-  // ------- UI elements -------
+
+  //* ------- UI elements -------
   const pumpButton = document.getElementById("pumpButton");
   const moistureDisplay = document.getElementById("moistureValue");
   const angleDisplay = document.getElementById("angleValue");
   const led_button = document.getElementById("led_button");
   const elapsedDisplay = document.getElementById("elapsedValue");
 
-  // Fullscreen camera
+  //* Fullscreen camera
   streamImg.addEventListener("click", () => {
     if (!token) return; // nothing to fullscreen in dev placeholder mode
     if (streamImg.requestFullscreen) streamImg.requestFullscreen();
@@ -112,7 +125,14 @@ async function startLobby({ dev }) {
     else if (streamImg.msRequestFullscreen) streamImg.msRequestFullscreen();
   });
 
-  // ------- Controls -------
+  vortex_streamImg.addEventListener("click", () => {
+    if(!token) return;
+    if (vortex_streamImg.requestFullscreen) vortex_streamImg.requestFullscreen();
+    else if (vortex_streamImg.webkitRequestFullscreen) vortex_streamImg.webkitRequestFullscreen();
+    else if (vortex_streamImg.msRequestFullscreen) vortex_streamImg.msRequestFullscreen();
+  });
+
+  //* ------- Controls -------
   pumpButton.addEventListener("click", () => {
     if (dev) {
       console.log("DEV MODE: Pump clicked (blocked)");
@@ -198,5 +218,3 @@ async function startLobby({ dev }) {
   fetchAngle();
   fetchElapsed();
 }
-
-
