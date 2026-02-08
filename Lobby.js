@@ -61,7 +61,7 @@ async function startLobby({ dev }) {
   const streamURL = "https://cam.stellaz.org/video";
 
   const camContainer = document.getElementById("camContainer");
-  const vortex_cam_container = getElementbyId("vortex_cam_container")
+  // const vortex_cam_container = getElementbyId("vortex_cam_container")
   const streamImg = document.createElement("img");
 
   // ------- Camera -------
@@ -198,4 +198,5 @@ async function startLobby({ dev }) {
   fetchAngle();
   fetchElapsed();
 }
+
 
