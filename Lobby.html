@@ -1,41 +1,44 @@
 <!DOCTYPE html>
 <html lang="en">
+    <!-- ! Head contains basic info of the page -->
     <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Lobby</title>
-        <link rel="stylesheet" href="LobbyStyles.css">
+        <meta charset="UTF-8">                                                       <!-- ? Sets the character encoding for the document -->
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">       <!-- ? Ensures the page is responsive and scales correctly on different devices -->
+        <title>Lobby</title>                                                         <!-- ? Sets the title of the page, which appears in the browser tab -->
+        <link rel="stylesheet" href="LobbyStyles.css">                               <!-- ? Links to an external CSS file for styling the page -->
     </head>
-    <body>
-        <nav class="navbar">
-            <header class="logo">
-                <a href="LoginScreen.html" class="back-button">Login Screen</a>
-                <p>Main Lobby</p>
-            </header>
-            <section>
-                
-            </section>
-        </nav> 
-        <div class="bubbleRow">
-            <div class="infoBubble">
-                <div class="liveCameraStream">
-                    <h1>Cactus Project</h1>
-                        <div id="camContainer"></div>
-                </div>
 
-                <div class="buttonContainer">
-                    <button id="pumpButton" class="button">Water Now</button>
-                </div>
-                <button id="led_button" class="button">Light Up</button>
-                <p>Last Watered: <span id="elapsedValue">Loading…</span></p>
-                <p>Moisture: <span id="moistureValue">Loading...</span>%</p>
-                <p>Angle: <span id="angleValue">Loading...</span>°</p>
+    <!-- ! Body contains the content of the page -->
+    <body>
+        <nav class="navbar">                                                         <!-- ? Navigation bar that contains the header and main content -->
+            <img src="Images/lobby_logo.png" alt="Lobby logo" class="logoImage"/>    <!-- ? Displays a logo image in the header -->"
+            <div class="kang_text_bubble">                                           <!-- ? Text bubble for welcome message -->
+                <h1> Welcome to the lobby</h1>                                       <!-- ? Main heading -->
             </div>
-            <div class="infoBubble">
-                <p>Next Project</p>
+        </nav> 
+        <div class="bubbleRow">                                                      <!-- ? Container for all the information bubbles -->
+            <div class="infoBubble">                                                 <!-- * Cactus information bubble -->   
+                <div class="liveCameraStream">                                       <!-- ? Live camera stream section -->
+                    <h1>Cactus Project</h1>                                      <!-- ? Heading for the cactus project -->
+                        <div id="camContainer"></div>                          <!-- ? Container for the live camera feed -->
+                </div>
+                <button id="pumpButton" class="button">Water Now</button>            <!-- ? Button to water the cactus -->
+                <button id="led_button" class="button">Light Up</button>            <!-- ? Button to control the LED light -->
+                <p>Last Watered: <span id="elapsedValue">Loading…</span></p>      <!-- ? Displays the last watered time -->
+                <p>Moisture: <span id="moistureValue">Loading...</span>%</p>      <!-- ? Displays the moisture level -->
+                <p>Angle: <span id="angleValue">Loading...</span>°</p>            <!-- ? Displays the angle of the cactus -->
+            </div>
+
+
+            <div class="infoBubble">                                               <!-- * Vortex information bubble -->
+                <div class="liveCameraStream">                                     <!-- ? Live camera stream section -->
+                    <h1>Vortex Project</h1>                                     <!-- ? Heading for the vortex project -->
+                        <div id="vortex_cam_container"></div>                        <!-- ? Container for the live camera feed -->
+                </div>
+                <button id="button_control" class="button">Control Vortex</button>  <!-- ? Button to control the vortex -->
+                <p>Status: <span id="vortexStatus">Loading...</span></p>               <!-- ? Displays the status of the vortex -->
             </div>
         </div>
-    <script type="module" src="Lobby.js"></script>
+    <script type="module" src="Lobby.js"></script>                        <!-- ? Links to an external JavaScript file for functionality -->
     </body>
 </html>
-
