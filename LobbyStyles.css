@@ -24,11 +24,22 @@ body {
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
 }
 
-.logo {
-    font-size: 1.8rem;
-    color: white;
-    font-weight: 600;
-    letter-spacing: 1px;
+.logoImage {
+    height: 150px;
+}
+
+.kang_text_bubble {
+    font-family: 'Comic Sans MS', cursive, sans-serif;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    font-size: 18px;
+    color: #000000;
+    background: rgba(212, 167, 255, 0.3); /* Using rgba for transparency */
+    border: 2px solid #000000;
+    border-radius: 15px;
+    padding: 10px 15px;
+    max-width: 300px;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
 }
 
 .bubbleRow {
@@ -60,11 +71,6 @@ body {
     color: white; /* or black depending on your background */
 }
 
-.buttonContainer{
-    display: flex;
-    justify-content: center;
-    margin-top: 50px;
-}
 
 .button{
     padding: 5px 5px;
@@ -92,6 +98,21 @@ p {
 #camContainer img:hover {
     transform: scale(1.02);
 }
+
+#vortex_cam_container img {
+    width: 100%;
+    max-height: 160px;
+    object-fit: cover;
+    border-radius: 12px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    cursor: pointer; /* lets user know it's clickable */
+    transition: transform 0.2s ease;
+}
+
+#vortex_cam_container img:hover {
+    transform: scale(1.02);
+}
+
 
 .liveCameraStream {
     display: flex;
