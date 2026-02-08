@@ -1,4 +1,4 @@
-const DEV_MODE = true;        // ? Set to false for live server editing
+const DEV_MODE = false;        // ? Set to false for live server editing
 
 //? -------------------------------
 //* ----- Firebase Auth Gate ------
@@ -218,3 +218,4 @@ async function startLobby({ dev }) {
   fetchAngle();
   fetchElapsed();
 }
+
