@@ -61,7 +61,7 @@ async function startLobby({ dev }) {
   const streamURL = "https://api.stellaz.org/stream";
 
 
-  const vortex_stream = "https://cam.stellaz.org/video";          //? 
+  const vortex_stream = "https://vortex.stellaz.org/video";          //? 
 
   //* cactus stream
   const camContainer = document.getElementById("camContainer"); //? Get the <img> with id="camContainer"
@@ -218,4 +218,5 @@ async function startLobby({ dev }) {
   fetchAngle();
   fetchElapsed();
 }
+
 
