@@ -1,0 +1,47 @@
+<!DOCTYPE html> 
+<html lang="en">
+    <head>
+        <meta charset="UTF-8"/>
+        <meta name="viewport" content="width=device-width initial-scale 1.0" />
+        <title>Vortex</title>
+        <link rel="stylesheet" href="vortex.css" />
+    </head>
+    <body>
+        
+        <div class="topbar">
+            <div class="title">
+                Stellaz Hub - Vortex Project
+            </div>
+            <div class="online">
+                Online
+            </div>
+        </div>
+
+        <div class="cam-section">
+            <div class="cam-container">
+                <div class="live-view">Live View</div>
+                <div class="cam" id="vortex-cam-container"></div>
+            </div>
+        </div>
+
+        <div class="buttons-grid">
+            <!-- <button id="q-key" class="button">Q</button> -->
+            <div class="empty-box"></div>
+            <button id="w-key" class="button">W
+                <p class="command-info">Tilt Up</p>
+            </button>
+            <!-- <button id="e-key" class="button">E</button> -->
+            <div class="empty-box"></div>
+            <button id="a-key" class="button">A
+                <p class="command-info">Pan Left</p>
+            </button>
+            <button id="s-key" class="button">S
+                <p class="command-info">Tilt Down</p>
+            </button>
+            <button id="d-key" class="button">D
+                <p class="command-info">Pan Right</p>
+            </button>
+        </div>
+    <script type="module" src="vortex.js"></script>
+    </body>
+</html>
