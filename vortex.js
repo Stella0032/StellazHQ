@@ -109,17 +109,17 @@ async function startLobby({ dev, user }) {
 
   // ✅ Correct mapping (matches your labels)
   const keyMap = {
-    w: { axis: "tilt", delta: +STEP },  // Tilt Up
-    a: { axis: "pan", delta: -STEP },  // Tilt Down
-    s: { axis: "tilt",  delta: -STEP },  // Pan Left
-    d: { axis: "pan",  delta: +STEP },  // Pan Right
+    s: { axis: "tilt", delta: +STEP },  // Tilt Up
+    d: { axis: "pan", delta: -STEP },  // Tilt Down
+    w: { axis: "tilt",  delta: -STEP },  // Pan Left
+    a: { axis: "pan",  delta: +STEP },  // Pan Right
   };
 
   // Button clicks use same map
-  document.getElementById("w-key")?.addEventListener("click", () => nudge("tilt", +STEP));
-  document.getElementById("a-key")?.addEventListener("click", () => nudge("pan", -STEP));
-  document.getElementById("s-key")?.addEventListener("click", () => nudge("tilt",  -STEP));
-  document.getElementById("d-key")?.addEventListener("click", () => nudge("pan",  +STEP));
+  document.getElementById("s-key")?.addEventListener("click", () => nudge("tilt", +STEP));
+  document.getElementById("d-key")?.addEventListener("click", () => nudge("pan", -STEP));
+  document.getElementById("w-key")?.addEventListener("click", () => nudge("tilt",  -STEP));
+  document.getElementById("a-key")?.addEventListener("click", () => nudge("pan",  +STEP));
 
   // ✅ One timer per key (so two keys can run at once)
   const holdTimers = new Map();
@@ -162,3 +162,4 @@ async function startLobby({ dev, user }) {
 
 
 } 
+
