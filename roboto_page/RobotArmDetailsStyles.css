@@ -1,0 +1,182 @@
+/* ---------- Theme variables (same palette as portfolio) ---------- */
+:root{
+  --background:#0b1220;
+  --heading:rgba(15,23,42,.65);
+  --bubble:rgba(100,255,218,.18);
+  --text:#cbd5e1;
+  --accent:#64ffda;
+  --highlight:#e2e8f0;
+
+  --linkPaint:var(--bubble);
+  --linkPaintHeight:.45em;
+
+  --container-max:1320px;
+  --container-pad:clamp(16px,4vw,40px);
+}
+
+/* ---------- Base ---------- */
+*{ box-sizing:border-box; margin:0; padding:0; }
+html{ scroll-behavior:smooth; }
+body{
+  font-family:"Inter",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  color:var(--highlight);
+  background:
+    radial-gradient(900px 600px at 15% -8%, rgba(100,255,218,.08), transparent 60%),
+    radial-gradient(900px 600px at 110% 10%, rgba(59,130,246,.07), transparent 55%),
+    radial-gradient(800px 520px at 85% 120vh, rgba(100,255,218,.07), transparent 60%),
+    radial-gradient(900px 600px at 10% 210vh, rgba(59,130,246,.06), transparent 60%),
+    linear-gradient(180deg,#0b1220 0%,#0a0f1a 100%);
+}
+
+/* shared container */
+.container{
+  max-width:var(--container-max);
+  margin-inline:auto;
+  padding-inline:var(--container-pad);
+  width:100%;
+}
+
+/* ---------- Navbar ---------- */
+nav.navbar{
+  position:sticky; top:0; z-index:1000;
+  background:var(--heading);
+  backdrop-filter:blur(12px);
+  border-bottom:1px solid rgba(255,255,255,.12);
+}
+.nav-text{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:clamp(1rem,3vw,2rem);
+  padding-block:clamp(.5rem,.3rem + .6vw,.9rem);
+}
+nav h1{
+  font-family:"Sora",Inter,sans-serif;
+  font-weight:700; letter-spacing:-.02em;
+  font-size:clamp(1.2rem, .9rem + .8vw, 1.6rem);
+}
+
+/* back button styled */
+a.back-button{
+  display:inline-flex; 
+  align-items:center; 
+  gap:.5rem;
+  margin: .6rem;
+  font-weight:700; 
+  text-decoration:none;
+  padding:.55rem .9rem; 
+  border-radius:.6rem;
+  color:#0b1a1a; 
+  background:var(--accent);
+  border:0; 
+  box-shadow:0 2px 0 rgba(0,0,0,.22);
+  transition:transform .1s ease, box-shadow .1s ease, background .15s ease;
+}
+a.back-button:hover{ transform:translateY(-1px); box-shadow:0 6px 14px rgba(0,0,0,.2); }
+
+/* ---------- Headings & text ---------- */
+h2{
+  font-family:"Sora",Inter,sans-serif;
+  font-size:clamp(1.25rem,1rem + .8vw,1.6rem);
+  margin:0 0 .4rem 0;
+}
+p, li{ color:var(--text); }
+
+/* ---------- “Glass” bubbles ---------- */
+.bubble{
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:14px;
+  padding:clamp(14px,2vw,22px);
+  color:var(--highlight);
+  box-shadow:0 10px 30px rgba(0,0,0,.22);
+}
+
+/* ---------- Intro (video + summary) ---------- */
+.intro-section{
+  display:grid;
+  align-items:start;
+  gap:clamp(12px,3vw,24px);
+  grid-template-columns:minmax(320px,1.15fr) 1fr;
+  margin:clamp(16px,2.5vw,24px) 0;
+}
+.video{
+  width:100%; border-radius:16px;
+  border:1px solid rgba(255,255,255,.14);
+  box-shadow:0 20px 60px rgba(0,0,0,.35);
+}
+
+/* ---------- Live telemetry ---------- */
+.live-telemetry{ max-width:900px; margin:1.5rem auto 0; text-align:center; }
+.telemetry-container{
+  display:flex; gap:1rem; flex-wrap:wrap; justify-content:space-around; align-items:center;
+}
+.telemetry-item{ flex:1 1 220px; }
+.telemetry-item .label{ display:block; font-weight:700; margin-bottom:.4rem; }
+.bar{
+  position:relative; height:1rem; border-radius:.5rem; overflow:hidden;
+  background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12);
+}
+.fill{ height:100%; background:var(--accent); width:0; transition:width .5s ease; }
+
+/* ---------- Circuit (image + write-up) ---------- */
+.circuitSection{
+  display:grid; align-items:start;
+  gap:clamp(14px,2.5vw,24px);
+  grid-template-columns: minmax(320px,1.1fr) 1fr;
+  margin:clamp(18px,3vw,28px) 0;
+}
+.circuit-image{
+  width:100%; height:auto; border-radius:14px;
+  border:1px solid rgba(255,255,255,.14);
+  box-shadow:0 18px 50px rgba(0,0,0,.35);
+  transition:transform .25s ease, box-shadow .25s ease, filter .25s ease;
+}
+.partFigure a:hover .circuit-image{
+  transform:scale(1.03);
+  filter:drop-shadow(0 0 14px rgba(100,255,218,.45));
+}
+
+/* ---------- Parts grid ---------- */
+.imageGrid{
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap:clamp(14px,2vw,22px);
+  margin:clamp(18px,3vw,28px) 0;
+}
+.partSection{ display:flex; justify-content:center; }
+.partFigure{ display:flex; flex-direction:column; align-items:center; }
+.partFigure figcaption{
+  font-family:"Sora",Inter,sans-serif;
+  font-size:clamp(1rem,.8rem + .6vw,1.25rem);
+  color:var(--highlight);
+  margin:.5rem 0 .75rem;
+}
+.PartsImage{
+  width:100%; height:auto; border-radius:12px;
+  border:1px solid rgba(255,255,255,.14);
+  box-shadow:0 12px 28px rgba(0,0,0,.28);
+  transition:transform .22s ease, box-shadow .22s ease, filter .22s ease;
+}
+.partFigure a:hover .PartsImage{
+  transform:translateY(-2px) scale(1.03);
+  box-shadow:0 20px 45px rgba(0,0,0,.38);
+  filter:drop-shadow(0 0 12px rgba(100,255,218,.35));
+}
+
+/* ---------- Image lightbox ---------- */
+.lightbox{
+  display:none; position:fixed; inset:0; z-index:1000;
+  background:rgba(7,10,18,.92); backdrop-filter:blur(2px);
+  align-items:center; justify-content:center;
+}
+.lightbox:target{ display:flex; }
+.lightbox img{
+  max-width:90vw; max-height:90vh; object-fit:contain; border-radius:10px;
+  border:1px solid rgba(255,255,255,.12);
+  box-shadow:0 18px 50px rgba(0,0,0,.6);
+}
+
+/* ---------- Responsive tweaks ---------- */
+@media (max-width: 900px){
+  .intro-section{ grid-template-columns:1fr; }
+  .circuitSection{ grid-template-columns:1fr; }
+}
