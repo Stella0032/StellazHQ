@@ -1,45 +1,9 @@
-const DEV_MODE = false;        // ? Set to false for live server editing
-
-//? -------------------------------
-//* ----- Firebase Auth Gate ------
-//? -------------------------------
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js"; 
-
-const firebaseConfig = {
-  apiKey: "AIzaSyA35BdFVlIVLS4Qz16nDplkuD2BNZuoDu8",
-  authDomain: "stellazhq-bb090.firebaseapp.com",
-  projectId: "stellazhq-bb090",
-  appId: "1:952515321392:web:0fb1af669529827d7097f5",
-};
-
-initializeApp(firebaseConfig);
-const auth = getAuth();
-
-document.documentElement.style.visibility = "hidden"; // ? Hide the page until we decide what to do
-
-
-//? -------------------------------
-//* ----------- Boot --------------
-//? -------------------------------
-if (DEV_MODE) {                                                //? Dev mode: no auth gate, no redirect
-  document.documentElement.style.visibility = "visible";
-  startLobby({ dev: true });
-} else {
-  // Prod mode: require login
-  onAuthStateChanged(auth, (user) => {
-    if (!user) {
-      window.location.replace("index.html?next=Lobby.html");
-      return;
-    }
-    document.documentElement.style.visibility = "visible";
-    startLobby({ dev: false });
-  });
-}
+import { auth } from './auth.js';
 
 //? -------------------------------
 //* --------- Secure LED ----------
 //? -------------------------------
+//#region
 async function setLed(state) {
   const token = await auth.currentUser.getIdToken(true);
 
@@ -52,62 +16,77 @@ async function setLed(state) {
     }
   );
 }
+//#endregion
 
 //? ----------------------------
 //* --------- Lobby Logic ------
 //? ----------------------------
-async function startLobby({ dev }) {
-  const esp32Base = "https://api.stellaz.org";                    //? ESP32 - cactus /moisture /elapsed /angle /LED /PUMP
+//#region
+export async function startLobby({ dev, user }) {
+  const esp32Base = "https://api.stellaz.org";
   const streamURL = "https://api.stellaz.org/stream";
+  const vortex_stream = "https://vortex.stellaz.org/video";
+  const params = new URLSearchParams(window.location.search);
+  const requestedSection = params.get('section') || 'projects';
 
+  // Hide all sections initially
+  document.querySelectorAll('.view').forEach(view => {
+    view.style.display = 'none';
+  });
 
-  const vortex_stream = "https://vortex.stellaz.org/video";          //? 
+  // Navbar event listeners (works regardless of login)
+  document.querySelectorAll('.nav_links button').forEach(button => {
+    button.addEventListener('click', () => {
+      const sectionId = button.dataset.section;
+      showSection(sectionId);
+    });
+  });
 
-  //* cactus stream
-  const camContainer = document.getElementById("camContainer"); //? Get the <img> with id="camContainer"
-  const streamImg = document.createElement("img");              //? 
+  initEmails();
+  initCalendar();
 
-  //* vortex stream
-  const vortex_cam_container = document.getElementById("vortex_cam_container"); //? Grab existing element from the HTML page
-  const vortex_streamImg = document.createElement("img");                       //? Create new element in Javascipt type "img"
+  const camContainer = document.getElementById("camContainer");
+  const streamImg = document.createElement("img");
 
-  //* Token logic
-  let token = null;                                       //? create token variable
-  if (!dev && auth.currentUser) {                         //? only give token while not dev and user logged in
-    token = await auth.currentUser.getIdToken(true);
+  const vortex_cam_container = document.getElementById("vortex_cam_container");
+  const vortex_streamImg = document.createElement("img");
+
+  if (!camContainer || !vortex_cam_container) {
+    console.error("Missing cam containers in HTML");
+    return;
   }
 
-  if (token) {
-    //* Get stream from the url
-    streamImg.src = `${streamURL}?token=${encodeURIComponent(token)}`;
-    vortex_streamImg.src = `${vortex_stream}?token=${encodeURIComponent(token)}`;
-
-    //* Refresh token occasionally
-    setInterval(async () => {
-      if (!auth.currentUser) return;
-      const t = await auth.currentUser.getIdToken(true);
-      streamImg.src = `${streamURL}?token=${encodeURIComponent(t)}&ts=${Date.now()}`;
-      vortex_streamImg.src = `${vortex_stream}?token=${encodeURIComponent(t)}&ts=${Date.now()}`;
-    }, 50 * 60 * 1000);
-  } else {
+  // If not logged in:
+  if (!user) {
     camContainer.innerHTML =
-      "<p style='text-align:center;'>DEV MODE: Login required to view camera.</p>"; //? Dev mode: don't break the UI if no token
-
+      "<p style='text-align:center;'>Dev: please log in to view camera.</p>";
     vortex_cam_container.innerHTML =
-      "<p style='text-align:center;'>DEV MODE: Login required to view camera.</p>";
+      "<p style='text-align:center;'>Dev: please log in to view camera.</p>";
+
+    // Optional: auto-send to login even in dev
+    // if (dev) window.location.replace("index.html?next=Lobby.html");
+    return;
   }
 
-  streamImg.width = 640;
-  streamImg.alt = "Live camera feed";
-  streamImg.style.border = "2px solid black";
-  streamImg.style.maxWidth = "100%";
-  if (token) camContainer.appendChild(streamImg);
+  // Logged in -> tokened streams
+  const token = await user.getIdToken(true);
 
-  vortex_streamImg.width = 640;
-  vortex_streamImg.alt = "Live camera feed";
-  vortex_streamImg.style.border = "2px solid black";
-  vortex_streamImg.style.maxWidth = "100%";
-  if (token) vortex_cam_container.appendChild(vortex_streamImg);
+  streamImg.src = `${streamURL}?token=${encodeURIComponent(token)}`;
+  vortex_streamImg.src = `${vortex_stream}?token=${encodeURIComponent(token)}`;
+
+  setInterval(async () => {
+    const u = auth.currentUser || user;
+    if (!u) return;
+    const t = await u.getIdToken(true);
+    streamImg.src = `${streamURL}?token=${encodeURIComponent(t)}&ts=${Date.now()}`;
+    vortex_streamImg.src = `${vortex_stream}?token=${encodeURIComponent(t)}&ts=${Date.now()}`;
+  }, 50 * 60 * 1000);
+
+  camContainer.innerHTML = "";
+  vortex_cam_container.innerHTML = "";
+
+  camContainer.appendChild(streamImg);
+  vortex_cam_container.appendChild(vortex_streamImg);
 
 
   //* ------- UI elements -------
@@ -217,6 +196,12 @@ async function startLobby({ dev }) {
   fetchMoisture();
   fetchAngle();
   fetchElapsed();
+
+  // Default to projects section
+  showSection(requestedSection);
+
+  // Initialize chat and investments
+  initChats();
+  initInvestments();
 }
-
-
+//#endregion
