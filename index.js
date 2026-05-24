@@ -16,7 +16,7 @@ document.getElementById("showPassword").addEventListener("change", function(){
 });
 
 document.getElementById("portfolioButton").addEventListener("click", function(){
-    window.location.href = "portfolio_page/Portfolio.html";
+    window.location.href = "./portfolio_page/Portfolio.html";
 });
 
 // index.js
