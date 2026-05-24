@@ -16,7 +16,7 @@ document.getElementById("showPassword").addEventListener("change", function(){
 });
 
 document.getElementById("portfolioButton").addEventListener("click", function(){
-    window.location.href = "Portfolio.html";
+    window.location.href = "portfolio_page/Portfolio.html";
 });
 
 // index.js
@@ -47,7 +47,7 @@ window.addEventListener("DOMContentLoaded", () => {
             // Sign in, not sign up
             await signInWithEmailAndPassword(auth, email, password);
             // On success, redirect
-            window.location.href = "Lobby.html";
+            window.location.href = "lobby_page/Lobby.html";
         } catch (err) {
         // Show the error message
             alert(err.message);
