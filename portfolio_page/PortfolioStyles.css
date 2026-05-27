@@ -310,6 +310,68 @@ nav.navbar.is-stuck .nav-links a {
 /* #endregion -- buttons -- */
 /* #endregion -------- hero -------- */
 
+/* #region */ /* ^ ---------- Experience ---------- */
+section.experience {
+    padding-block: clamp(32px, 7vw, 80px);
+    min-height: auto;
+}
+.experience h1 {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+}
+.experience-list {
+    display: grid;
+    gap: clamp(16px, 3vw, 28px);
+}
+.experience-card {
+    display: grid;
+    grid-template-columns: minmax(160px, 240px) 1fr;
+    align-items: center;
+    gap: clamp(18px, 4vw, 42px);
+    padding: clamp(18px, 3vw, 32px);
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 14px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.22);
+}
+.experience-logo {
+    display: grid;
+    place-items: center;
+    min-height: 150px;
+    padding: clamp(14px, 2vw, 24px);
+    border-radius: 10px;
+    background: rgba(255,255,255,.92);
+}
+.experience-logo img {
+    width: min(100%, 220px);
+    height: auto;
+    display: block;
+}
+.experience-info {
+    color: var(--highlight);
+}
+.experience-date {
+    margin-bottom: .4rem;
+    color: var(--accent);
+    font-weight: 700;
+}
+.experience-info h2 {
+    font-family: "Sora", "Inter", system-ui, sans-serif;
+    font-size: clamp(1.45rem, 1.2rem + 1vw, 2.25rem);
+    margin-bottom: .25rem;
+}
+.experience-info h3 {
+    color: #bcd0db;
+    font-size: clamp(1rem, .95rem + .35vw, 1.25rem);
+    margin-bottom: .8rem;
+}
+.experience-info ul {
+    margin-left: 1.2rem;
+    color: var(--text);
+    line-height: 1.65;
+}
+/* #endregion ---------- Experience ---------- */
+
 /* #region */ /* ^ ---------- Skills ---------- */
 
 /* #region */ /* & -- skills section -- */
@@ -736,7 +798,21 @@ section.more-projects {
 @media (max-width: 900px) {
     .hero-inner, .project-inner {
         grid-template-columns: 1fr; }
-    .nav-links { gap: 1rem; }
+    .nav-links {
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: .75rem 1rem;
+    }
+    .experience-card {
+        grid-template-columns: 1fr;
+        align-items: start;
+    }
+    .experience-logo {
+        min-height: 120px;
+    }
+    .experience-logo img {
+        width: min(100%, 180px);
+    }
 }
 
 /* 4) Mobile: stack image then text */
