@@ -480,7 +480,12 @@ class MediaMTXWebRTCReader {
   }
 
   #start() {
-    this.#requestICEServers()
+    const iceServersPromise =
+      Array.isArray(this.#conf.iceServers)
+        ? Promise.resolve(this.#conf.iceServers)
+        : this.#requestICEServers();
+
+    iceServersPromise
       .then((iceServers) => this.#setupPeerConnection(iceServers))
       .then((offer) => this.#sendOffer(offer))
       .then((answer) => this.#setAnswer(answer))

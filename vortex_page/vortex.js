@@ -69,19 +69,38 @@
     // Request a Firebase token for the authenticated user.
     const token = await user.getIdToken(true);
 
-    // Connect to the MediaMTX WHEP endpoint.
-    const vortex_reader = new MediaMTXWebRTCReader({
-      url: "https://vortex-video.stellaz.org/camera/whep",
-      token,
-
-      onTrack: (event) => {
-        vortex_video.srcObject = event.streams[0];
+// Ask the protected Node server for temporary TURN credentials.
+  const turnResponse = await fetch(
+    "https://vortex.stellaz.org/turn-credentials",
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
       },
-
-      onError: (error) => {
-        console.error("WebRTC camera error:", error);
-      },
-    });
+    },
+  );
+  if (!turnResponse.ok) {
+    const errorText = await turnResponse.text();
+    throw new Error(
+      `Unable to obtain TURN credentials: ${turnResponse.status} ${errorText}`,
+    );
+  }
+  const turnData = await turnResponse.json();
+  if (!Array.isArray(turnData.iceServers)) {
+    throw new Error("Node returned an invalid TURN configuration");
+  }
+  // Create the WebRTC reader using Cloudflare's temporary TURN credentials.
+  const vortex_reader = new MediaMTXWebRTCReader({
+    url: "https://vortex-video.stellaz.org/camera/whep",
+    token,
+    iceServers: turnData.iceServers,
+    onTrack: (event) => {
+      vortex_video.srcObject = event.streams[0];
+    },
+    onError: (error) => {
+      console.error("WebRTC camera error:", error);
+    },
+  });
 
     //^ Replace any previous camera content.
     vortex_cam_container.innerHTML = "";
