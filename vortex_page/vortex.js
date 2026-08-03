@@ -71,7 +71,7 @@
 
     // Connect to the MediaMTX WHEP endpoint.
     const vortex_reader = new MediaMTXWebRTCReader({
-      url: "http://192.168.18.23:8889/camera/whep",
+      url: "https://vortex-video.stellaz.org/camera/whep",
       token,
 
       onTrack: (event) => {
