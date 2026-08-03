@@ -114,9 +114,6 @@
 
     let currentToken = token; // Keep a local copy of the authentication token for servo-control requests.
 
-    const STEP = 1;      // Number of degrees the servo moves for each command.
-    const HOLD_MS = 80;  // Time in milliseconds between repeated commands while a keyboard key is held.
-
     // Refresh the servo-control authentication token every 50 minutes.
     setInterval(async () => {
       const u = auth.currentUser || user;
@@ -124,96 +121,120 @@
       currentToken = await u.getIdToken(true);
     }, 50 * 60 * 1000);
 
+    // Track which keyboard keys are currently held.
+  const activeKeys = new Set();
 
-    async function nudge(axis, delta) {
-      try {
-        // Create a secured servo-control URL
-        const url = `${API_BASE}/servo/nudge?token=${encodeURIComponent(currentToken)}`;
+// Send one start/stop movement command to Node.
+  async function setServoMotion(axis, direction) {
+    try {
+      const url =
+        `${API_BASE}/servo/motion?token=${encodeURIComponent(currentToken)}`;
 
-        // Send the servo movement command to the server.
-        const res = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          axis,
+          direction,
+        }),
+      });
 
-          // Convert the JavaScript object into JSON.
-          // Example:
-          // {
-          //   "axis": "pan",
-          //   "delta": 1
-          // }
-          body: JSON.stringify({ axis, delta }),
-        });
-
-        // A response outside the 200–299 range means the server returned an error.
-        if (!res.ok) {
-          console.error("Servo error:", res.status, await res.text());
-        };
-      } catch (e) {
-        // This normally means the browser could not contact the server because of a network, CORS or server error.
-        console.error("Servo fetch failed:", e);
+      if (!res.ok) {
+        console.error(
+          "Servo motion error:",
+          res.status,
+          await res.text(),
+        );
       }
+    } catch (error) {
+      console.error("Servo motion request failed:", error);
+    }
+  }
+
+  // Match each key to one axis and direction.
+  const keyMap = {
+    w: { axis: "tilt", direction: -1 },
+    s: { axis: "tilt", direction: 1 },
+    a: { axis: "pan", direction: 1 },
+    d: { axis: "pan", direction: -1 },
+  };
+
+  // Start movement when a key is pressed.
+  window.addEventListener("keydown", (event) => {
+    const key = event.key.toLowerCase();
+    const command = keyMap[key];
+
+    if (!command || activeKeys.has(key)) {
+      return;
     }
 
-    // Connect each keyboard key to a servo movement. W and S control the tilt servo. A and D control the pan servo.
-    const keyMap = {
-      s: { axis: "tilt", delta: +STEP },  // Tilt Up
-      d: { axis: "pan", delta: -STEP },  // Tilt Down
-      w: { axis: "tilt",  delta: -STEP },  // Pan Left
-      a: { axis: "pan",  delta: +STEP },  // Pan Right
-    };
+    activeKeys.add(key);
 
-    // Clicking the on-screen buttons sends the same commands as pressing the matching keyboard keys.
-    document.getElementById("s-key")?.addEventListener("click", () => nudge("tilt", +STEP));
-    document.getElementById("d-key")?.addEventListener("click", () => nudge("pan", -STEP));
-    document.getElementById("w-key")?.addEventListener("click", () => nudge("tilt",  -STEP));
-    document.getElementById("a-key")?.addEventListener("click", () => nudge("pan",  +STEP));
+    setServoMotion(
+      command.axis,
+      command.direction,
+    );
+  });
 
-    // Store one repeating timer for each keyboard key that is currently being held.
-    // Using a Map allows multiple keys to be held at once.
-    // For example, W and A can both send commands at the same time.
-    const holdTimers = new Map();
+  // Stop movement when a key is released.
+  window.addEventListener("keyup", (event) => {
+    const key = event.key.toLowerCase();
+    const command = keyMap[key];
 
-    // Start repeatedly sending the movement command associated with a keyboard key.
-    function startHold(key) {
-      if (holdTimers.has(key)) return;    // Do not create another timer if this key is already being held.
-      const cmd = keyMap[key];            // Find the movement command associated with the key.
-      if (!cmd) return;                   // Ignore keys that are not in the keyboard map.
-
-      nudge(cmd.axis, cmd.delta);                                           // Send one movement command immediately.
-      const t = setInterval(() => nudge(cmd.axis, cmd.delta), HOLD_MS);     // Continue sending the movement command every HOLD_MS milliseconds while the key remains held.
-      holdTimers.set(key, t);                                               // Store the timer so it can be stopped later.
+    if (!command) {
+      return;
     }
 
-    // Stop repeatedly sending the movement command associated with a keyboard key.
-    function stopHold(key) {
-      const t = holdTimers.get(key);    // Get the timer associated with this key.
-      if (!t) return;                   // Stop if the key does not have an active timer.
-      clearInterval(t);                 // Stop the repeating movement command.
-      holdTimers.delete(key);           // Remove the timer from the Map.
+    activeKeys.delete(key);
+
+    setServoMotion(
+      command.axis,
+      0,
+    );
+  });
+
+  function connectMotionButton(elementId, axis, direction) {
+    const button = document.getElementById(elementId);
+
+    if (!button) {
+      return;
     }
 
-    // Start moving when W, A, S or D is pressed.
-    window.addEventListener("keydown", (e) => {
-      const k = e.key.toLowerCase();  // Convert the pressed key to lowercase.
-      if (!keyMap[k]) return;         // Ignore keys that are not in the keyboard map.
-      // Browsers automatically generate repeated keydown events while a key is held.
-      if (e.repeat) return;           // Ignore those repeated browser events because startHold() already creates its own repeating timer. 
-      startHold(k);                   // Begin sending repeated servo commands.
+    // Start moving while the button is pressed.
+    button.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      setServoMotion(axis, direction);
     });
 
-    // Stop moving when W, A, S or D is released.
-    window.addEventListener("keyup", (e) => {
-      const k = e.key.toLowerCase();
-      if (!keyMap[k]) return;
-      stopHold(k);            // Stop sending repeated servo commands.
+    // Stop moving when the press ends.
+    button.addEventListener("pointerup", () => {
+      setServoMotion(axis, 0);
     });
 
-    // Stop all servo commands if the browser tab or window loses focus.
-    // This prevents the camera from continuing to move if the user switches tabs while holding a key.
-    window.addEventListener("blur", () => {
-      for (const [, t] of holdTimers) clearInterval(t); // Stop every active repeating timer.
-      holdTimers.clear(); // Remove every timer from the Map.
+    // Also stop if the pointer is cancelled or leaves the button.
+    button.addEventListener("pointercancel", () => {
+      setServoMotion(axis, 0);
     });
+
+    button.addEventListener("pointerleave", () => {
+      setServoMotion(axis, 0);
+    });
+  }
+
+  connectMotionButton("w-key", "tilt", -1);
+  connectMotionButton("s-key", "tilt", 1);
+  connectMotionButton("a-key", "pan", 1);
+  connectMotionButton("d-key", "pan", -1);
+
+  // Stop both servos if the page loses focus.
+  window.addEventListener("blur", () => {
+    activeKeys.clear();
+
+    setServoMotion("pan", 0);
+    setServoMotion("tilt", 0);
+  });
     //#endregion
   } 
   //#endregion
