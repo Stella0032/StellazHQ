@@ -155,8 +155,8 @@
 
   // Match each key to one axis and direction.
   const keyMap = {
-    w: { axis: "tilt", direction: -1 },
-    s: { axis: "tilt", direction: 1 },
+    w: { axis: "tilt", direction: 1 },
+    s: { axis: "tilt", direction: -1 },
     a: { axis: "pan", direction: 1 },
     d: { axis: "pan", direction: -1 },
   };
