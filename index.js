@@ -19,6 +19,10 @@ document.getElementById("portfolioButton").addEventListener("click", function(){
     window.location.href = "portfolio_page/Portfolio.html";
 });
 
+document.getElementById("security_robot").addEventListener("click", function(){
+    window.location.href = "security_robot_page/security_robot.html";
+});
+
 // index.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
