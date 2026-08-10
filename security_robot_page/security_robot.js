@@ -21,7 +21,7 @@ async function startLobby() {
 
   //^ Replace any previous camera content.
   vortex_cam_container.innerHTML = "";
-  vortex_cam_container.appendChild(vortex_video);
+  vortex_cam_container.appendChild(vortex_video); 
   //? -------------------------------
   //* ------- Servo Controls --------
   //? -------------------------------
