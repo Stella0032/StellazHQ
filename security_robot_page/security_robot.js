@@ -1,134 +1,44 @@
-  //? -------------------------------
-  //* ----- Firebase Auth Gate ------
-  //? -------------------------------
-  //#region
-  // import the firebase functions required to initialize Firebase and monitor whether the user is logged in.
-  import { 
-    initializeApp 
-  } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+//? ----------------------------
+//* --------- Lobby Logic ------
+//? ----------------------------
+//#region
+async function startLobby() {
+  // Find HTML container where camera will be displayed
+  const vortex_cam_container =
+    document.getElementById("vortex_cam_container");
 
-  import {
-    getAuth, onAuthStateChanged 
-  } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js"; 
-
-  // Firebase project information
-  const firebaseConfig = {
-    apiKey: "AIzaSyA35BdFVlIVLS4Qz16nDplkuD2BNZuoDu8",
-    authDomain: "stellazhq-bb090.firebaseapp.com",
-    projectId: "stellazhq-bb090",
-    appId: "1:952515321392:web:0fb1af669529827d7097f5",
-  };
-
-  initializeApp(firebaseConfig); // Connect this page to the firebase project
-  const auth = getAuth();        // Get the firebase authentication service
-
-  // Hide the entire page while Firebase checks whether the user is logged in.
-  // This prevents protected content from appearing briefly before redirecting.
-  document.documentElement.style.visibility = "hidden"; 
-  //#endregion
-  //? -------------------------------
-  //* ----------- Boot --------------
-  //? -------------------------------
-  //#region
-  // This callback runs when firebase finishes checking whether the user is logged in
-  onAuthStateChanged(auth, (user) => {
-    // Firebase finished authentication, page can now be visible
-    document.documentElement.style.visibility = "visible";
-
-    // If user didn't login, return to login page.
-    if (!user) {
-      window.location.replace("index.html?next=Lobby.html");
-      return;
-    }
-
-    // User logged in, start lobby
-    startLobby(user);
-  });
-  //#endregion
-  //? ----------------------------
-  //* --------- Lobby Logic ------
-  //? ----------------------------
-  //#region
-  async function startLobby(user) {
-    // Find HTML container where camera will be displayed
-    const vortex_cam_container =
-      document.getElementById("vortex_cam_container");
-
-    if (!vortex_cam_container) {
-      console.error("Missing camera container in HTML");
-      return;
-    }
-
-    // Create the video element used by WebRTC.
-    const vortex_video = document.createElement("video");
-    vortex_video.autoplay = true;
-    vortex_video.playsInline = true;
-    vortex_video.muted = true;
-    vortex_video.controls = false;
-
-    // Request a Firebase token for the authenticated user.
-    const token = await user.getIdToken(true);
-
-// Ask the protected Node server for temporary TURN credentials.
-  const turnResponse = await fetch(
-    "https://vortex.stellaz.org/turn-credentials",
-    {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    },
-  );
-  if (!turnResponse.ok) {
-    const errorText = await turnResponse.text();
-    throw new Error(
-      `Unable to obtain TURN credentials: ${turnResponse.status} ${errorText}`,
-    );
+  if (!vortex_cam_container) {
+    console.error("Missing camera container in HTML");
+    return;
   }
-  const turnData = await turnResponse.json();
-  if (!Array.isArray(turnData.iceServers)) {
-    throw new Error("Node returned an invalid TURN configuration");
-  }
-  // Create the WebRTC reader using Cloudflare's temporary TURN credentials.
-  const vortex_reader = new MediaMTXWebRTCReader({
-    url: "https://vortex-video.stellaz.org/camera/whep",
-    token,
-    iceServers: turnData.iceServers,
-    onTrack: (event) => {
-      vortex_video.srcObject = event.streams[0];
-    },
-    onError: (error) => {
-      console.error("WebRTC camera error:", error);
-    },
-  });
 
-    //^ Replace any previous camera content.
-    vortex_cam_container.innerHTML = "";
-    vortex_cam_container.appendChild(vortex_video);
-    //? -------------------------------
-    //* ------- Servo Controls --------
-    //? -------------------------------
-    //#region
-    // Base URL of the server controlling the Vortex robot.
-    const API_BASE = "https://vortex.stellaz.org";
+  // Create the video element used by WebRTC.
+  const vortex_video = document.createElement("video");
+  vortex_video.autoplay = true;
+  vortex_video.playsInline = true;
+  vortex_video.muted = true;
+  vortex_video.controls = false;
 
-    let currentToken = token; // Keep a local copy of the authentication token for servo-control requests.
+  //^ Replace any previous camera content.
+  vortex_cam_container.innerHTML = "";
+  vortex_cam_container.appendChild(vortex_video);
+  //? -------------------------------
+  //* ------- Servo Controls --------
+  //? -------------------------------
+  //#region
+  // Base URL of the server controlling the Vortex robot.
+  const PI_IP = "192.168.18.23";
+  const NODE_PORT = 3001;
 
-    // Refresh the servo-control authentication token every 50 minutes.
-    setInterval(async () => {
-      const u = auth.currentUser || user;
-      if (!u) return;
-      currentToken = await u.getIdToken(true);
-    }, 50 * 60 * 1000);
+  const API_BASE = `http://${PI_IP}:${NODE_PORT}`;
 
-    // Track which keyboard keys are currently held.
+  // Track which keyboard keys are currently held.
   const activeKeys = new Set();
 
 // Send one start/stop movement command to Node.
   async function setServoMotion(axis, direction) {
     try {
-      const url =
-        `${API_BASE}/servo/motion?token=${encodeURIComponent(currentToken)}`;
+      const url = `${API_BASE}/servo/motion`;
 
       const res = await fetch(url, {
         method: "POST",
