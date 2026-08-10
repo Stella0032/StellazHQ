@@ -145,7 +145,8 @@ async function startLobby() {
     setServoMotion("pan", 0);
     setServoMotion("tilt", 0);
   });
-    //#endregion
-  } 
+  //#endregion
+} 
+startLobby();
   //#endregion
 
