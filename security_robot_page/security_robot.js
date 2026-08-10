@@ -3,6 +3,11 @@
 //? ----------------------------
 //#region
 async function startLobby() {
+
+  const PI_IP = "192.168.18.23";
+  const NODE_PORT = 3001;
+  const VIDEO_PORT = 8889;
+
   // Find HTML container where camera will be displayed
   const vortex_cam_container =
     document.getElementById("vortex_cam_container");
@@ -12,24 +17,22 @@ async function startLobby() {
     return;
   }
 
-  // Create the video element used by WebRTC.
-  const vortex_video = document.createElement("video");
-  vortex_video.autoplay = true;
-  vortex_video.playsInline = true;
-  vortex_video.muted = true;
-  vortex_video.controls = false;
+  const VIDEO_URL = `http://${PI_IP}:${VIDEO_PORT}/camera`;
 
-  //^ Replace any previous camera content.
+  const iframe = document.createElement("iframe");
+
+  iframe.src = VIDEO_URL;
+  iframe.allow = "autoplay; fullscreen";
+  iframe.style.width = "100%";
+  iframe.style.height = "100%";
+  iframe.style.border = "none";
+
   vortex_cam_container.innerHTML = "";
-  vortex_cam_container.appendChild(vortex_video); 
+  vortex_cam_container.appendChild(iframe);
   //? -------------------------------
   //* ------- Servo Controls --------
   //? -------------------------------
   //#region
-  // Base URL of the server controlling the Vortex robot.
-  const PI_IP = "192.168.18.23";
-  const NODE_PORT = 3001;
-
   const API_BASE = `http://${PI_IP}:${NODE_PORT}`;
 
   // Track which keyboard keys are currently held.
