@@ -1,26 +1,8 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
-import { collection, getDocs, getFirestore } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+import { collection, getDocs } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+import { httpsCallable } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-functions.js";
 
-
-//? ----------------------------
-//* ----- Firebase Setup -------
-//? ----------------------------
-//#region
-const firebase_config = {
-    apiKey: "AIzaSyA35BdFVlIVLS4Qz16nDplkuD2BNZuoDu8",
-    authDomain: "stellazhq-bb090.firebaseapp.com",
-    projectId: "stellazhq-bb090",
-    storageBucket: "stellazhq-bb090.appspot.com",
-    messagingSenderId: "952515321392",
-    appId: "1:952515321392:web:0fb1af669529827d7097f5"
-};
-
-const app = initializeApp(firebase_config);
-const auth = getAuth(app);
-const db = getFirestore(app);
-//#endregion
-
+import { auth, db, functions } from "../firebase/firebase_config.js";
 
 //? ---------------------------------
 //* ----- Recommendation Data ------
@@ -120,13 +102,24 @@ async function load_movie_library(user) {
     }
 }
 
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
     if (!user) {
         window.location.href = "../index.html";
         return;
     }
 
     load_movie_library(user);
+
+    try {
+        const test_auth = httpsCallable(functions, "testAuth");
+        const result = await test_auth();
+
+        console.log("Firebase Function auth test passed!");
+        console.log("Website UID:", user.uid);
+        console.log("Function UID:", result.data.uid);
+    } catch (error) {
+        console.error("Firebase Function auth test failed:", error);
+    }
 });
 //#endregion
 
