@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entertainment | Stellaz HQ</title>
+    <link rel="stylesheet" href="EntertainmentStyles.css">
+</head>
+<body>
+    <div class="ambient-background" aria-hidden="true"></div>
+
+    <header class="topbar">
+        <a class="brand" href="../lobby_page/Lobby.html">STELL<span>△</span>Z</a>
+        <nav class="nav-links" aria-label="Stellaz navigation">
+            <a href="../lobby_page/Lobby.html">Home</a>
+            <a href="../lobby_page/Lobby.html">Robot</a>
+            <a href="../lobby_page/Lobby.html">Finances</a>
+            <a href="../lobby_page/Lobby.html">Smart Home</a>
+            <a class="active" href="Entertainment.html">Entertainment</a>
+            <a href="../lobby_page/Lobby.html">Calendar</a>
+            <a href="../lobby_page/Lobby.html">Notes</a>
+        </nav>
+        <a class="back-home" href="../lobby_page/Lobby.html">HQ</a>
+    </header>
+
+    <main class="entertainment-dashboard">
+        <section class="hero">
+            <div>
+                <p class="eyebrow">STELLAZ LIBRARY</p>
+                <h1>Entertainment</h1>
+                <p>Your library. New worlds. Always something next.</p>
+            </div>
+            <blockquote>“Watch. Read. Explore.<br>Repeat.”</blockquote>
+        </section>
+
+        <section class="library-grid" aria-label="Entertainment libraries">
+            <a class="library-card movies" href="#" data-library="Movies">
+                <span class="library-icon">🎬</span>
+                <div><h2>Movies</h2><p>Watched: <strong>—</strong></p></div>
+                <span class="card-arrow">→</span>
+            </a>
+
+            <a class="library-card shows" href="#" data-library="TV Shows">
+                <span class="library-icon">▣</span>
+                <div><h2>TV Shows</h2><p>Watched: <strong>—</strong></p></div>
+                <span class="card-arrow">→</span>
+            </a>
+
+            <a class="library-card anime" href="#" data-library="Anime">
+                <span class="library-icon">✦</span>
+                <div><h2>Anime</h2><p>Watched: <strong>—</strong></p></div>
+                <span class="card-arrow">→</span>
+            </a>
+
+            <a class="library-card manga" href="#" data-library="Manga / Manhwa">
+                <span class="library-icon">▤</span>
+                <div><h2>Manga / Manhwa</h2><p>Read: <strong>—</strong></p></div>
+                <span class="card-arrow">→</span>
+            </a>
+        </section>
+
+        <section class="recommendations-panel">
+            <div class="recommendations-header">
+                <div>
+                    <p class="eyebrow">PERSONAL PICKS</p>
+                    <h2>Recommended For You</h2>
+                </div>
+                <span class="recommendation-count">5–10 PICKS</span>
+            </div>
+
+            <div class="recommendation-tabs" role="tablist" aria-label="Recommendation categories">
+                <button class="recommendation-tab active" data-category="movies" type="button">Movies</button>
+                <button class="recommendation-tab" data-category="shows" type="button">TV Shows</button>
+                <button class="recommendation-tab" data-category="anime" type="button">Anime</button>
+                <button class="recommendation-tab" data-category="manga" type="button">Manga / Manhwa</button>
+            </div>
+
+            <div class="recommendation-grid" id="recommendation_grid"></div>
+        </section>
+    </main>
+
+    <div class="toast" id="toast" role="status"></div>
+    <script src="Entertainment.js"></script>
+</body>
+</html>
