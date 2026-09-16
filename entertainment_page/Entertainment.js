@@ -1,10 +1,33 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+import { collection, getDocs, getFirestore } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+
+
+//? ----------------------------
+//* ----- Firebase Setup -------
+//? ----------------------------
+//#region
+const firebase_config = {
+    apiKey: "AIzaSyA35BdFVlIVLS4Qz16nDplkuD2BNZuoDu8",
+    authDomain: "stellazhq-bb090.firebaseapp.com",
+    projectId: "stellazhq-bb090",
+    storageBucket: "stellazhq-bb090.appspot.com",
+    messagingSenderId: "952515321392",
+    appId: "1:952515321392:web:0fb1af669529827d7097f5"
+};
+
+const app = initializeApp(firebase_config);
+const auth = getAuth(app);
+const db = getFirestore(app);
+//#endregion
+
+
 //? ---------------------------------
 //* ----- Recommendation Data ------
 //? ---------------------------------
 //#region
 // Temporary placeholders only.
-// Later, this data will come from Justin's actual entertainment library
-// and the recommendations can be generated from what he has watched/read.
+// Later, this data will come from the user's actual entertainment library.
 const recommendations = {
     movies: [
         "Movie Recommendation 1",
@@ -72,6 +95,39 @@ recommendation_tabs.forEach((tab) => {
 });
 
 show_recommendations("movies");
+//#endregion
+
+
+//? ------------------------------
+//* ----- Firestore Library ------
+//? ------------------------------
+//#region
+const movie_count = document.getElementById("movie_count");
+
+async function load_movie_library(user) {
+    try {
+        const movies_ref = collection(db, "users", user.uid, "movies");
+        const movies_snapshot = await getDocs(movies_ref);
+
+        movie_count.textContent = movies_snapshot.size;
+
+        movies_snapshot.forEach((movie_document) => {
+            console.log("Loaded movie:", movie_document.id, movie_document.data());
+        });
+    } catch (error) {
+        console.error("Unable to load movie library:", error);
+        movie_count.textContent = "Error";
+    }
+}
+
+onAuthStateChanged(auth, (user) => {
+    if (!user) {
+        window.location.href = "../index.html";
+        return;
+    }
+
+    load_movie_library(user);
+});
 //#endregion
 
 
