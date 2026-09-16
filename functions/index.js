@@ -8,8 +8,15 @@
  */
 
 const {setGlobalOptions} = require("firebase-functions");
-const {onRequest} = require("firebase-functions/https");
+const {onRequest, onCall} = require("firebase-functions/https");
 const logger = require("firebase-functions/logger");
+
+const {initializeApp} = require("firebase-admin/app");
+const {getFirestore} = require("firebase-admin/firestore");
+
+initializeApp();
+
+const db = getFirestore();
 
 // For cost control, you can set the maximum number of containers that can be
 // running at the same time. This helps mitigate the impact of unexpected
@@ -29,4 +36,14 @@ setGlobalOptions({ maxInstances: 10 });
 exports.helloWorld = onRequest((request, response) => {
     logger.info("Hello logs!", {structuredData: true});
     response.send("Hello from Firebase!");
+});
+
+exports.testAuth = onCall((request) => {
+  if (!request.auth) {
+    throw new Error("You must be logged in.");
+  }
+
+  return {
+    uid: request.auth.uid,
+  };
 });
