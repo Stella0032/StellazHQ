@@ -48,3 +48,22 @@ exports.testAuth = onCall((request) => {
     uid: request.auth.uid,
   };
 });
+
+exports.setSupabaseRole = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError(
+            "unauthenticated",
+            "You must be logged in."
+            );
+    }
+    const uid = request.auth.uid;
+
+    await getAuth().setCustomUserClaims(uid, {
+        role: "authenticated",
+    });
+
+    return {
+        success: true,
+        message: "Supabase authenticated role added.",
+    };
+});
