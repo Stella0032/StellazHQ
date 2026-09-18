@@ -2,6 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebas
 import { getAuth } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 import { getFunctions } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-functions.js";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 
 //? ----------------------------
@@ -25,4 +26,23 @@ const functions = getFunctions(app, "us-central1");
 //#endregion
 
 
-export { app, auth, db, functions };
+//? ----------------------------
+//* ----- Supabase Setup -------
+//? ----------------------------
+//#region
+const supabase_url = "https://xmycfxwapejnbpareaxc.supabase.co";
+const supabase_publishable_key = "sb_publishable_FG31JeX9PleOHKaqH0yaOw_XKn7ySxD";
+
+const supabase = createClient(
+    supabase_url,
+    supabase_publishable_key,
+    {
+        accessToken: async () => {
+            return (await auth.currentUser?.getIdToken(false)) ?? null;
+        }
+    }
+);
+//#endregion
+
+
+export { app, auth, db, functions, supabase };
