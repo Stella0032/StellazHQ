@@ -8,6 +8,7 @@
  */
 
 const {setGlobalOptions} = require("firebase-functions");
+const {defineSecret} = require("firebase-functions/params");
 const {onRequest, onCall, HttpsError} = require("firebase-functions/https");
 const logger = require("firebase-functions/logger");
 
@@ -123,3 +124,121 @@ exports.setSupabaseRole = onCall(async (request) => {
         message: "Supabase authenticated role added.",
     };
 });
+
+//? ------------------------------
+//* ----- TMDB Movie Data -------
+//? ------------------------------
+//#region
+const tmdb_read_access_token = defineSecret("TMDB_READ_ACCESS_TOKEN");
+
+exports.getMovieMetadata = onCall(
+    {secrets: [tmdb_read_access_token]},
+    async (request) => {
+        if (!request.auth) {
+            throw new HttpsError(
+                "unauthenticated",
+                "You must be logged in."
+            );
+        }
+
+        const title = request.data?.title;
+        const year = request.data?.year;
+
+        if (!title || typeof title !== "string") {
+            throw new HttpsError(
+                "invalid-argument",
+                "Movie title is required."
+            );
+        }
+
+        if (year !== undefined && year !== null &&
+            (!Number.isInteger(year) || year < 1888)) {
+            throw new HttpsError(
+                "invalid-argument",
+                "Movie year must be a valid integer."
+            );
+        }
+
+        const search_url = new URL(
+            "https://api.themoviedb.org/3/search/movie"
+        );
+        search_url.searchParams.set("query", title);
+        search_url.searchParams.set("include_adult", "false");
+        search_url.searchParams.set("language", "en-US");
+
+        if (year) {
+            search_url.searchParams.set("year", String(year));
+        }
+
+        const headers = {
+            Authorization: `Bearer ${tmdb_read_access_token.value()}`,
+            accept: "application/json",
+        };
+
+        const search_response = await fetch(search_url, {headers});
+
+        if (!search_response.ok) {
+            logger.error("TMDB search failed.", {
+                status: search_response.status,
+            });
+
+            throw new HttpsError(
+                "internal",
+                "TMDB movie search failed."
+            );
+        }
+
+        const search_data = await search_response.json();
+        const match = search_data.results?.[0];
+
+        if (!match) {
+            throw new HttpsError(
+                "not-found",
+                "No matching movie was found on TMDB."
+            );
+        }
+
+        const details_url =
+            `https://api.themoviedb.org/3/movie/${match.id}?language=en-US`;
+
+        const details_response = await fetch(details_url, {headers});
+
+        if (!details_response.ok) {
+            logger.error("TMDB details request failed.", {
+                status: details_response.status,
+                tmdb_id: match.id,
+            });
+
+            throw new HttpsError(
+                "internal",
+                "TMDB movie details request failed."
+            );
+        }
+
+        const movie = await details_response.json();
+
+        return {
+            tmdb_id: movie.id,
+            title: movie.title,
+            original_title: movie.original_title,
+            year: movie.release_date ?
+                Number(movie.release_date.slice(0, 4)) :
+                null,
+            release_date: movie.release_date || null,
+            overview: movie.overview || null,
+            genres: Array.isArray(movie.genres) ?
+                movie.genres.map((genre) => genre.name) :
+                [],
+            runtime_minutes: movie.runtime || null,
+            poster_url: movie.poster_path ?
+                `https://image.tmdb.org/t/p/w500${movie.poster_path}` :
+                null,
+            backdrop_url: movie.backdrop_path ?
+                `https://image.tmdb.org/t/p/w1280${movie.backdrop_path}` :
+                null,
+            tmdb_rating: movie.vote_average ?? null,
+            tmdb_vote_count: movie.vote_count ?? null,
+        };
+    }
+);
+//#endregion
