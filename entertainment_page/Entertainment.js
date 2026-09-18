@@ -7,40 +7,38 @@ import { auth, functions, supabase } from "../firebase/firebase_config.js";
 //* ----- Recommendation Data ------
 //? ---------------------------------
 //#region
-// Temporary placeholders only.
-// Later, this data will come from the user's actual entertainment library.
 const recommendations = {
     movies: [
-        "Movie Recommendation 1",
-        "Movie Recommendation 2",
-        "Movie Recommendation 3",
-        "Movie Recommendation 4",
-        "Movie Recommendation 5",
-        "Movie Recommendation 6"
+        { title: "Venom", year: 2018, reason: "More of Sony's Spider-Man universe" },
+        { title: "Doctor Strange", year: 2016, reason: "Marvel magic and multiverse energy" },
+        { title: "Avengers: Infinity War", year: 2018, reason: "Spider-Man continues in the MCU" },
+        { title: "Avengers: Endgame", year: 2019, reason: "Continues the MCU story" },
+        { title: "Deadpool & Wolverine", year: 2024, reason: "Marvel multiverse action" },
+        { title: "Big Hero 6", year: 2014, reason: "Animated superhero adventure" }
     ],
     shows: [
-        "TV Recommendation 1",
-        "TV Recommendation 2",
-        "TV Recommendation 3",
-        "TV Recommendation 4",
-        "TV Recommendation 5",
-        "TV Recommendation 6"
+        { title: "Daredevil", reason: "Street-level Marvel story" },
+        { title: "Loki", reason: "Marvel multiverse story" },
+        { title: "The Boys", reason: "A very different superhero series" },
+        { title: "Invincible", reason: "Animated superhero action" },
+        { title: "Hawkeye", reason: "Street-level MCU adventure" },
+        { title: "Moon Knight", reason: "A darker Marvel story" }
     ],
     anime: [
-        "Anime Recommendation 1",
-        "Anime Recommendation 2",
-        "Anime Recommendation 3",
-        "Anime Recommendation 4",
-        "Anime Recommendation 5",
-        "Anime Recommendation 6"
+        { title: "My Hero Academia", reason: "Superhero-focused anime" },
+        { title: "One Punch Man", reason: "Superhero action and comedy" },
+        { title: "Jujutsu Kaisen", reason: "Fast supernatural action" },
+        { title: "Demon Slayer", reason: "Stylish action adventure" },
+        { title: "Mob Psycho 100", reason: "Powers, action and heart" },
+        { title: "Solo Leveling", reason: "Power progression and action" }
     ],
     manga: [
-        "Manga / Manhwa Recommendation 1",
-        "Manga / Manhwa Recommendation 2",
-        "Manga / Manhwa Recommendation 3",
-        "Manga / Manhwa Recommendation 4",
-        "Manga / Manhwa Recommendation 5",
-        "Manga / Manhwa Recommendation 6"
+        { title: "One-Punch Man", reason: "Superhero manga" },
+        { title: "My Hero Academia", reason: "A world built around heroes" },
+        { title: "Kaiju No. 8", reason: "Action and transformation powers" },
+        { title: "Chainsaw Man", reason: "Wild supernatural action" },
+        { title: "Solo Leveling", reason: "Fast power progression" },
+        { title: "Dandadan", reason: "Supernatural action and comedy" }
     ]
 };
 //#endregion
@@ -57,11 +55,11 @@ function show_recommendations(category) {
     const category_recommendations = recommendations[category];
 
     recommendation_grid.innerHTML = category_recommendations
-        .map((title) => `
+        .map((item) => `
             <article class="recommendation-card">
                 <div class="poster-placeholder" aria-hidden="true">✦</div>
-                <h3>${title}</h3>
-                <p>Recommendation</p>
+                <h3>${item.title}</h3>
+                <p>${item.year ? `${item.year} · ` : ""}${item.reason}</p>
             </article>
         `)
         .join("");
@@ -84,19 +82,47 @@ show_recommendations("movies");
 //? ------------------------------
 //#region
 const movie_count = document.getElementById("movie_count");
+const movie_library_count = document.getElementById("movie_library_count");
+const movie_grid = document.getElementById("movie_grid");
+
+function create_movie_card(movie) {
+    const poster = movie.poster_url
+        ? `<img class="movie-poster" src="${movie.poster_url}" alt="${movie.title} poster" loading="lazy">`
+        : `<div class="movie-poster-placeholder"><span>${movie.title}</span></div>`;
+
+    const rating = movie.my_rating !== null
+        ? ` · ★ ${movie.my_rating}/10`
+        : "";
+
+    return `
+        <article class="movie-card">
+            ${poster}
+            <h3 title="${movie.title}">${movie.title}</h3>
+            <p class="movie-meta">${movie.year}${rating}</p>
+        </article>
+    `;
+}
 
 async function load_movie_library() {
     try {
         const { data: movies, error } = await supabase
             .from("movies")
             .select("*")
-            .order("added_at", { ascending: false });
+            .order("year", { ascending: false });
 
         if (error) {
             throw error;
         }
 
         movie_count.textContent = movies.length;
+        movie_library_count.textContent = `${movies.length} MOVIES`;
+
+        if (movies.length === 0) {
+            movie_grid.innerHTML = '<p class="library-loading">No movies added yet.</p>';
+            return;
+        }
+
+        movie_grid.innerHTML = movies.map(create_movie_card).join("");
 
         movies.forEach((movie) => {
             console.log("Loaded Supabase movie:", movie.title, movie);
@@ -104,6 +130,8 @@ async function load_movie_library() {
     } catch (error) {
         console.error("Unable to load Supabase movie library:", error);
         movie_count.textContent = "Error";
+        movie_library_count.textContent = "ERROR";
+        movie_grid.innerHTML = '<p class="library-loading">Unable to load your movies.</p>';
     }
 }
 //#endregion
@@ -123,7 +151,6 @@ onAuthStateChanged(auth, async (user) => {
         const set_supabase_role = httpsCallable(functions, "setSupabaseRole");
         const result = await set_supabase_role();
 
-        // Force Firebase to issue a fresh token containing the Supabase role.
         await user.getIdToken(true);
 
         console.log("Supabase role added successfully!");
@@ -148,6 +175,15 @@ const toast = document.getElementById("toast");
 
 library_cards.forEach((card) => {
     card.addEventListener("click", (event) => {
+        if (card.dataset.library === "Movies") {
+            event.preventDefault();
+            document.getElementById("movie_library").scrollIntoView({
+                behavior: "smooth",
+                block: "start"
+            });
+            return;
+        }
+
         event.preventDefault();
 
         toast.textContent = `${card.dataset.library} library is the next page to build.`;

@@ -34,7 +34,7 @@
         </section>
 
         <section class="library-grid" aria-label="Entertainment libraries">
-            <a class="library-card movies" href="#" data-library="Movies">
+            <a class="library-card movies" href="#movie_library" data-library="Movies">
                 <span class="library-icon">🎬</span>
                 <div><h2>Movies</h2><p>Watched: <strong id="movie_count">—</strong></p></div>
                 <span class="card-arrow">→</span>
@@ -59,13 +59,26 @@
             </a>
         </section>
 
+        <section class="movie-library-panel" id="movie_library">
+            <div class="movie-library-header">
+                <div>
+                    <p class="eyebrow">YOUR COLLECTION</p>
+                    <h2>Your Movies</h2>
+                </div>
+                <span class="movie-library-count" id="movie_library_count">LOADING</span>
+            </div>
+            <div class="movie-grid" id="movie_grid">
+                <p class="library-loading">Loading your movies...</p>
+            </div>
+        </section>
+
         <section class="recommendations-panel">
             <div class="recommendations-header">
                 <div>
                     <p class="eyebrow">PERSONAL PICKS</p>
                     <h2>Recommended For You</h2>
                 </div>
-                <span class="recommendation-count">5–10 PICKS</span>
+                <span class="recommendation-count">6 PICKS</span>
             </div>
 
             <div class="recommendation-tabs" role="tablist" aria-label="Recommendation categories">
