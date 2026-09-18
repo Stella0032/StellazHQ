@@ -110,14 +110,6 @@ onAuthStateChanged(auth, async (user) => {
 
     load_movie_library(user);
 
-onAuthStateChanged(auth, async (user) => {
-    if (!user) {
-        window.location.href = "../index.html";
-        return;
-    }
-
-    load_movie_library(user);
-
     try {
         const set_supabase_role = httpsCallable(functions, "setSupabaseRole");
         const result = await set_supabase_role();
@@ -131,9 +123,6 @@ onAuthStateChanged(auth, async (user) => {
     } catch (error) {
         console.error("Unable to add Supabase role:", error);
     }
-});
-
-//#endregion
 });
 //#endregion
 
