@@ -1,8 +1,7 @@
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
-import { collection, getDocs } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 import { httpsCallable } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-functions.js";
 
-import { auth, db, functions } from "../firebase/firebase_config.js";
+import { auth, functions, supabase } from "../firebase/firebase_config.js";
 
 //? ---------------------------------
 //* ----- Recommendation Data ------
@@ -81,47 +80,60 @@ show_recommendations("movies");
 
 
 //? ------------------------------
-//* ----- Firestore Library ------
+//* ----- Supabase Library -------
 //? ------------------------------
 //#region
 const movie_count = document.getElementById("movie_count");
 
-async function load_movie_library(user) {
+async function load_movie_library() {
     try {
-        const movies_ref = collection(db, "users", user.uid, "movies");
-        const movies_snapshot = await getDocs(movies_ref);
+        const { data: movies, error } = await supabase
+            .from("movies")
+            .select("*")
+            .order("added_at", { ascending: false });
 
-        movie_count.textContent = movies_snapshot.size;
+        if (error) {
+            throw error;
+        }
 
-        movies_snapshot.forEach((movie_document) => {
-            console.log("Loaded movie:", movie_document.id, movie_document.data());
+        movie_count.textContent = movies.length;
+
+        movies.forEach((movie) => {
+            console.log("Loaded Supabase movie:", movie.title, movie);
         });
     } catch (error) {
-        console.error("Unable to load movie library:", error);
+        console.error("Unable to load Supabase movie library:", error);
         movie_count.textContent = "Error";
     }
 }
+//#endregion
 
+
+//? ------------------------------
+//* ----- Authentication ---------
+//? ------------------------------
+//#region
 onAuthStateChanged(auth, async (user) => {
     if (!user) {
         window.location.href = "../index.html";
         return;
     }
 
-    load_movie_library(user);
-
     try {
         const set_supabase_role = httpsCallable(functions, "setSupabaseRole");
         const result = await set_supabase_role();
 
-        // Force Firebase to issue a fresh token containing the new role.
+        // Force Firebase to issue a fresh token containing the Supabase role.
         await user.getIdToken(true);
 
         console.log("Supabase role added successfully!");
         console.log(result.data.message);
         console.log("Firebase UID:", user.uid);
+
+        await load_movie_library();
     } catch (error) {
-        console.error("Unable to add Supabase role:", error);
+        console.error("Unable to prepare Supabase access:", error);
+        movie_count.textContent = "Error";
     }
 });
 //#endregion
