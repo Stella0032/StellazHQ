@@ -13,6 +13,7 @@ const logger = require("firebase-functions/logger");
 
 const {initializeApp} = require("firebase-admin/app");
 const {getFirestore} = require("firebase-admin/firestore");
+const {getAuth} = require("firebase-admin/auth");
 
 initializeApp();
 
@@ -99,4 +100,26 @@ exports.addMovie = onCall(async (request) => {
     success: true,
     movie_id: movie_id,
   };
+});
+
+exports.setSupabaseRole = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError(
+            "unauthenticated",
+            "You must be logged in."
+        );
+    }
+
+    const uid = request.auth.uid;
+    const user = await getAuth().getUser(uid);
+
+    await getAuth().setCustomUserClaims(uid, {
+        ...user.customClaims,
+        role: "authenticated",
+    });
+
+    return {
+        success: true,
+        message: "Supabase authenticated role added.",
+    };
 });
