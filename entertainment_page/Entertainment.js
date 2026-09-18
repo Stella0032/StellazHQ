@@ -110,16 +110,30 @@ onAuthStateChanged(auth, async (user) => {
 
     load_movie_library(user);
 
-    try {
-        const test_auth = httpsCallable(functions, "testAuth");
-        const result = await test_auth();
-
-        console.log("Firebase Function auth test passed!");
-        console.log("Website UID:", user.uid);
-        console.log("Function UID:", result.data.uid);
-    } catch (error) {
-        console.error("Firebase Function auth test failed:", error);
+onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+        window.location.href = "../index.html";
+        return;
     }
+
+    load_movie_library(user);
+
+    try {
+        const set_supabase_role = httpsCallable(functions, "setSupabaseRole");
+        const result = await set_supabase_role();
+
+        // Force Firebase to issue a fresh token containing the new role.
+        await user.getIdToken(true);
+
+        console.log("Supabase role added successfully!");
+        console.log(result.data.message);
+        console.log("Firebase UID:", user.uid);
+    } catch (error) {
+        console.error("Unable to add Supabase role:", error);
+    }
+});
+
+//#endregion
 });
 //#endregion
 

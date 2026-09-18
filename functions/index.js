@@ -8,7 +8,7 @@
  */
 
 const {setGlobalOptions} = require("firebase-functions");
-const {onRequest, onCall} = require("firebase-functions/https");
+const {onRequest, onCall, HttpsError} = require("firebase-functions/https");
 const logger = require("firebase-functions/logger");
 
 const {initializeApp} = require("firebase-admin/app");
@@ -40,12 +40,65 @@ exports.helloWorld = onRequest((request, response) => {
 });
 
 exports.testAuth = onCall((request) => {
+    if (!request.auth) {
+        throw new HttpsError("unauthenticated", "You must be logged in.");
+    }
+
+    return {
+        uid: request.auth.uid,
+    };
+});
+
+exports.addMovie = onCall(async (request) => {
   if (!request.auth) {
-    throw new Error("You must be logged in.");
+    throw new HttpsError("unauthenticated", "You must be logged in.");
   }
 
+  const uid = request.auth.uid;
+  const movie = request.data;
+
+  if (!movie.title || typeof movie.title !== "string") {
+    throw new HttpsError(
+        "invalid-argument",
+        "Movie title is required."
+    );
+  }
+
+  if (!movie.year || typeof movie.year !== "number") {
+    throw new HttpsError(
+        "invalid-argument",
+        "Movie year is required."
+    );
+  }
+
+  const movie_id = `${movie.title}-${movie.year}`
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+
+  const movie_data = {
+    title: movie.title,
+    year: movie.year,
+    franchise: movie.franchise ?? null,
+    series: movie.series ?? null,
+    production_company: movie.production_company ?? null,
+    genres: Array.isArray(movie.genres) ? movie.genres : [],
+    status: movie.status ?? "watched",
+    my_rating: movie.my_rating ?? null,
+    audience_rating: movie.audience_rating ?? null,
+    tomato_rating: movie.tomato_rating ?? null,
+  };
+
+  await db
+      .collection("users")
+      .doc(uid)
+      .collection("movies")
+      .doc(movie_id)
+      .set(movie_data);
+
   return {
-    uid: request.auth.uid,
+    success: true,
+    movie_id: movie_id,
   };
 });
 
@@ -54,11 +107,14 @@ exports.setSupabaseRole = onCall(async (request) => {
         throw new HttpsError(
             "unauthenticated",
             "You must be logged in."
-            );
+        );
     }
+
     const uid = request.auth.uid;
+    const user = await getAuth().getUser(uid);
 
     await getAuth().setCustomUserClaims(uid, {
+        ...user.customClaims,
         role: "authenticated",
     });
 
