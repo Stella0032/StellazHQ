@@ -82,6 +82,7 @@ show_recommendations("movies");
 //? ------------------------------
 //#region
 const movie_count = document.getElementById("movie_count");
+const movie_watch_time = document.getElementById("movie_watch_time");
 const movie_library_count = document.getElementById("movie_library_count");
 const movie_grid = document.getElementById("movie_grid");
 const movie_library_toggle = document.getElementById("movie_library_toggle");
@@ -278,6 +279,14 @@ async function load_movie_library() {
         }
 
         movie_count.textContent = movies.length;
+
+        const total_runtime_minutes = movies.reduce(
+            (total, movie) => total + (movie.runtime_minutes || 0),
+            0
+        );
+        const total_runtime_hours = Math.round(total_runtime_minutes / 60);
+
+        movie_watch_time.textContent = `${total_runtime_hours}h`;
         movie_library_count.textContent = `${movies.length} MOVIES`;
 
         if (movies.length === 0) {
@@ -297,6 +306,7 @@ async function load_movie_library() {
     } catch (error) {
         console.error("Unable to load Supabase movie library:", error);
         movie_count.textContent = "Error";
+        movie_watch_time.textContent = "—";
         movie_library_count.textContent = "ERROR";
         movie_grid.innerHTML = '<p class="library-loading">Unable to load your movies.</p>';
     }
