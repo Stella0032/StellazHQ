@@ -418,6 +418,83 @@ async function get_valid_mal_access_token(uid) {
     return tokens.access_token;
 }
 
+exports.getMALAnimeRecommendations = onCall(
+    {secrets: [mal_client_id, mal_client_secret]},
+    async (request) => {
+        if (!request.auth) {
+            throw new HttpsError("unauthenticated", "You must be logged in.");
+        }
+
+        const seed_ids = Array.isArray(request.data?.seed_ids)
+            ? request.data.seed_ids.map(Number).filter((id) => Number.isInteger(id) && id > 0).slice(0, 8)
+            : [];
+        const library_ids = new Set(
+            Array.isArray(request.data?.library_ids)
+                ? request.data.library_ids.map(Number)
+                : []
+        );
+
+        if (seed_ids.length === 0) {
+            return {recommendations: []};
+        }
+
+        const access_token = await get_valid_mal_access_token(request.auth.uid);
+        const candidates = new Map();
+
+        for (const seed_id of seed_ids) {
+            const response = await fetch(
+                `https://api.myanimelist.net/v2/anime/${seed_id}/recommendations?limit=20`,
+                {headers: {Authorization: `Bearer ${access_token}`}}
+            );
+
+            if (!response.ok) {
+                logger.warn("MAL recommendations request failed.", {
+                    seed_id,
+                    status: response.status,
+                });
+                continue;
+            }
+
+            const payload = await response.json();
+
+            for (const item of payload.data || []) {
+                const node = item.node || {};
+                const mal_id = Number(node.id);
+
+                if (!mal_id || library_ids.has(mal_id)) {
+                    continue;
+                }
+
+                const existing = candidates.get(mal_id) || {
+                    mal_id,
+                    title: node.title,
+                    poster_url: node.main_picture?.large ||
+                        node.main_picture?.medium || "",
+                    recommendation_strength: 0,
+                    because_of: [],
+                };
+
+                existing.recommendation_strength +=
+                    Number(item.num_recommendations || 1);
+
+                if (!existing.because_of.includes(String(seed_id))) {
+                    existing.because_of.push(String(seed_id));
+                }
+
+                candidates.set(mal_id, existing);
+            }
+        }
+
+        const recommendations = [...candidates.values()]
+            .sort((a, b) =>
+                b.recommendation_strength - a.recommendation_strength
+            )
+            .slice(0, 18);
+
+        return {recommendations};
+    }
+);
+
 exports.updateMALAnimeStatus = onCall(
     {secrets: [mal_client_id, mal_client_secret]},
     async (request) => {
