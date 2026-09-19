@@ -11,9 +11,9 @@ html[data-theme="neon"] .ambient-background,
 html[data-theme="neon"] .space-bg{
     filter:none;
     background:
-        radial-gradient(circle at 82% 15%, rgba(43,255,88,.11), transparent 34%),
-        radial-gradient(circle at 12% 68%, rgba(21,190,63,.08), transparent 40%),
-        linear-gradient(135deg,#010402 0%,#020904 50%,#010402 100%);
+        radial-gradient(ellipse at 82% 0%, rgba(43,255,88,.14) 0%, rgba(43,255,88,.07) 26%, transparent 62%),
+        radial-gradient(ellipse at 12% 72%, rgba(21,190,63,.08) 0%, transparent 58%),
+        linear-gradient(180deg,#06150a 0%,#041008 18%,#020a05 42%,#010402 72%,#010402 100%);
 }
 
 html[data-theme="neon"] .ambient-background::after{
