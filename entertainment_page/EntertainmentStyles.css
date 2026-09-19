@@ -48,10 +48,9 @@ a {
     inset: 0;
     z-index: -2;
     background:
-        radial-gradient(circle at 82% 15%, rgba(189, 91, 255, 0.26), transparent 30%),
-        radial-gradient(circle at 12% 65%, rgba(48, 142, 255, 0.22), transparent 34%),
-        radial-gradient(circle at 65% 90%, rgba(255, 82, 155, 0.15), transparent 32%),
-        linear-gradient(135deg, #080713 0%, #101126 48%, #090817 100%);
+        radial-gradient(circle at 82% 15%, rgba(123, 91, 255, 0.16), transparent 34%),
+        radial-gradient(circle at 12% 65%, rgba(48, 142, 255, 0.14), transparent 38%),
+        linear-gradient(135deg, #090817 0%, #0d0d20 50%, #090817 100%);
 }
 
 .ambient-background::before {
