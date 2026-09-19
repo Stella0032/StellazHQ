@@ -92,7 +92,7 @@
             </button>
         </section>
 
-        <section class="movie-library-panel show-library-panel" id="show_library">
+        <section class="movie-library-panel show-library-panel category-panel-hidden" id="show_library">
             <div class="movie-library-header">
                 <div>
                     <p class="eyebrow">YOUR COLLECTION</p>
@@ -117,11 +117,11 @@
             <button class="movie-library-toggle" id="show_library_toggle" type="button" hidden>Show all shows</button>
         </section>
 
-        <section class="recommendations-panel">
+        <section class="recommendations-panel" id="recommendations_panel">
             <div class="recommendations-header">
                 <div>
                     <p class="eyebrow">PERSONAL PICKS</p>
-                    <h2>Recommended For You</h2>
+                    <h2 id="recommendation_title">Recommended Movies For You</h2>
                 </div>
                 <span class="recommendation-count">6 PICKS</span>
             </div>
@@ -131,6 +131,6 @@
     </main>
 
     <div class="toast" id="toast" role="status"></div>
-    <script type="module" src="Entertainment.js?v=12"></script>
+    <script type="module" src="Entertainment.js?v=13"></script>
 </body>
 </html>

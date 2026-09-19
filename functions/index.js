@@ -449,4 +449,121 @@ exports.getTVShowMetadata = onCall(
     }
 );
 
+
+
+exports.getTVShowRecommendations = onCall(
+    {secrets: [tmdb_read_access_token]},
+    async (request) => {
+        if (!request.auth) {
+            throw new HttpsError("unauthenticated", "You must be logged in.");
+        }
+
+        const watched_shows = Array.isArray(request.data?.shows)
+            ? request.data.shows
+            : [];
+
+        if (watched_shows.length === 0) {
+            return {recommendations: []};
+        }
+
+        const headers = {
+            Authorization: `Bearer ${tmdb_read_access_token.value()}`,
+            accept: "application/json",
+        };
+
+        const watched_keys = new Set(
+            watched_shows.map((show) =>
+                `${String(show.title).toLowerCase()}|${show.year}`
+            )
+        );
+
+        const seeds = [...watched_shows]
+            .sort((a, b) =>
+                (b.my_rating ?? b.tmdb_rating ?? 0) -
+                (a.my_rating ?? a.tmdb_rating ?? 0)
+            )
+            .slice(0, 8);
+
+        const candidates = new Map();
+
+        for (const seed of seeds) {
+            const search_url = new URL(
+                "https://api.themoviedb.org/3/search/tv"
+            );
+            search_url.searchParams.set("query", seed.title);
+            search_url.searchParams.set(
+                "first_air_date_year",
+                String(seed.year)
+            );
+            search_url.searchParams.set("include_adult", "false");
+            search_url.searchParams.set("language", "en-US");
+
+            const search_response = await fetch(search_url, {headers});
+            if (!search_response.ok) continue;
+
+            const search_data = await search_response.json();
+            const match = search_data.results?.[0];
+            if (!match) continue;
+
+            const recommendations_url =
+                `https://api.themoviedb.org/3/tv/${match.id}/recommendations?language=en-US&page=1`;
+            const response = await fetch(recommendations_url, {headers});
+            if (!response.ok) continue;
+
+            const data = await response.json();
+
+            for (const show of data.results || []) {
+                const year = show.first_air_date ?
+                    Number(show.first_air_date.slice(0, 4)) :
+                    null;
+
+                if (!year || !show.poster_path) continue;
+
+                const key = `${show.name.toLowerCase()}|${year}`;
+                if (watched_keys.has(key)) continue;
+
+                const existing = candidates.get(show.id);
+                const seed_weight = Number(
+                    seed.my_rating ?? seed.tmdb_rating ?? 5
+                );
+                const score = seed_weight +
+                    Number(show.vote_average || 0) +
+                    Math.min(Number(show.vote_count || 0) / 1000, 5);
+
+                if (existing) {
+                    existing.score += score;
+                    existing.matches += 1;
+                    existing.because_of.push(seed.title);
+                } else {
+                    candidates.set(show.id, {
+                        tmdb_id: show.id,
+                        title: show.name,
+                        year,
+                        poster_url:
+                            `https://image.tmdb.org/t/p/w500${show.poster_path}`,
+                        tmdb_rating: show.vote_average ?? null,
+                        overview: show.overview || "",
+                        score,
+                        matches: 1,
+                        because_of: [seed.title],
+                    });
+                }
+            }
+        }
+
+        const recommendations = [...candidates.values()]
+            .sort((a, b) => {
+                if (b.matches !== a.matches) return b.matches - a.matches;
+                return b.score - a.score;
+            })
+            .slice(0, 18)
+            .map((show) => ({
+                ...show,
+                because_of: [...new Set(show.because_of)].slice(0, 2),
+            }));
+
+        return {recommendations};
+    }
+);
+
 //#endregion

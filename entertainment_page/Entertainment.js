@@ -9,11 +9,17 @@ import { auth, functions, supabase } from "../firebase/firebase_config.js";
 //#region
 const recommendation_grid = document.getElementById("recommendation_grid");
 const recommendation_count = document.querySelector(".recommendation-count");
+const recommendation_title = document.getElementById("recommendation_title");
+
+let active_recommendation_type = "movie";
 
 let recommendation_pool = [];
 let visible_recommendations = [];
 
 function create_recommendation_card(movie) {
+    const media_label = active_recommendation_type === "show"
+        ? "show"
+        : "movie";
     const reason = movie.because_of?.length
         ? `Because you liked ${movie.because_of.join(" and ")}`
         : "Picked from your movie history";
@@ -61,6 +67,8 @@ function render_recommendations() {
 }
 
 async function load_movie_recommendations(movies) {
+    active_recommendation_type = "movie";
+    recommendation_title.textContent = "Recommended Movies For You";
     recommendation_grid.innerHTML =
         '<p class="recommendation-loading">Finding movies for you...</p>';
 
@@ -93,6 +101,51 @@ async function load_movie_recommendations(movies) {
         recommendation_count.textContent = "—";
         recommendation_grid.innerHTML =
             '<p class="recommendation-loading">Unable to load recommendations.</p>';
+    }
+}
+
+
+async function load_show_recommendations(shows) {
+    active_recommendation_type = "show";
+    recommendation_title.textContent = "Recommended TV Shows For You";
+    recommendation_grid.innerHTML =
+        '<p class="recommendation-loading">Finding shows for you...</p>';
+
+    if (shows.length === 0) {
+        recommendation_count.textContent = "0 PICKS";
+        recommendation_grid.innerHTML =
+            '<p class="recommendation-loading">Add and rate some TV shows to get recommendations.</p>';
+        return;
+    }
+
+    try {
+        const get_show_recommendations =
+            httpsCallable(functions, "getTVShowRecommendations");
+        const result = await get_show_recommendations({
+            shows: shows.map((show) => ({
+                title: show.title,
+                year: show.year,
+                my_rating: show.my_rating,
+                tmdb_rating: show.tmdb_rating
+            }))
+        });
+
+        recommendation_pool = result.data.recommendations || [];
+        visible_recommendations = recommendation_pool.splice(0, 6);
+
+        if (visible_recommendations.length === 0) {
+            recommendation_count.textContent = "0 PICKS";
+            recommendation_grid.innerHTML =
+                '<p class="recommendation-loading">Rate a few shows to improve your recommendations.</p>';
+            return;
+        }
+
+        render_recommendations();
+    } catch (error) {
+        console.error("Unable to load TV recommendations:", error);
+        recommendation_count.textContent = "—";
+        recommendation_grid.innerHTML =
+            '<p class="recommendation-loading">Unable to load TV recommendations.</p>';
     }
 }
 
@@ -169,7 +222,7 @@ let movie_library = [];
 
 function get_collapsed_movie_count() {
     if (window.innerWidth <= 700) {
-        return 4;
+        return 12;
     }
 
     if (window.innerWidth <= 1100) {
@@ -755,25 +808,48 @@ onAuthStateChanged(auth, async (user) => {
 //#region
 const library_cards = document.querySelectorAll("[data-library]");
 const toast = document.getElementById("toast");
+const movie_library_panel = document.getElementById("movie_library");
+const show_library_panel = document.getElementById("show_library");
+
+function show_entertainment_category(category) {
+    const showing_movies = category === "Movies";
+
+    movie_library_panel.classList.toggle(
+        "category-panel-hidden",
+        !showing_movies
+    );
+    show_library_panel.classList.toggle(
+        "category-panel-hidden",
+        showing_movies
+    );
+
+    if (showing_movies) {
+        load_movie_recommendations(movie_library);
+        movie_library_panel.scrollIntoView({
+            behavior: "smooth",
+            block: "start"
+        });
+    } else {
+        load_show_recommendations(show_library);
+        show_library_panel.scrollIntoView({
+            behavior: "smooth",
+            block: "start"
+        });
+    }
+}
 
 library_cards.forEach((card) => {
     card.addEventListener("click", (event) => {
         if (card.dataset.library === "Movies" ||
             card.dataset.library === "TV Shows") {
             event.preventDefault();
-            const target_id = card.dataset.library === "Movies"
-                ? "movie_library"
-                : "show_library";
-            document.getElementById(target_id).scrollIntoView({
-                behavior: "smooth",
-                block: "start"
-            });
+            show_entertainment_category(card.dataset.library);
             return;
         }
 
         event.preventDefault();
-
-        toast.textContent = `${card.dataset.library} library is the next page to build.`;
+        toast.textContent =
+            `${card.dataset.library} library is the next page to build.`;
         toast.classList.add("show");
 
         clearTimeout(window.entertainment_toast_timeout);
