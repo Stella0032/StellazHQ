@@ -4,76 +4,67 @@ import { httpsCallable } from "https://www.gstatic.com/firebasejs/9.22.2/firebas
 import { auth, functions, supabase } from "../firebase/firebase_config.js";
 
 //? ---------------------------------
-//* ----- Recommendation Data ------
-//? ---------------------------------
-//#region
-const recommendations = {
-    movies: [
-        { title: "Venom", year: 2018, reason: "More of Sony's Spider-Man universe" },
-        { title: "Doctor Strange", year: 2016, reason: "Marvel magic and multiverse energy" },
-        { title: "Avengers: Infinity War", year: 2018, reason: "Spider-Man continues in the MCU" },
-        { title: "Avengers: Endgame", year: 2019, reason: "Continues the MCU story" },
-        { title: "Deadpool & Wolverine", year: 2024, reason: "Marvel multiverse action" },
-        { title: "Big Hero 6", year: 2014, reason: "Animated superhero adventure" }
-    ],
-    shows: [
-        { title: "Daredevil", reason: "Street-level Marvel story" },
-        { title: "Loki", reason: "Marvel multiverse story" },
-        { title: "The Boys", reason: "A very different superhero series" },
-        { title: "Invincible", reason: "Animated superhero action" },
-        { title: "Hawkeye", reason: "Street-level MCU adventure" },
-        { title: "Moon Knight", reason: "A darker Marvel story" }
-    ],
-    anime: [
-        { title: "My Hero Academia", reason: "Superhero-focused anime" },
-        { title: "One Punch Man", reason: "Superhero action and comedy" },
-        { title: "Jujutsu Kaisen", reason: "Fast supernatural action" },
-        { title: "Demon Slayer", reason: "Stylish action adventure" },
-        { title: "Mob Psycho 100", reason: "Powers, action and heart" },
-        { title: "Solo Leveling", reason: "Power progression and action" }
-    ],
-    manga: [
-        { title: "One-Punch Man", reason: "Superhero manga" },
-        { title: "My Hero Academia", reason: "A world built around heroes" },
-        { title: "Kaiju No. 8", reason: "Action and transformation powers" },
-        { title: "Chainsaw Man", reason: "Wild supernatural action" },
-        { title: "Solo Leveling", reason: "Fast power progression" },
-        { title: "Dandadan", reason: "Supernatural action and comedy" }
-    ]
-};
-//#endregion
-
-
-//? ---------------------------------
-//* ----- Recommendation Tabs ------
+//* ----- Smart Recommendations ----
 //? ---------------------------------
 //#region
 const recommendation_grid = document.getElementById("recommendation_grid");
-const recommendation_tabs = document.querySelectorAll(".recommendation-tab");
+const recommendation_count = document.querySelector(".recommendation-count");
 
-function show_recommendations(category) {
-    const category_recommendations = recommendations[category];
+async function load_movie_recommendations(movies) {
+    recommendation_grid.innerHTML =
+        '<p class="recommendation-loading">Finding movies for you...</p>';
 
-    recommendation_grid.innerHTML = category_recommendations
-        .map((item) => `
-            <article class="recommendation-card">
-                <div class="poster-placeholder" aria-hidden="true">✦</div>
-                <h3>${item.title}</h3>
-                <p>${item.year ? `${item.year} · ` : ""}${item.reason}</p>
-            </article>
-        `)
-        .join("");
+    try {
+        const get_movie_recommendations =
+            httpsCallable(functions, "getMovieRecommendations");
+
+        const result = await get_movie_recommendations({
+            movies: movies.map((movie) => ({
+                title: movie.title,
+                year: movie.year,
+                my_rating: movie.my_rating,
+                tmdb_rating: movie.tmdb_rating
+            }))
+        });
+
+        const recommendations = result.data.recommendations || [];
+        recommendation_count.textContent =
+            `${recommendations.length} PICKS`;
+
+        if (recommendations.length === 0) {
+            recommendation_grid.innerHTML =
+                '<p class="recommendation-loading">Rate a few movies to improve your recommendations.</p>';
+            return;
+        }
+
+        recommendation_grid.innerHTML = recommendations.map((movie) => {
+            const reason = movie.because_of?.length
+                ? `Because you liked ${movie.because_of.join(" and ")}`
+                : "Picked from your movie history";
+
+            const rating = movie.tmdb_rating !== null
+                ? ` · ⭐ ${Number(movie.tmdb_rating).toFixed(1)}`
+                : "";
+
+            return `
+                <article class="recommendation-card">
+                    <img class="recommendation-poster"
+                         src="${movie.poster_url}"
+                         alt="${movie.title} poster"
+                         loading="lazy">
+                    <h3 title="${movie.title}">${movie.title}</h3>
+                    <p>${movie.year}${rating}</p>
+                    <p class="recommendation-reason">${reason}</p>
+                </article>
+            `;
+        }).join("");
+    } catch (error) {
+        console.error("Unable to load recommendations:", error);
+        recommendation_count.textContent = "—";
+        recommendation_grid.innerHTML =
+            '<p class="recommendation-loading">Unable to load recommendations.</p>';
+    }
 }
-
-recommendation_tabs.forEach((tab) => {
-    tab.addEventListener("click", () => {
-        recommendation_tabs.forEach((item) => item.classList.remove("active"));
-        tab.classList.add("active");
-        show_recommendations(tab.dataset.category);
-    });
-});
-
-show_recommendations("movies");
 //#endregion
 
 
@@ -392,6 +383,7 @@ async function load_movie_library() {
         movie_library = movies;
         populate_movie_filters(movies);
         render_movie_library();
+        await load_movie_recommendations(movies);
 
         movies.forEach((movie) => {
             console.log("Loaded Supabase movie:", movie.title, movie);
