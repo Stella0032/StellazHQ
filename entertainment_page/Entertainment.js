@@ -4,6 +4,81 @@ import { httpsCallable } from "https://www.gstatic.com/firebasejs/9.22.2/firebas
 import { auth, functions, supabase } from "../firebase/firebase_config.js";
 
 //? ---------------------------------
+//* ----- New & Upcoming Releases ----
+//? ---------------------------------
+//#region
+const new_release_title = document.getElementById("new_release_title");
+const upcoming_release_title =
+    document.getElementById("upcoming_release_title");
+const new_release_grid = document.getElementById("new_release_grid");
+const upcoming_release_grid =
+    document.getElementById("upcoming_release_grid");
+
+function create_release_card(item) {
+    const date = item.release_date
+        ? new Date(`${item.release_date}T00:00:00`).toLocaleDateString(
+            undefined,
+            {year: "numeric", month: "short", day: "numeric"}
+        )
+        : "Date TBA";
+    const rating = item.rating
+        ? ` · ⭐ ${Number(item.rating).toFixed(1)}`
+        : "";
+
+    return `
+        <article class="recommendation-card release-card">
+            <div class="recommendation-poster-wrap">
+                <img class="recommendation-poster"
+                     src="${item.poster_url}"
+                     alt="${item.title} poster"
+                     loading="lazy">
+            </div>
+            <h3 title="${item.title}">${item.title}</h3>
+            <p>${date}${rating}</p>
+        </article>
+    `;
+}
+
+async function load_release_rows(type) {
+    const labels = type === "show"
+        ? ["Newly Released TV Shows", "Upcoming TV Releases"]
+        : type === "anime"
+            ? ["Newly Released Anime", "Upcoming Anime Releases"]
+            : ["Newly Released Movies", "Upcoming Movie Releases"];
+
+    new_release_title.textContent = labels[0];
+    upcoming_release_title.textContent = labels[1];
+    new_release_grid.innerHTML =
+        '<p class="recommendation-loading">Loading new releases...</p>';
+    upcoming_release_grid.innerHTML =
+        '<p class="recommendation-loading">Loading upcoming releases...</p>';
+
+    try {
+        const get_releases =
+            httpsCallable(functions, "getEntertainmentReleases");
+        const result = await get_releases({type});
+        const newly_released = result.data.newly_released || [];
+        const upcoming = result.data.upcoming || [];
+
+        new_release_grid.innerHTML = newly_released.length
+            ? newly_released.map(create_release_card).join("")
+            : '<p class="recommendation-loading">No new releases found.</p>';
+
+        upcoming_release_grid.innerHTML = upcoming.length
+            ? upcoming.map(create_release_card).join("")
+            : '<p class="recommendation-loading">No upcoming releases found.</p>';
+    } catch (error) {
+        console.error("Unable to load release rows:", error);
+        new_release_grid.innerHTML =
+            '<p class="recommendation-loading">Unable to load new releases.</p>';
+        upcoming_release_grid.innerHTML =
+            '<p class="recommendation-loading">Unable to load upcoming releases.</p>';
+    }
+}
+//#endregion
+
+
+//? ---------------------------------
 //* ----- Smart Recommendations ----
 //? ---------------------------------
 //#region
