@@ -110,8 +110,21 @@ function create_movie_card(movie, index) {
         ? `<img class="movie-poster" src="${movie.poster_url}" alt="${movie.title} poster" loading="lazy">`
         : `<div class="movie-poster-placeholder"><span>${movie.title}</span></div>`;
 
-    const rating = movie.my_rating !== null
-        ? ` · ★ ${movie.my_rating}/10`
+    const personal_rating = movie.my_rating !== null
+        ? ` · YOU ${movie.my_rating}/10`
+        : "";
+
+    const tomato_rating = movie.tomato_rating !== null
+        ? ` · 🍅 ${movie.tomato_rating}%`
+        : "";
+
+    const audience_rating = movie.audience_rating !== null
+        ? ` · 🍿 ${movie.audience_rating}%`
+        : "";
+
+    const tmdb_rating = movie.tmdb_rating !== null &&
+        movie.tmdb_rating !== undefined
+        ? ` · ⭐ ${Number(movie.tmdb_rating).toFixed(1)}`
         : "";
 
     const extra_class = index >= get_collapsed_movie_count()
@@ -122,7 +135,7 @@ function create_movie_card(movie, index) {
         <article class="movie-card${extra_class}">
             ${poster}
             <h3 title="${movie.title}">${movie.title}</h3>
-            <p class="movie-meta">${movie.year}${rating}</p>
+            <p class="movie-meta">${movie.year}${tomato_rating}${audience_rating}${tmdb_rating}${personal_rating}</p>
         </article>
     `;
 }
@@ -206,7 +219,9 @@ function render_movie_library() {
 }
 
 async function enrich_missing_movie_metadata(movies) {
-    const movies_missing_metadata = movies.filter((movie) => !movie.poster_url);
+    const movies_missing_metadata = movies.filter(
+        (movie) => !movie.poster_url || movie.tmdb_rating === null
+    );
 
     if (movies_missing_metadata.length === 0) {
         return false;
@@ -228,7 +243,8 @@ async function enrich_missing_movie_metadata(movies) {
                 .update({
                     poster_url: metadata.poster_url,
                     genres: metadata.genres,
-                    runtime_minutes: metadata.runtime_minutes
+                    runtime_minutes: metadata.runtime_minutes,
+                    tmdb_rating: metadata.tmdb_rating
                 })
                 .eq("id", movie.id);
 
@@ -239,6 +255,7 @@ async function enrich_missing_movie_metadata(movies) {
             movie.poster_url = metadata.poster_url;
             movie.genres = metadata.genres;
             movie.runtime_minutes = metadata.runtime_minutes;
+            movie.tmdb_rating = metadata.tmdb_rating;
 
             console.log("Added TMDB metadata:", movie.title);
         } catch (error) {
