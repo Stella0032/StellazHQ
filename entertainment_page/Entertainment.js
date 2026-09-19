@@ -1450,7 +1450,7 @@ async function load_anime_library() {
 
     anime_grid.innerHTML = (data || []).map((anime) => {
         const poster = anime.poster_url
-            ? '<img src="' + anime.poster_url + '" alt="" loading="lazy">'
+            ? '<img class="movie-poster" src="' + anime.poster_url + '" alt="" loading="lazy">'
             : '<div class="movie-poster-placeholder">ANIME</div>';
         const progress = anime.total_episodes
             ? anime.episodes_watched + "/" + anime.total_episodes + " eps"
