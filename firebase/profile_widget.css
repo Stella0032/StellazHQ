@@ -3,7 +3,7 @@
 .theme-options{display:grid;gap:12px}.theme-choice{padding:16px;display:grid;gap:5px;border:1px solid rgba(255,255,255,.12);border-radius:13px;color:#fff;text-align:left;background:rgba(255,255,255,.04);cursor:pointer}.theme-choice span{color:#91a9bd;font-size:12px}.theme-choice:hover,.theme-choice.selected{border-color:#4bd3ff;background:rgba(75,211,255,.11);box-shadow:0 0 18px rgba(75,211,255,.14)}
 
 html[data-theme="neon"] body{
-    background:#010402;
+    background:transparent;
     color:#f2fff5;
 }
 
@@ -271,3 +271,9 @@ html[data-theme="flurple"] .stellaz-ai-form button{
     background:linear-gradient(135deg,#f7d36d,#b54fff);
 }
 /*#endregion*/
+
+
+/* Keep every theme's ambient gradient continuous behind the full page. */
+html[data-theme="stellaz"] body{
+    background:transparent;
+}
