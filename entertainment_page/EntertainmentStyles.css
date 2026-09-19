@@ -1486,3 +1486,114 @@ a {
     }
 }
 /*#endregion*/
+
+
+/*? ------------------------------------ */
+/*^ ----- TV Details Dialog Polish ---- */
+/*? ------------------------------------ */
+/*#region*/
+.show-details-dialog {
+    width: min(1180px, calc(100% - 48px));
+    max-height: 88vh;
+    border: 1px solid rgba(194, 120, 255, 0.28);
+    border-radius: 24px;
+    background:
+        radial-gradient(circle at top left, rgba(194, 120, 255, 0.10), transparent 34%),
+        #0d0f20;
+}
+
+.show-details-shell {
+    min-height: 420px;
+    padding: 30px 32px 34px;
+}
+
+.show-details-header {
+    padding-bottom: 18px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.show-details-header h2 {
+    margin-bottom: 0;
+    font-size: clamp(24px, 3vw, 36px);
+}
+
+.show-details-header .library-dialog-close {
+    flex: 0 0 auto;
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.season-grid {
+    margin-top: 24px;
+    grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+    gap: 18px;
+}
+
+.season-card {
+    padding: 7px;
+    border-color: rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.025);
+}
+
+.season-card strong {
+    padding: 0 3px;
+    font-size: 13px;
+}
+
+.season-card span {
+    padding: 0 3px 4px;
+}
+
+.season-error {
+    grid-column: 1 / -1;
+    min-height: 260px;
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 8px;
+    text-align: center;
+    color: #d9dcec;
+}
+
+.season-error strong {
+    font-size: 18px;
+}
+
+.season-error p {
+    margin: 0;
+    color: #9299b0;
+}
+
+.season-error button {
+    margin-top: 10px;
+    padding: 9px 15px;
+    border: 1px solid rgba(194, 120, 255, 0.45);
+    border-radius: 999px;
+    color: #f2e8ff;
+    background: rgba(194, 120, 255, 0.10);
+    cursor: pointer;
+}
+
+.episode-list {
+    margin-top: 20px;
+}
+
+@media (max-width: 700px) {
+    .show-details-dialog {
+        width: calc(100% - 18px);
+        max-height: 92vh;
+        border-radius: 18px;
+    }
+
+    .show-details-shell {
+        min-height: 70vh;
+        padding: 17px 14px 22px;
+    }
+
+    .season-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 9px;
+    }
+}
+/*#endregion*/
