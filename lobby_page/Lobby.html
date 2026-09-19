@@ -5,15 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stellaz HQ</title>
     <link rel="stylesheet" href="LobbyStyles.css">
+    <link rel="stylesheet" href="../firebase/profile_widget.css">
 </head>
 <body>
     <div class="space-bg" aria-hidden="true"></div>
 
     <header class="topbar">
         <a class="brand" href="Lobby.html" aria-label="Stellaz home">STELL<span>△</span>Z</a>
-        <div class="top-actions">
-            <div class="status"><span class="status-dot"></span> SYSTEM ONLINE</div>
-            <a class="logout" href="../index.html">Logout</a>
+        <div class="profile-widget" data-profile-widget>
+            <button class="profile-trigger" type="button" aria-label="Open profile menu" aria-expanded="false">
+                <span class="profile-avatar" data-profile-avatar>△</span>
+                <span class="profile-name" data-profile-name>Account</span>
+                <span class="profile-chevron">⌄</span>
+            </button>
+            <div class="profile-menu" data-profile-menu hidden>
+                <button type="button" data-profile-edit>Edit profile</button>
+                <button type="button" data-profile-logout>Logout</button>
+            </div>
         </div>
     </header>
 
@@ -85,5 +93,6 @@
 
     <div class="toast" id="toast" role="status"></div>
     <script src="Lobby.js"></script>
+    <script type="module" src="../firebase/profile_widget.js"></script>
 </body>
 </html>
