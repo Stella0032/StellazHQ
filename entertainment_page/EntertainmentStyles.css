@@ -820,3 +820,28 @@ a {
         font-size: 7px;
     }
 }
+
+
+/*? -------------------------------- */
+/*^ ----- Smart Recommendations --- */
+/*? -------------------------------- */
+/*#region*/
+.recommendation-poster {
+    width: 100%;
+    aspect-ratio: 2 / 3;
+    display: block;
+    border-radius: 12px;
+    object-fit: cover;
+}
+
+.recommendation-reason {
+    margin-top: 5px !important;
+    color: #b8bdd1 !important;
+    line-height: 1.35;
+}
+
+.recommendation-loading {
+    grid-column: 1 / -1;
+    color: var(--muted);
+}
+/*#endregion*/
