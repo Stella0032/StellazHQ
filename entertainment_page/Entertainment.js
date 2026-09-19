@@ -113,23 +113,7 @@ function create_movie_card(movie, index) {
 
     const personal_rating_value = movie.my_rating !== null
         ? Number(movie.my_rating)
-        : "";
-
-    const personal_rating = `
-        <label class="personal-rating">
-            YOU
-            <select class="personal-rating-select"
-                    data-movie-id="${movie.id}"
-                    aria-label="Your rating for ${movie.title}">
-                <option value="" ${personal_rating_value === "" ? "selected" : ""}>—</option>
-                ${Array.from({length: 11}, (_, rating) => `
-                    <option value="${rating}" ${personal_rating_value === rating ? "selected" : ""}>
-                        ${rating}/10
-                    </option>
-                `).join("")}
-            </select>
-        </label>
-    `;
+        : null;
 
     const tomato_rating = movie.tomato_rating !== null
         ? ` · 🍅 ${movie.tomato_rating}%`
@@ -144,16 +128,44 @@ function create_movie_card(movie, index) {
         ? ` · ⭐ ${Number(movie.tmdb_rating).toFixed(1)}`
         : "";
 
+    const personal_rating = personal_rating_value !== null
+        ? ` · ★ ${personal_rating_value}/10`
+        : " · ★ —";
+
+    const rating_buttons = Array.from({length: 10}, (_, index) => {
+        const rating = index + 1;
+        const selected = personal_rating_value !== null &&
+            rating <= personal_rating_value;
+
+        return `
+            <button class="rating-star ${selected ? "selected" : ""}"
+                    type="button"
+                    data-movie-id="${movie.id}"
+                    data-rating="${rating}"
+                    aria-label="Rate ${movie.title} ${rating} out of 10">
+                ★
+                <span>${rating}</span>
+            </button>
+        `;
+    }).join("");
+
     const extra_class = index >= get_collapsed_movie_count()
         ? " library-extra"
         : "";
 
     return `
         <article class="movie-card${extra_class}">
-            ${poster}
+            <div class="movie-poster-wrap">
+                ${poster}
+                <div class="movie-rating-overlay">
+                    <p>Rate this movie</p>
+                    <div class="rating-stars">${rating_buttons}</div>
+                </div>
+            </div>
             <h3 title="${movie.title}">${movie.title}</h3>
-            <p class="movie-meta">${movie.year}${tomato_rating}${audience_rating}${tmdb_rating}</p>
-            ${personal_rating}
+            <p class="movie-meta">
+                ${movie.year}${tomato_rating}${audience_rating}${tmdb_rating}${personal_rating}
+            </p>
         </article>
     `;
 }
@@ -177,23 +189,48 @@ async function save_personal_rating(movie_id, rating) {
     }
 }
 
-movie_grid.addEventListener("change", async (event) => {
-    if (!event.target.classList.contains("personal-rating-select")) {
+movie_grid.addEventListener("click", async (event) => {
+    const rating_button = event.target.closest(".rating-star");
+
+    if (!rating_button) {
         return;
     }
 
-    const select = event.target;
-    const movie_id = Number(select.dataset.movieId);
-    select.disabled = true;
+    const movie_id = Number(rating_button.dataset.movieId);
+    const rating = Number(rating_button.dataset.rating);
+    const card = rating_button.closest(".movie-card");
 
     try {
-        await save_personal_rating(movie_id, select.value);
-        console.log("Saved personal rating:", movie_id, select.value);
+        await save_personal_rating(movie_id, rating);
+
+        card.querySelectorAll(".rating-star").forEach((button) => {
+            button.classList.toggle(
+                "selected",
+                Number(button.dataset.rating) <= rating
+            );
+        });
+
+        const movie = movie_library.find((item) => item.id === movie_id);
+
+        if (movie) {
+            const meta = card.querySelector(".movie-meta");
+            const tomato = movie.tomato_rating !== null
+                ? ` · 🍅 ${movie.tomato_rating}%`
+                : "";
+            const audience = movie.audience_rating !== null
+                ? ` · 🍿 ${movie.audience_rating}%`
+                : "";
+            const tmdb = movie.tmdb_rating !== null &&
+                movie.tmdb_rating !== undefined
+                ? ` · ⭐ ${Number(movie.tmdb_rating).toFixed(1)}`
+                : "";
+
+            meta.textContent =
+                `${movie.year}${tomato}${audience}${tmdb} · ★ ${rating}/10`;
+        }
     } catch (error) {
         console.error("Unable to save personal rating:", error);
         alert("Unable to save your rating. Please try again.");
-    } finally {
-        select.disabled = false;
     }
 });
 
