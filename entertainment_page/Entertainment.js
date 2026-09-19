@@ -1941,6 +1941,12 @@ onAuthStateChanged(auth, async (user) => {
         await load_mal_connection_status();
         await load_anime_library();
         await finish_mal_connection();
+
+        // Movies are the default visible category on first load.
+        // Load its recommendations and release rows immediately instead
+        // of waiting for the user to switch categories.
+        load_movie_recommendations(movie_library);
+        load_release_rows("movie");
     } catch (error) {
         console.error("Unable to prepare Supabase access:", error);
         movie_count.textContent = "Error";
