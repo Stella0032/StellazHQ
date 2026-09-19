@@ -1427,6 +1427,16 @@ const anime_status_filter = document.getElementById("anime_status_filter");
 const anime_sort = document.getElementById("anime_sort");
 const anime_filter_clear = document.getElementById("anime_filter_clear");
 let anime_library = [];
+let active_anime = null;
+const anime_edit_dialog = document.getElementById("anime_edit_dialog");
+const anime_edit_title = document.getElementById("anime_edit_title");
+const anime_edit_form = document.getElementById("anime_edit_form");
+const anime_edit_status = document.getElementById("anime_edit_status");
+const anime_edit_episodes = document.getElementById("anime_edit_episodes");
+const anime_edit_episode_total = document.getElementById("anime_edit_episode_total");
+const anime_edit_score = document.getElementById("anime_edit_score");
+const anime_edit_close = document.getElementById("anime_edit_close");
+const anime_edit_save = document.getElementById("anime_edit_save");
 const mal_connect_card = document.getElementById("mal_connect_card");
 const mal_sync_header_button = document.getElementById("mal_sync_header_button");
 
@@ -1496,7 +1506,7 @@ function render_anime_library() {
             '<div class="movie-poster-wrap">' + poster +
             '<div class="anime-rating-overlay">' +
             score.replace(" · ", "") + '</div></div>' +
-            '<h3>' + item.title + '</h3><p>' +
+            '<h3 class="anime-edit-title" data-anime-id="' + item.id + '" tabindex="0" role="button" title="Edit on MyAnimeList">' + item.title + '</h3><p>' +
             progress + score + '</p></article>';
     }).join("");
 
@@ -1539,6 +1549,75 @@ async function load_anime_library() {
         mal_sync_header_button.hidden = false;
     }
 }
+
+function open_anime_editor(anime_id) {
+    active_anime = anime_library.find((item) => item.id === anime_id);
+    if (!active_anime) return;
+
+    anime_edit_title.textContent = active_anime.title;
+    anime_edit_status.value = active_anime.status;
+    anime_edit_episodes.value = active_anime.episodes_watched || 0;
+    anime_edit_episodes.max = active_anime.total_episodes || "";
+    anime_edit_episode_total.textContent = active_anime.total_episodes
+        ? " / " + active_anime.total_episodes
+        : "";
+    anime_edit_score.value = active_anime.my_rating
+        ? String(Math.round(Number(active_anime.my_rating)))
+        : "";
+    anime_edit_dialog.showModal();
+}
+
+anime_grid.addEventListener("click", (event) => {
+    const title = event.target.closest(".anime-edit-title");
+    if (title) open_anime_editor(Number(title.dataset.animeId));
+});
+
+anime_grid.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    const title = event.target.closest(".anime-edit-title");
+    if (!title) return;
+    event.preventDefault();
+    open_anime_editor(Number(title.dataset.animeId));
+});
+
+anime_edit_close.addEventListener("click", () => anime_edit_dialog.close());
+
+anime_edit_status.addEventListener("change", () => {
+    if (anime_edit_status.value === "completed" &&
+        active_anime?.total_episodes) {
+        anime_edit_episodes.value = active_anime.total_episodes;
+    }
+});
+
+anime_edit_form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!active_anime) return;
+
+    anime_edit_save.disabled = true;
+    anime_edit_save.textContent = "Saving...";
+
+    try {
+        const update_mal = httpsCallable(functions, "updateMALAnimeStatus");
+        await update_mal({
+            anime_id: active_anime.mal_id,
+            status: anime_edit_status.value,
+            episodes_watched: Number(anime_edit_episodes.value || 0),
+            total_episodes: Number(active_anime.total_episodes || 0),
+            score: anime_edit_score.value === ""
+                ? null
+                : Number(anime_edit_score.value)
+        });
+        anime_edit_dialog.close();
+        await sync_mal_anime();
+        show_toast("Updated on MyAnimeList.");
+    } catch (error) {
+        console.error("Unable to update MAL anime:", error);
+        alert("Unable to update this anime on MyAnimeList.");
+    } finally {
+        anime_edit_save.disabled = false;
+        anime_edit_save.textContent = "Save to MyAnimeList";
+    }
+});
 
 anime_search.addEventListener("input", render_anime_library);
 anime_status_filter.addEventListener("change", render_anime_library);

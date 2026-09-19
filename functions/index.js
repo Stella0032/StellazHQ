@@ -418,6 +418,81 @@ async function get_valid_mal_access_token(uid) {
     return tokens.access_token;
 }
 
+exports.updateMALAnimeStatus = onCall(
+    {secrets: [mal_client_id, mal_client_secret]},
+    async (request) => {
+        if (!request.auth) {
+            throw new HttpsError("unauthenticated", "You must be logged in.");
+        }
+
+        const anime_id = Number(request.data?.anime_id);
+        const allowed_statuses = [
+            "watching",
+            "completed",
+            "on_hold",
+            "dropped",
+            "plan_to_watch",
+        ];
+        const status = String(request.data?.status || "");
+        let episodes_watched = Number(request.data?.episodes_watched || 0);
+        const total_episodes = Number(request.data?.total_episodes || 0);
+        const score = request.data?.score === null ||
+            request.data?.score === undefined ||
+            request.data?.score === "" ?
+            0 : Number(request.data.score);
+
+        if (!Number.isInteger(anime_id) || anime_id <= 0 ||
+            !allowed_statuses.includes(status) ||
+            !Number.isInteger(episodes_watched) || episodes_watched < 0 ||
+            !Number.isInteger(score) || score < 0 || score > 10) {
+            throw new HttpsError(
+                "invalid-argument",
+                "Invalid MyAnimeList update."
+            );
+        }
+
+        if (status === "completed" && total_episodes > 0) {
+            episodes_watched = total_episodes;
+        }
+
+        if (total_episodes > 0) {
+            episodes_watched = Math.min(episodes_watched, total_episodes);
+        }
+
+        const access_token =
+            await get_valid_mal_access_token(request.auth.uid);
+        const body = new URLSearchParams({
+            status,
+            num_watched_episodes: String(episodes_watched),
+            score: String(score),
+        });
+
+        const response = await fetch(
+            `https://api.myanimelist.net/v2/anime/${anime_id}/my_list_status`,
+            {
+                method: "PATCH",
+                headers: {
+                    Authorization: `Bearer ${access_token}`,
+                    "Content-Type": "application/x-www-form-urlencoded",
+                },
+                body,
+            }
+        );
+
+        if (!response.ok) {
+            logger.error("MAL anime status update failed.", {
+                status: response.status,
+            });
+            throw new HttpsError(
+                "internal",
+                "MyAnimeList could not update this anime."
+            );
+        }
+
+        return await response.json();
+    }
+);
+
 exports.syncMALAnimeList = onCall(
     {secrets: [mal_client_id, mal_client_secret], timeoutSeconds: 120},
     async (request) => {

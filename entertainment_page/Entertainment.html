@@ -176,7 +176,42 @@
         </section>
     </main>
 
-    <dialog class="show-details-dialog" id="show_details_dialog">
+    <dialog class="show-details-dialog anime-edit-dialog" id="anime_edit_dialog">
+    <div class="show-details-shell anime-edit-shell">
+        <div class="show-details-header">
+            <div><p class="eyebrow">MYANIMELIST</p><h2 id="anime_edit_title">Edit Anime</h2></div>
+            <button class="library-dialog-close" id="anime_edit_close" type="button" aria-label="Close">×</button>
+        </div>
+        <form id="anime_edit_form" class="anime-edit-form">
+            <label>Status
+                <select class="movie-filter" id="anime_edit_status">
+                    <option value="watching">Currently watching</option>
+                    <option value="completed">Completed</option>
+                    <option value="on_hold">On hold</option>
+                    <option value="dropped">Dropped</option>
+                    <option value="plan_to_watch">Plan to watch</option>
+                </select>
+            </label>
+            <label>Episodes watched
+                <input class="movie-search" id="anime_edit_episodes" type="number" min="0">
+                <span id="anime_edit_episode_total"></span>
+            </label>
+            <label>Your MAL rating
+                <select class="movie-filter" id="anime_edit_score">
+                    <option value="">Not rated</option>
+                    <option value="10">10 / 10</option><option value="9">9 / 10</option>
+                    <option value="8">8 / 10</option><option value="7">7 / 10</option>
+                    <option value="6">6 / 10</option><option value="5">5 / 10</option>
+                    <option value="4">4 / 10</option><option value="3">3 / 10</option>
+                    <option value="2">2 / 10</option><option value="1">1 / 10</option>
+                </select>
+            </label>
+            <button class="library-add-button" id="anime_edit_save" type="submit">Save to MyAnimeList</button>
+        </form>
+    </div>
+</dialog>
+
+<dialog class="show-details-dialog" id="show_details_dialog">
         <div class="show-details-shell">
             <div class="show-details-header">
                 <div>
