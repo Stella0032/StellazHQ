@@ -170,7 +170,7 @@ async function load_movie_recommendations(movies) {
         });
 
         recommendation_pool = result.data.recommendations || [];
-        visible_recommendations = recommendation_pool.splice(0, 6);
+        visible_recommendations = recommendation_pool.splice(0, 7);
 
         if (visible_recommendations.length === 0) {
             recommendation_count.textContent = "0 PICKS";
@@ -215,7 +215,7 @@ async function load_show_recommendations(shows) {
         });
 
         recommendation_pool = result.data.recommendations || [];
-        visible_recommendations = recommendation_pool.splice(0, 6);
+        visible_recommendations = recommendation_pool.splice(0, 7);
 
         if (visible_recommendations.length === 0) {
             recommendation_count.textContent = "0 PICKS";
@@ -261,7 +261,7 @@ async function load_anime_recommendations(anime) {
         });
 
         recommendation_pool = result.data.recommendations || [];
-        visible_recommendations = recommendation_pool.splice(0, 6);
+        visible_recommendations = recommendation_pool.splice(0, 7);
 
         if (visible_recommendations.length === 0) {
             recommendation_count.textContent = "0 PICKS";
