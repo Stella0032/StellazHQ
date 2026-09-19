@@ -241,4 +241,142 @@ exports.getMovieMetadata = onCall(
         };
     }
 );
+
+
+exports.getMovieRecommendations = onCall(
+    {secrets: [tmdb_read_access_token]},
+    async (request) => {
+        if (!request.auth) {
+            throw new HttpsError("unauthenticated", "You must be logged in.");
+        }
+
+        const watched_movies = Array.isArray(request.data?.movies)
+            ? request.data.movies
+            : [];
+
+        if (watched_movies.length === 0) {
+            return {recommendations: []};
+        }
+
+        const headers = {
+            Authorization: `Bearer ${tmdb_read_access_token.value()}`,
+            accept: "application/json",
+        };
+
+        const watched_keys = new Set(
+            watched_movies.map((movie) =>
+                `${String(movie.title).toLowerCase()}|${movie.year}`
+            )
+        );
+
+        const seeds = [...watched_movies]
+            .sort((a, b) => {
+                const a_score = a.my_rating ?? a.tmdb_rating ?? 0;
+                const b_score = b.my_rating ?? b.tmdb_rating ?? 0;
+                return b_score - a_score;
+            })
+            .slice(0, 8);
+
+        const candidates = new Map();
+
+        for (const seed of seeds) {
+            const search_url = new URL(
+                "https://api.themoviedb.org/3/search/movie"
+            );
+            search_url.searchParams.set("query", seed.title);
+            search_url.searchParams.set("year", String(seed.year));
+            search_url.searchParams.set("include_adult", "false");
+            search_url.searchParams.set("language", "en-US");
+
+            const search_response = await fetch(search_url, {headers});
+
+            if (!search_response.ok) {
+                continue;
+            }
+
+            const search_data = await search_response.json();
+            const match = search_data.results?.[0];
+
+            if (!match) {
+                continue;
+            }
+
+            const recommendations_url =
+                `https://api.themoviedb.org/3/movie/${match.id}/recommendations?language=en-US&page=1`;
+
+            const recommendations_response = await fetch(
+                recommendations_url,
+                {headers}
+            );
+
+            if (!recommendations_response.ok) {
+                continue;
+            }
+
+            const recommendations_data =
+                await recommendations_response.json();
+
+            for (const movie of recommendations_data.results || []) {
+                const year = movie.release_date ?
+                    Number(movie.release_date.slice(0, 4)) :
+                    null;
+
+                if (!year || !movie.poster_path) {
+                    continue;
+                }
+
+                const key = `${movie.title.toLowerCase()}|${year}`;
+
+                if (watched_keys.has(key)) {
+                    continue;
+                }
+
+                const existing = candidates.get(movie.id);
+                const seed_weight = seed.my_rating !== null &&
+                    seed.my_rating !== undefined ?
+                    Number(seed.my_rating) :
+                    Number(seed.tmdb_rating || 5);
+
+                const score = seed_weight +
+                    Number(movie.vote_average || 0) +
+                    Math.min(Number(movie.vote_count || 0) / 1000, 5);
+
+                if (existing) {
+                    existing.score += score;
+                    existing.matches += 1;
+                    existing.because_of.push(seed.title);
+                } else {
+                    candidates.set(movie.id, {
+                        tmdb_id: movie.id,
+                        title: movie.title,
+                        year,
+                        poster_url:
+                            `https://image.tmdb.org/t/p/w500${movie.poster_path}`,
+                        tmdb_rating: movie.vote_average ?? null,
+                        overview: movie.overview || "",
+                        score,
+                        matches: 1,
+                        because_of: [seed.title],
+                    });
+                }
+            }
+        }
+
+        const recommendations = [...candidates.values()]
+            .sort((a, b) => {
+                if (b.matches !== a.matches) {
+                    return b.matches - a.matches;
+                }
+
+                return b.score - a.score;
+            })
+            .slice(0, 6)
+            .map((movie) => ({
+                ...movie,
+                because_of: [...new Set(movie.because_of)].slice(0, 2),
+            }));
+
+        return {recommendations};
+    }
+);
 //#endregion
