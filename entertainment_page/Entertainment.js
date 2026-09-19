@@ -1416,6 +1416,8 @@ const mal_connect_button = document.getElementById("mal_connect_button");
 const mal_connection_label = document.getElementById("mal_connection_label");
 const mal_connect_title = document.getElementById("mal_connect_title");
 const mal_connect_description = document.getElementById("mal_connect_description");
+const anime_grid = document.getElementById("anime_grid");
+const anime_sync_summary = document.getElementById("anime_sync_summary");
 
 function random_url_safe_string(length) {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
@@ -1438,6 +1440,74 @@ async function load_mal_connection_status() {
         }
     } catch (error) {
         console.error("Unable to check MAL connection:", error);
+    }
+}
+
+
+async function load_anime_library() {
+    const {data, error} = await supabase.from("anime").select("*").order("title");
+    if (error) throw error;
+
+    anime_grid.innerHTML = (data || []).map((anime) => {
+        const poster = anime.poster_url
+            ? '<img src="' + anime.poster_url + '" alt="" loading="lazy">'
+            : '<div class="movie-poster-placeholder">ANIME</div>';
+        const progress = anime.total_episodes
+            ? anime.episodes_watched + "/" + anime.total_episodes + " eps"
+            : anime.episodes_watched + " eps";
+        const score = anime.my_rating
+            ? " · ★ " + Number(anime.my_rating).toFixed(1)
+            : "";
+
+        return '<article class="movie-card anime-card">' +
+            '<div class="movie-poster-wrap">' + poster + '</div>' +
+            '<h3>' + anime.title + '</h3><p>' + progress + score + '</p></article>';
+    }).join("");
+
+    anime_sync_summary.hidden = (data || []).length === 0;
+    anime_sync_summary.textContent =
+        (data || []).length + " anime synced from MyAnimeList";
+}
+
+async function sync_mal_anime() {
+    mal_connect_button.disabled = true;
+    mal_connect_button.textContent = "Syncing...";
+
+    try {
+        const sync = httpsCallable(functions, "syncMALAnimeList");
+        const result = await sync();
+        const anime = result.data.anime || [];
+
+        if (anime.length > 0) {
+            const rows = anime.map((item) => ({
+                mal_id: item.mal_id,
+                title: item.title,
+                status: item.status,
+                episodes_watched: item.episodes_watched,
+                total_episodes: item.total_episodes,
+                my_rating: item.my_rating,
+                poster_url: item.poster_url,
+                media_type: item.media_type,
+                start_date: item.start_date,
+                finish_date: item.finish_date,
+                mal_updated_at: item.mal_updated_at,
+                synced_at: new Date().toISOString()
+            }));
+
+            const {error} = await supabase
+                .from("anime")
+                .upsert(rows, {onConflict: "user_id,mal_id"});
+            if (error) throw error;
+        }
+
+        await load_anime_library();
+        show_toast(anime.length + " anime synced from MyAnimeList.");
+    } catch (error) {
+        console.error("Unable to sync MAL anime:", error);
+        alert("Unable to sync your MyAnimeList anime. Please try again.");
+    } finally {
+        mal_connect_button.disabled = false;
+        mal_connect_button.textContent = "Sync MyAnimeList";
     }
 }
 
@@ -1484,7 +1554,7 @@ async function finish_mal_connection() {
 
 mal_connect_button.addEventListener("click", async () => {
     if (mal_connect_button.dataset.connected === "true") {
-        show_toast("Anime syncing is the next step.");
+        await sync_mal_anime();
         return;
     }
 
@@ -1525,6 +1595,7 @@ onAuthStateChanged(auth, async (user) => {
         await load_movie_library();
         await load_show_library();
         await load_mal_connection_status();
+        await load_anime_library();
         await finish_mal_connection();
     } catch (error) {
         console.error("Unable to prepare Supabase access:", error);
