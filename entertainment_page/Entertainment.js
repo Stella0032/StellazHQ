@@ -85,6 +85,13 @@ const movie_count = document.getElementById("movie_count");
 const movie_library_count = document.getElementById("movie_library_count");
 const movie_grid = document.getElementById("movie_grid");
 const movie_library_toggle = document.getElementById("movie_library_toggle");
+const movie_search = document.getElementById("movie_search");
+const genre_filter = document.getElementById("genre_filter");
+const franchise_filter = document.getElementById("franchise_filter");
+const movie_sort = document.getElementById("movie_sort");
+const movie_filter_clear = document.getElementById("movie_filter_clear");
+
+let movie_library = [];
 
 function get_collapsed_movie_count() {
     if (window.innerWidth <= 700) {
@@ -118,6 +125,84 @@ function create_movie_card(movie, index) {
             <p class="movie-meta">${movie.year}${rating}</p>
         </article>
     `;
+}
+
+function populate_movie_filters(movies) {
+    const genres = [...new Set(
+        movies.flatMap((movie) => movie.genres || [])
+    )].sort((a, b) => a.localeCompare(b));
+
+    const franchises = [...new Set(
+        movies
+            .map((movie) => movie.franchise)
+            .filter(Boolean)
+    )].sort((a, b) => a.localeCompare(b));
+
+    genre_filter.innerHTML = '<option value="">All genres</option>' +
+        genres.map((genre) => `<option value="${genre}">${genre}</option>`).join("");
+
+    franchise_filter.innerHTML = '<option value="">All franchises</option>' +
+        franchises.map((franchise) =>
+            `<option value="${franchise}">${franchise}</option>`
+        ).join("");
+}
+
+function get_filtered_movies() {
+    const search = movie_search.value.trim().toLowerCase();
+    const genre = genre_filter.value;
+    const franchise = franchise_filter.value;
+
+    const filtered_movies = movie_library.filter((movie) => {
+        const matches_search = !search ||
+            movie.title.toLowerCase().includes(search);
+        const matches_genre = !genre ||
+            (movie.genres || []).includes(genre);
+        const matches_franchise = !franchise ||
+            movie.franchise === franchise;
+
+        return matches_search && matches_genre && matches_franchise;
+    });
+
+    return filtered_movies.sort((a, b) => {
+        switch (movie_sort.value) {
+            case "year-asc":
+                return a.year - b.year;
+            case "title-asc":
+                return a.title.localeCompare(b.title);
+            case "title-desc":
+                return b.title.localeCompare(a.title);
+            default:
+                return b.year - a.year;
+        }
+    });
+}
+
+function render_movie_library() {
+    const movies = get_filtered_movies();
+
+    movie_grid.classList.remove("expanded");
+
+    if (movies.length === 0) {
+        movie_grid.innerHTML =
+            '<p class="library-loading">No movies match these filters.</p>';
+        movie_library_toggle.hidden = true;
+        movie_library_count.textContent = "0 MATCHES";
+        return;
+    }
+
+    movie_grid.innerHTML = movies.map(create_movie_card).join("");
+
+    const filters_active = movie_search.value.trim() ||
+        genre_filter.value ||
+        franchise_filter.value;
+
+    movie_library_count.textContent = filters_active
+        ? `${movies.length} OF ${movie_library.length} MOVIES`
+        : `${movie_library.length} MOVIES`;
+
+    const has_hidden_movies = movies.length > get_collapsed_movie_count();
+    movie_library_toggle.hidden = !has_hidden_movies;
+    movie_library_toggle.textContent = "Show all movies";
 }
 
 async function enrich_missing_movie_metadata(movies) {
@@ -185,14 +270,9 @@ async function load_movie_library() {
 
         await enrich_missing_movie_metadata(movies);
 
-        movie_grid.innerHTML = movies.map(create_movie_card).join("");
-
-        const has_hidden_movies = movies.length > get_collapsed_movie_count();
-        movie_library_toggle.hidden = !has_hidden_movies;
-
-        if (has_hidden_movies) {
-            movie_library_toggle.textContent = "Show all movies";
-        }
+        movie_library = movies;
+        populate_movie_filters(movies);
+        render_movie_library();
 
         movies.forEach((movie) => {
             console.log("Loaded Supabase movie:", movie.title, movie);
@@ -204,6 +284,19 @@ async function load_movie_library() {
         movie_grid.innerHTML = '<p class="library-loading">Unable to load your movies.</p>';
     }
 }
+[movie_search, genre_filter, franchise_filter, movie_sort].forEach((control) => {
+    control.addEventListener("input", render_movie_library);
+    control.addEventListener("change", render_movie_library);
+});
+
+movie_filter_clear.addEventListener("click", () => {
+    movie_search.value = "";
+    genre_filter.value = "";
+    franchise_filter.value = "";
+    movie_sort.value = "year-desc";
+    render_movie_library();
+});
+
 movie_library_toggle.addEventListener("click", () => {
     const expanded = movie_grid.classList.toggle("expanded");
 
