@@ -1418,6 +1418,7 @@ const mal_connect_title = document.getElementById("mal_connect_title");
 const mal_connect_description = document.getElementById("mal_connect_description");
 const anime_grid = document.getElementById("anime_grid");
 const anime_sync_summary = document.getElementById("anime_sync_summary");
+const anime_library_toggle = document.getElementById("anime_library_toggle");
 const anime_count = document.getElementById("anime_count");
 const anime_watch_time = document.getElementById("anime_watch_time");
 const mal_connect_card = document.getElementById("mal_connect_card");
@@ -1466,7 +1467,8 @@ async function load_anime_library() {
         ? Math.round(watched_ms / 3600000) + "h"
         : "—";
 
-    anime_grid.innerHTML = anime.map((item) => {
+    anime_grid.classList.remove("expanded");
+    anime_grid.innerHTML = anime.map((item, index) => {
         const poster = item.poster_url
             ? '<img class="movie-poster" src="' + item.poster_url + '" alt="" loading="lazy">'
             : '<div class="movie-poster-placeholder">ANIME</div>';
@@ -1477,11 +1479,19 @@ async function load_anime_library() {
             ? " · MAL " + Number(item.my_rating).toFixed(1) + "/10"
             : " · MAL —";
 
-        return '<article class="movie-card anime-card">' +
+        const extra_class = index >= get_collapsed_movie_count()
+            ? " library-extra"
+            : "";
+
+        return '<article class="movie-card anime-card' + extra_class + '">' +
             '<div class="movie-poster-wrap">' + poster +
             '<div class="anime-rating-overlay">' + score.replace(" · ", "") + '</div></div>' +
             '<h3>' + item.title + '</h3><p>' + progress + score + '</p></article>';
     }).join("");
+
+    const has_hidden_anime = anime.length > get_collapsed_movie_count();
+    anime_library_toggle.hidden = !has_hidden_anime;
+    anime_library_toggle.textContent = "Show all anime";
 
     const has_synced_anime = anime.length > 0;
     anime_sync_summary.hidden = !has_synced_anime;
@@ -1494,6 +1504,21 @@ async function load_anime_library() {
         mal_sync_header_button.hidden = false;
     }
 }
+
+anime_library_toggle.addEventListener("click", () => {
+    const expanded = anime_grid.classList.toggle("expanded");
+
+    anime_library_toggle.textContent = expanded
+        ? "Show less"
+        : "Show all anime";
+
+    if (!expanded) {
+        anime_library_panel.scrollIntoView({
+            behavior: "smooth",
+            block: "start"
+        });
+    }
+});
 
 async function sync_mal_anime() {
     mal_connect_button.disabled = true;
