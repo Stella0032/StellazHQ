@@ -220,8 +220,8 @@ a {
     --accent: var(--blue);
 
     position: relative;
-    min-height: 170px;
-    padding: 24px;
+    min-height: 118px;
+    padding: 16px 20px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -270,12 +270,12 @@ a {
 }
 
 .library-icon {
-    font-size: 32px;
+    font-size: 26px;
     color: var(--accent);
 }
 
 .library-card h2 {
-    margin: 15px 0 6px;
+    margin: 8px 0 4px;
     font-size: 18px;
 }
 
@@ -287,8 +287,8 @@ a {
 
 .card-arrow {
     position: absolute;
-    right: 23px;
-    bottom: 24px;
+    right: 20px;
+    bottom: 17px;
     color: var(--accent);
     font-size: 24px;
 }
