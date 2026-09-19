@@ -2063,3 +2063,85 @@ a {
 .anime-edit-form .movie-search {
     width: 100%;
 }
+
+
+.anime-edit-shell {
+    max-width: 980px;
+}
+
+.anime-edit-form {
+    display: block;
+}
+
+.anime-edit-layout {
+    display: grid;
+    grid-template-columns: minmax(240px, 0.8fr) minmax(300px, 1.2fr) 230px;
+    gap: 28px;
+    align-items: start;
+}
+
+.anime-edit-controls {
+    display: grid;
+    gap: 18px;
+}
+
+.anime-edit-controls label {
+    display: grid;
+    gap: 8px;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.anime-edit-section-label {
+    margin: 0 0 10px;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.anime-episode-picker {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
+    gap: 8px;
+    max-height: 390px;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+.anime-episode-button {
+    min-height: 38px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--muted);
+    cursor: pointer;
+}
+
+.anime-episode-button:hover {
+    border-color: rgba(194, 120, 255, 0.55);
+    color: #fff;
+}
+
+.anime-episode-button.watched {
+    border-color: rgba(112, 255, 168, 0.55);
+    background: rgba(80, 220, 135, 0.18);
+    color: #d9ffe7;
+}
+
+.anime-edit-cover {
+    display: block;
+    width: 100%;
+    aspect-ratio: 2 / 3;
+    object-fit: cover;
+    border-radius: 14px;
+}
+
+@media (max-width: 800px) {
+    .anime-edit-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .anime-edit-cover-wrap {
+        order: -1;
+        max-width: 180px;
+    }
+}
