@@ -509,6 +509,217 @@ movie_library_toggle.addEventListener("click", () => {
 
 
 //? ------------------------------
+//* ----- TV Show Library --------
+//? ------------------------------
+//#region
+const show_count = document.getElementById("show_count");
+const show_library_count = document.getElementById("show_library_count");
+const show_grid = document.getElementById("show_grid");
+const show_library_toggle = document.getElementById("show_library_toggle");
+const show_search = document.getElementById("show_search");
+const show_genre_filter = document.getElementById("show_genre_filter");
+const show_sort = document.getElementById("show_sort");
+const show_filter_clear = document.getElementById("show_filter_clear");
+
+let show_library = [];
+
+function create_show_card(show, index) {
+    const poster = show.poster_url
+        ? `<img class="movie-poster" src="${show.poster_url}" alt="${show.title} poster" loading="lazy">`
+        : `<div class="movie-poster-placeholder"><span>${show.title}</span></div>`;
+
+    const personal_rating_value = show.my_rating !== null
+        ? Number(show.my_rating)
+        : null;
+    const tmdb_rating = show.tmdb_rating !== null
+        ? ` · ⭐ ${Number(show.tmdb_rating).toFixed(1)}`
+        : "";
+    const personal_rating = personal_rating_value !== null
+        ? ` · ★ ${personal_rating_value}/10`
+        : " · ★ —";
+    const rating_buttons = Array.from({length: 10}, (_, index) => {
+        const rating = index + 1;
+        const selected = personal_rating_value !== null &&
+            rating <= personal_rating_value;
+
+        return `
+            <button class="rating-star ${selected ? "selected" : ""}"
+                    type="button" data-show-id="${show.id}"
+                    data-rating="${rating}"
+                    aria-label="Rate ${show.title} ${rating} out of 10">
+                ★<span>${rating}</span>
+            </button>`;
+    }).join("");
+    const extra_class = index >= get_collapsed_movie_count()
+        ? " library-extra"
+        : "";
+
+    return `
+        <article class="movie-card${extra_class}">
+            <div class="movie-poster-wrap">
+                ${poster}
+                <div class="movie-rating-overlay">
+                    <p>Rate this show</p>
+                    <div class="rating-stars">${rating_buttons}</div>
+                </div>
+            </div>
+            <h3 title="${show.title}">${show.title}</h3>
+            <p class="movie-meta">${show.year}${tmdb_rating}${personal_rating}</p>
+        </article>`;
+}
+
+function get_filtered_shows() {
+    const search = show_search.value.trim().toLowerCase();
+    const genre = show_genre_filter.value;
+
+    return show_library.filter((show) => {
+        return (!search || show.title.toLowerCase().includes(search)) &&
+            (!genre || (show.genres || []).includes(genre));
+    }).sort((a, b) => {
+        switch (show_sort.value) {
+            case "year-asc": return a.year - b.year;
+            case "title-asc": return a.title.localeCompare(b.title);
+            case "title-desc": return b.title.localeCompare(a.title);
+            default: return b.year - a.year;
+        }
+    });
+}
+
+function render_show_library() {
+    const shows = get_filtered_shows();
+    show_grid.classList.remove("expanded");
+
+    if (shows.length === 0) {
+        show_grid.innerHTML =
+            '<p class="library-loading">No TV shows match these filters.</p>';
+        show_library_toggle.hidden = true;
+        show_library_count.textContent = "0 MATCHES";
+        return;
+    }
+
+    show_grid.innerHTML = shows.map(create_show_card).join("");
+    const filters_active = show_search.value.trim() || show_genre_filter.value;
+    show_library_count.textContent = filters_active
+        ? `${shows.length} OF ${show_library.length} SHOWS`
+        : `${show_library.length} SHOWS`;
+    show_library_toggle.hidden =
+        shows.length <= get_collapsed_movie_count();
+    show_library_toggle.textContent = "Show all shows";
+}
+
+function populate_show_filters(shows) {
+    const genres = [...new Set(
+        shows.flatMap((show) => show.genres || [])
+    )].sort((a, b) => a.localeCompare(b));
+
+    show_genre_filter.innerHTML = '<option value="">All genres</option>' +
+        genres.map((genre) =>
+            `<option value="${genre}">${genre}</option>`
+        ).join("");
+}
+
+async function enrich_missing_show_metadata(shows) {
+    const missing = shows.filter(
+        (show) => !show.poster_url || show.tmdb_rating === null
+    );
+    const get_tv_show_metadata =
+        httpsCallable(functions, "getTVShowMetadata");
+
+    for (const show of missing) {
+        try {
+            const result = await get_tv_show_metadata({
+                title: show.title,
+                year: show.year
+            });
+            const metadata = result.data;
+            const {error} = await supabase.from("tv_shows").update({
+                poster_url: metadata.poster_url,
+                genres: metadata.genres,
+                tmdb_rating: metadata.tmdb_rating
+            }).eq("id", show.id);
+
+            if (error) throw error;
+
+            show.poster_url = metadata.poster_url;
+            show.genres = metadata.genres;
+            show.tmdb_rating = metadata.tmdb_rating;
+        } catch (error) {
+            console.error("Unable to add TV metadata:", show.title, error);
+        }
+    }
+}
+
+async function load_show_library() {
+    try {
+        const {data: shows, error} = await supabase
+            .from("tv_shows").select("*").order("year", {ascending: false});
+
+        if (error) throw error;
+
+        show_count.textContent = shows.length;
+        show_library_count.textContent = `${shows.length} SHOWS`;
+
+        if (shows.length === 0) {
+            show_library = [];
+            show_grid.innerHTML =
+                '<p class="library-loading">No TV shows added yet.</p>';
+            return;
+        }
+
+        await enrich_missing_show_metadata(shows);
+        show_library = shows;
+        populate_show_filters(shows);
+        render_show_library();
+    } catch (error) {
+        console.error("Unable to load TV show library:", error);
+        show_count.textContent = "Error";
+        show_library_count.textContent = "ERROR";
+        show_grid.innerHTML =
+            '<p class="library-loading">Unable to load your TV shows.</p>';
+    }
+}
+
+show_grid.addEventListener("click", async (event) => {
+    const button = event.target.closest(".rating-star");
+    if (!button) return;
+
+    const show_id = Number(button.dataset.showId);
+    const rating = Number(button.dataset.rating);
+
+    try {
+        const {error} = await supabase.from("tv_shows")
+            .update({my_rating: rating}).eq("id", show_id);
+        if (error) throw error;
+
+        const show = show_library.find((item) => item.id === show_id);
+        if (show) show.my_rating = rating;
+        render_show_library();
+    } catch (error) {
+        console.error("Unable to save TV show rating:", error);
+        alert("Unable to save your rating. Please try again.");
+    }
+});
+
+[show_search, show_genre_filter, show_sort].forEach((control) => {
+    control.addEventListener("input", render_show_library);
+    control.addEventListener("change", render_show_library);
+});
+
+show_filter_clear.addEventListener("click", () => {
+    show_search.value = "";
+    show_genre_filter.value = "";
+    show_sort.value = "year-desc";
+    render_show_library();
+});
+
+show_library_toggle.addEventListener("click", () => {
+    const expanded = show_grid.classList.toggle("expanded");
+    show_library_toggle.textContent = expanded ? "Show less" : "Show all shows";
+});
+//#endregion
+
+
+//? ------------------------------
 //* ----- Authentication ---------
 //? ------------------------------
 //#region
@@ -529,6 +740,7 @@ onAuthStateChanged(auth, async (user) => {
         console.log("Firebase UID:", user.uid);
 
         await load_movie_library();
+        await load_show_library();
     } catch (error) {
         console.error("Unable to prepare Supabase access:", error);
         movie_count.textContent = "Error";
@@ -546,9 +758,13 @@ const toast = document.getElementById("toast");
 
 library_cards.forEach((card) => {
     card.addEventListener("click", (event) => {
-        if (card.dataset.library === "Movies") {
+        if (card.dataset.library === "Movies" ||
+            card.dataset.library === "TV Shows") {
             event.preventDefault();
-            document.getElementById("movie_library").scrollIntoView({
+            const target_id = card.dataset.library === "Movies"
+                ? "movie_library"
+                : "show_library";
+            document.getElementById(target_id).scrollIntoView({
                 behavior: "smooth",
                 block: "start"
             });
