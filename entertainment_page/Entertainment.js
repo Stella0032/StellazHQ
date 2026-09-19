@@ -955,7 +955,7 @@ season_grid.addEventListener("click", async (event) => {
     if (watch_button) {
         const season_number = Number(watch_button.dataset.seasonWatched);
         const episode_count = Number(watch_button.dataset.episodeCount);
-        const watched = !watch_button.classList.contains("watched");
+        const watched = !card.classList.contains("watched");
         const card = watch_button.closest(".season-card");
 
         watch_button.disabled = true;
