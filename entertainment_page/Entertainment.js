@@ -1151,6 +1151,19 @@ show_details_close.addEventListener("click", () => {
     show_details_dialog.close();
 });
 
+show_details_dialog.addEventListener("click", (event) => {
+    const bounds = show_details_dialog.getBoundingClientRect();
+    const clicked_outside =
+        event.clientX < bounds.left ||
+        event.clientX > bounds.right ||
+        event.clientY < bounds.top ||
+        event.clientY > bounds.bottom;
+
+    if (clicked_outside) {
+        show_details_dialog.close();
+    }
+});
+
 [show_search, show_genre_filter, show_sort].forEach((control) => {
     control.addEventListener("input", render_show_library);
     control.addEventListener("change", render_show_library);
