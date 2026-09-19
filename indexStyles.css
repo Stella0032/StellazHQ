@@ -95,3 +95,110 @@
     background-color: #414141;
 }
 
+
+
+/*? ---------------------------- */
+/*^ ----- Account Signup ------ */
+/*? ---------------------------- */
+/*#region*/
+.accountPrompt {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    margin: -2px 0 15px;
+    font-family: Arial, sans-serif;
+    font-size: 0.95rem;
+}
+
+.accountPrompt button {
+    padding: 0;
+    border: none;
+    background: none;
+    color: #4f2bbd;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.accountPrompt button:hover {
+    text-decoration: underline;
+}
+
+.signupDialog {
+    width: min(430px, calc(100% - 32px));
+    padding: 0;
+    border: none;
+    border-radius: 22px;
+    box-shadow: 0 20px 70px rgba(0, 0, 0, 0.45);
+}
+
+.signupDialog::backdrop {
+    background: rgba(0, 0, 0, 0.68);
+    backdrop-filter: blur(4px);
+}
+
+.signupDialog form {
+    position: relative;
+    padding: 30px;
+    font-family: Arial, sans-serif;
+}
+
+.signupDialog h2 {
+    margin: 0 0 8px;
+}
+
+.signupIntro {
+    margin: 0 0 22px;
+    color: #555;
+}
+
+.signupClose {
+    position: absolute;
+    top: 14px;
+    right: 16px;
+    border: none;
+    background: transparent;
+    font-size: 1.7rem;
+    cursor: pointer;
+}
+
+.signupField {
+    display: grid;
+    gap: 6px;
+    margin-bottom: 14px;
+}
+
+.signupField label {
+    font-weight: 700;
+}
+
+.signupField input {
+    padding: 11px 12px;
+    border: 1px solid #bbb;
+    border-radius: 9px;
+    font-size: 1rem;
+}
+
+.signupMessage {
+    min-height: 20px;
+    margin: 4px 0 12px;
+    font-size: 0.9rem;
+}
+
+.createAccountButton {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 12px;
+    background: #000;
+    color: #fff;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.createAccountButton:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+/*#endregion*/
