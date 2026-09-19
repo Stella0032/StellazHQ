@@ -129,7 +129,7 @@ html[data-theme="flurple"]{
 }
 
 html[data-theme="flurple"] body{
-    background:#08030f;
+    background:transparent;
     color:#fff9e8;
 }
 
