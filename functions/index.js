@@ -500,16 +500,28 @@ exports.getTVShowMetadata = onCall(
                 `https://image.tmdb.org/t/p/w500${show.poster_path}` :
                 null,
             tmdb_rating: show.vote_average ?? null,
-            average_episode_runtime_minutes:
-                Array.isArray(show.episode_run_time) &&
-                show.episode_run_time.length > 0 ?
-                    Math.round(
-                        show.episode_run_time.reduce(
-                            (total, runtime) => total + runtime,
-                            0
-                        ) / show.episode_run_time.length
+            average_episode_runtime_minutes: (() => {
+                const runtimes = Array.isArray(show.episode_run_time) ?
+                    show.episode_run_time.filter(
+                        (runtime) => Number(runtime) > 0
                     ) :
-                    null,
+                    [];
+
+                if (runtimes.length > 0) {
+                    return Math.round(
+                        runtimes.reduce(
+                            (total, runtime) => total + Number(runtime),
+                            0
+                        ) / runtimes.length
+                    );
+                }
+
+                const recent_runtime =
+                    Number(show.last_episode_to_air?.runtime) ||
+                    Number(show.next_episode_to_air?.runtime);
+
+                return recent_runtime > 0 ? recent_runtime : null;
+            })(),
         };
     }
 );
