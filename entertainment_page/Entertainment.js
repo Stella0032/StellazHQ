@@ -103,6 +103,50 @@ function create_movie_card(movie) {
     `;
 }
 
+async function enrich_missing_movie_metadata(movies) {
+    const movies_missing_metadata = movies.filter((movie) => !movie.poster_url);
+
+    if (movies_missing_metadata.length === 0) {
+        return false;
+    }
+
+    const get_movie_metadata = httpsCallable(functions, "getMovieMetadata");
+
+    for (const movie of movies_missing_metadata) {
+        try {
+            const result = await get_movie_metadata({
+                title: movie.title,
+                year: movie.year
+            });
+
+            const metadata = result.data;
+
+            const { error } = await supabase
+                .from("movies")
+                .update({
+                    poster_url: metadata.poster_url,
+                    genres: metadata.genres,
+                    runtime_minutes: metadata.runtime_minutes
+                })
+                .eq("id", movie.id);
+
+            if (error) {
+                throw error;
+            }
+
+            movie.poster_url = metadata.poster_url;
+            movie.genres = metadata.genres;
+            movie.runtime_minutes = metadata.runtime_minutes;
+
+            console.log("Added TMDB metadata:", movie.title);
+        } catch (error) {
+            console.error("Unable to add TMDB metadata:", movie.title, error);
+        }
+    }
+
+    return true;
+}
+
 async function load_movie_library() {
     try {
         const { data: movies, error } = await supabase
@@ -121,6 +165,8 @@ async function load_movie_library() {
             movie_grid.innerHTML = '<p class="library-loading">No movies added yet.</p>';
             return;
         }
+
+        await enrich_missing_movie_metadata(movies);
 
         movie_grid.innerHTML = movies.map(create_movie_card).join("");
 
