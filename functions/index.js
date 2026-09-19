@@ -433,6 +433,7 @@ exports.syncMALAnimeList = onCall(
             "media_type",
             "start_date",
             "end_date",
+            "average_episode_duration",
         ].join(",");
 
         let url = new URL("https://api.myanimelist.net/v2/users/@me/animelist");
@@ -477,6 +478,8 @@ exports.syncMALAnimeList = onCall(
                     start_date: status.start_date || null,
                     finish_date: status.finish_date || null,
                     mal_updated_at: status.updated_at || null,
+                    average_episode_duration_ms:
+                        Number(node.average_episode_duration || 0),
                 });
             }
 
