@@ -65,7 +65,10 @@
                     <p class="eyebrow">YOUR COLLECTION</p>
                     <h2>Your Movies</h2>
                 </div>
-                <span class="movie-library-count" id="movie_library_count">LOADING</span>
+                <div class="library-header-actions">
+                    <button class="library-add-button" id="movie_add_button" type="button">＋ Add movie</button>
+                    <span class="movie-library-count" id="movie_library_count">LOADING</span>
+                </div>
             </div>
             <div class="movie-filters" aria-label="Movie filters">
                 <input class="movie-search" id="movie_search" type="search" placeholder="Search movies..." aria-label="Search movies">
@@ -98,7 +101,10 @@
                     <p class="eyebrow">YOUR COLLECTION</p>
                     <h2>Your TV Shows</h2>
                 </div>
-                <span class="movie-library-count" id="show_library_count">LOADING</span>
+                <div class="library-header-actions">
+                    <button class="library-add-button" id="show_add_button" type="button">＋ Add show</button>
+                    <span class="movie-library-count" id="show_library_count">LOADING</span>
+                </div>
             </div>
             <div class="movie-filters" aria-label="TV show filters">
                 <input class="movie-search" id="show_search" type="search" placeholder="Search shows..." aria-label="Search TV shows">
@@ -130,7 +136,41 @@
         </section>
     </main>
 
+    <dialog class="library-dialog" id="library_add_dialog">
+        <form class="library-dialog-form" id="library_add_form">
+            <div class="library-dialog-header">
+                <div>
+                    <p class="eyebrow">ADD TO LIBRARY</p>
+                    <h2 id="library_dialog_title">Add movie</h2>
+                </div>
+                <button class="library-dialog-close" id="library_dialog_close" type="button" aria-label="Close">×</button>
+            </div>
+            <label>
+                Title
+                <input id="library_add_title" type="text" autocomplete="off" required placeholder="e.g. Breaking Bad">
+            </label>
+            <label>
+                Year
+                <input id="library_add_year" type="number" min="1888" max="2100" required placeholder="e.g. 2008">
+            </label>
+            <p class="library-dialog-note">Stellaz will automatically fetch the poster, genres and TMDB rating.</p>
+            <button class="library-dialog-submit" id="library_add_submit" type="submit">Add to library</button>
+        </form>
+    </dialog>
+
+    <dialog class="library-dialog confirm-dialog" id="library_remove_dialog">
+        <form class="library-dialog-form" id="library_remove_form">
+            <p class="eyebrow">REMOVE FROM LIBRARY</p>
+            <h2 id="library_remove_title">Remove title?</h2>
+            <p class="library-dialog-note">This only removes it from your Stellaz library.</p>
+            <div class="library-dialog-actions">
+                <button class="library-dialog-cancel" id="library_remove_cancel" type="button">Cancel</button>
+                <button class="library-remove-confirm" type="submit">Remove</button>
+            </div>
+        </form>
+    </dialog>
+
     <div class="toast" id="toast" role="status"></div>
-    <script type="module" src="Entertainment.js?v=13"></script>
+    <script type="module" src="Entertainment.js?v=14"></script>
 </body>
 </html>
