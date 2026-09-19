@@ -1432,8 +1432,9 @@ const anime_edit_dialog = document.getElementById("anime_edit_dialog");
 const anime_edit_title = document.getElementById("anime_edit_title");
 const anime_edit_form = document.getElementById("anime_edit_form");
 const anime_edit_status = document.getElementById("anime_edit_status");
-const anime_edit_episodes = document.getElementById("anime_edit_episodes");
-const anime_edit_episode_total = document.getElementById("anime_edit_episode_total");
+const anime_episode_picker = document.getElementById("anime_episode_picker");
+const anime_edit_cover = document.getElementById("anime_edit_cover");
+let selected_anime_episode = 0;
 const anime_edit_score = document.getElementById("anime_edit_score");
 const anime_edit_close = document.getElementById("anime_edit_close");
 const anime_edit_save = document.getElementById("anime_edit_save");
@@ -1550,20 +1551,38 @@ async function load_anime_library() {
     }
 }
 
+function render_anime_episode_picker() {
+    const total = Number(active_anime?.total_episodes || 0);
+
+    if (total <= 0) {
+        anime_episode_picker.innerHTML =
+            '<p class="anime-episode-empty">Episode count unavailable.</p>';
+        return;
+    }
+
+    anime_episode_picker.innerHTML = Array.from({length: total}, (_, index) => {
+        const episode = index + 1;
+        const watched = episode <= selected_anime_episode ? " watched" : "";
+        return '<button class="anime-episode-button' + watched +
+            '" type="button" data-episode="' + episode +
+            '" aria-label="Watched through episode ' + episode + '">' +
+            episode + '</button>';
+    }).join("");
+}
+
 function open_anime_editor(anime_id) {
     active_anime = anime_library.find((item) => item.id === anime_id);
     if (!active_anime) return;
 
+    selected_anime_episode = Number(active_anime.episodes_watched || 0);
     anime_edit_title.textContent = active_anime.title;
     anime_edit_status.value = active_anime.status;
-    anime_edit_episodes.value = active_anime.episodes_watched || 0;
-    anime_edit_episodes.max = active_anime.total_episodes || "";
-    anime_edit_episode_total.textContent = active_anime.total_episodes
-        ? " / " + active_anime.total_episodes
-        : "";
     anime_edit_score.value = active_anime.my_rating
         ? String(Math.round(Number(active_anime.my_rating)))
         : "";
+    anime_edit_cover.src = active_anime.poster_url || "";
+    anime_edit_cover.hidden = !active_anime.poster_url;
+    render_anime_episode_picker();
     anime_edit_dialog.showModal();
 }
 
@@ -1582,10 +1601,21 @@ anime_grid.addEventListener("keydown", (event) => {
 
 anime_edit_close.addEventListener("click", () => anime_edit_dialog.close());
 
+anime_episode_picker.addEventListener("click", (event) => {
+    const button = event.target.closest(".anime-episode-button");
+    if (!button) return;
+
+    const episode = Number(button.dataset.episode);
+    selected_anime_episode =
+        episode === selected_anime_episode ? Math.max(0, episode - 1) : episode;
+    render_anime_episode_picker();
+});
+
 anime_edit_status.addEventListener("change", () => {
     if (anime_edit_status.value === "completed" &&
         active_anime?.total_episodes) {
-        anime_edit_episodes.value = active_anime.total_episodes;
+        selected_anime_episode = active_anime.total_episodes;
+        render_anime_episode_picker();
     }
 });
 
@@ -1601,7 +1631,7 @@ anime_edit_form.addEventListener("submit", async (event) => {
         await update_mal({
             anime_id: active_anime.mal_id,
             status: anime_edit_status.value,
-            episodes_watched: Number(anime_edit_episodes.value || 0),
+            episodes_watched: selected_anime_episode,
             total_episodes: Number(active_anime.total_episodes || 0),
             score: anime_edit_score.value === ""
                 ? null
