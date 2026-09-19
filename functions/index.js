@@ -131,6 +131,61 @@ exports.setSupabaseRole = onCall(async (request) => {
 //#region
 const tmdb_read_access_token = defineSecret("TMDB_READ_ACCESS_TOKEN");
 
+exports.searchEntertainmentTitles = onCall(
+    {secrets: [tmdb_read_access_token]},
+    async (request) => {
+        if (!request.auth) {
+            throw new HttpsError("unauthenticated", "You must be logged in.");
+        }
+
+        const query = String(request.data?.query || "").trim();
+        const type = request.data?.type === "show" ? "tv" : "movie";
+
+        if (query.length < 2) {
+            return {results: []};
+        }
+
+        const search_url = new URL(
+            `https://api.themoviedb.org/3/search/${type}`
+        );
+        search_url.searchParams.set("query", query);
+        search_url.searchParams.set("include_adult", "false");
+        search_url.searchParams.set("language", "en-US");
+        search_url.searchParams.set("page", "1");
+
+        const response = await fetch(search_url, {
+            headers: {
+                Authorization: `Bearer ${tmdb_read_access_token.value()}`,
+                accept: "application/json",
+            },
+        });
+
+        if (!response.ok) {
+            throw new HttpsError("internal", "TMDB title search failed.");
+        }
+
+        const data = await response.json();
+        const results = (data.results || []).slice(0, 8).map((item) => {
+            const title = type === "tv" ? item.name : item.title;
+            const date = type === "tv" ?
+                item.first_air_date :
+                item.release_date;
+
+            return {
+                tmdb_id: item.id,
+                title,
+                year: date ? Number(date.slice(0, 4)) : null,
+                poster_url: item.poster_path ?
+                    `https://image.tmdb.org/t/p/w185${item.poster_path}` :
+                    null,
+            };
+        }).filter((item) => item.title && item.year);
+
+        return {results};
+    }
+);
+
+
 exports.getMovieMetadata = onCall(
     {secrets: [tmdb_read_access_token]},
     async (request) => {

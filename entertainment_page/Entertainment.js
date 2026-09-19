@@ -794,6 +794,7 @@ const library_dialog_title = document.getElementById("library_dialog_title");
 const library_dialog_close = document.getElementById("library_dialog_close");
 const library_add_title = document.getElementById("library_add_title");
 const library_add_year = document.getElementById("library_add_year");
+const library_title_results = document.getElementById("library_title_results");
 const library_add_submit = document.getElementById("library_add_submit");
 const library_remove_dialog = document.getElementById("library_remove_dialog");
 const library_remove_form = document.getElementById("library_remove_form");
@@ -802,6 +803,8 @@ const library_remove_cancel = document.getElementById("library_remove_cancel");
 
 let manual_library_type = "movie";
 let pending_remove = null;
+let title_search_timeout = null;
+let title_search_request = 0;
 
 function show_toast(message) {
     toast.textContent = message;
@@ -818,9 +821,79 @@ function open_add_dialog(type) {
         type === "movie" ? "Add movie" : "Add TV show";
     library_add_title.value = "";
     library_add_year.value = "";
+    library_title_results.innerHTML = "";
+    library_title_results.hidden = true;
     library_add_dialog.showModal();
     setTimeout(() => library_add_title.focus(), 0);
 }
+
+
+function render_title_results(results) {
+    if (results.length === 0) {
+        library_title_results.innerHTML =
+            '<p class="library-title-empty">No matches found.</p>';
+        library_title_results.hidden = false;
+        return;
+    }
+
+    library_title_results.innerHTML = results.map((item) => {
+        const poster = item.poster_url
+            ? `<img src="${item.poster_url}" alt="" loading="lazy">`
+            : '<span class="library-title-poster-placeholder">🎬</span>';
+
+        return `
+            <button class="library-title-result" type="button"
+                    data-title="${item.title.replaceAll('"', "&quot;")}"
+                    data-year="${item.year}">
+                ${poster}
+                <span>
+                    <strong>${item.title}</strong>
+                    <small>${item.year}</small>
+                </span>
+            </button>`;
+    }).join("");
+    library_title_results.hidden = false;
+}
+
+library_add_title.addEventListener("input", () => {
+    clearTimeout(title_search_timeout);
+    const query = library_add_title.value.trim();
+
+    if (query.length < 2) {
+        library_title_results.hidden = true;
+        library_title_results.innerHTML = "";
+        return;
+    }
+
+    const request_number = ++title_search_request;
+
+    title_search_timeout = setTimeout(async () => {
+        try {
+            const search_titles =
+                httpsCallable(functions, "searchEntertainmentTitles");
+            const result = await search_titles({
+                query,
+                type: manual_library_type
+            });
+
+            if (request_number !== title_search_request) return;
+            render_title_results(result.data.results || []);
+        } catch (error) {
+            console.error("Unable to search titles:", error);
+            library_title_results.hidden = true;
+        }
+    }, 300);
+});
+
+library_title_results.addEventListener("click", (event) => {
+    const result = event.target.closest(".library-title-result");
+    if (!result) return;
+
+    library_add_title.value = result.dataset.title;
+    library_add_year.value = result.dataset.year;
+    library_title_results.hidden = true;
+    library_title_results.innerHTML = "";
+});
 
 movie_add_button.addEventListener("click", () => open_add_dialog("movie"));
 show_add_button.addEventListener("click", () => open_add_dialog("show"));

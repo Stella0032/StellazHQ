@@ -151,11 +151,12 @@
             </div>
             <label>
                 Title
-                <input id="library_add_title" type="text" autocomplete="off" required placeholder="e.g. Breaking Bad">
+                <input id="library_add_title" type="text" autocomplete="off" required placeholder="Start typing a title...">
+                <div class="library-title-results" id="library_title_results" hidden></div>
             </label>
             <label>
                 Year
-                <input id="library_add_year" type="number" min="1888" max="2100" required placeholder="e.g. 2008">
+                <input id="library_add_year" type="number" min="1888" max="2100" required placeholder="Filled automatically">
             </label>
             <p class="library-dialog-note">Stellaz will automatically fetch the poster, genres and TMDB rating.</p>
             <button class="library-dialog-submit" id="library_add_submit" type="submit">Add to library</button>
@@ -175,6 +176,6 @@
     </dialog>
 
     <div class="toast" id="toast" role="status"></div>
-    <script type="module" src="Entertainment.js?v=16"></script>
+    <script type="module" src="Entertainment.js?v=17"></script>
 </body>
 </html>
