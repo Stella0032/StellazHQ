@@ -3,6 +3,28 @@ import { httpsCallable } from "https://www.gstatic.com/firebasejs/9.22.2/firebas
 
 import { auth, functions, supabase } from "../firebase/firebase_config.js";
 
+
+//? ---------------------------------
+//* ----- Stellaz AI Test Hook ------
+//? ---------------------------------
+//#region
+// Temporary browser-console helper for testing the authenticated AI backend.
+// Example: await test_stellaz_ai("Add The Matrix (1999)")
+window.test_stellaz_ai = async (message) => {
+    if (!auth.currentUser) {
+        throw new Error("Log in to Stellaz before testing Stellaz AI.");
+    }
+
+    const stellaz_ai = httpsCallable(functions, "stellazAI");
+    const result = await stellaz_ai({message});
+
+    console.log("Stellaz AI result:", result.data);
+    return result.data;
+};
+//#endregion
+
+
+
 //? ---------------------------------
 //* ----- New & Upcoming Releases ----
 //? ---------------------------------
