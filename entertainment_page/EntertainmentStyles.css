@@ -1949,3 +1949,26 @@ a {
     filter: brightness(1.06);
 }
 /*#endregion*/
+
+
+/*? -------------------------------- */
+/*^ ----- Brighter Watched State -- */
+/*? -------------------------------- */
+/*#region*/
+.season-card.watched {
+    background: rgba(103, 226, 173, 0.11);
+    box-shadow:
+        0 0 0 1px rgba(103, 226, 173, 0.42),
+        0 0 26px rgba(103, 226, 173, 0.16);
+}
+
+.season-card.watched .season-poster-action {
+    box-shadow: 0 0 19px rgba(103, 226, 173, 0.23);
+}
+
+.episode-card.watched {
+    border-color: rgba(103, 226, 173, 0.42);
+    background: rgba(103, 226, 173, 0.12);
+    box-shadow: 0 0 22px rgba(103, 226, 173, 0.12);
+}
+/*#endregion*/
