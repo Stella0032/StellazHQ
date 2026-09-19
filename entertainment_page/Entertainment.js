@@ -1000,6 +1000,33 @@ season_grid.addEventListener("click", async (event) => {
                 "aria-label",
                 watched ? "Mark season not watched" : "Mark season watched"
             );
+
+            // Keep an already-open episode view in sync immediately.
+            if (active_season_number === season_number &&
+                !episode_list.hidden) {
+                episode_list.querySelectorAll(".episode-card").forEach(
+                    (episode_card) => {
+                        episode_card.classList.toggle("watched", watched);
+                        const episode_button =
+                            episode_card.querySelector("[data-episode-watched]");
+                        const overlay =
+                            episode_button?.querySelector(".episode-watch-overlay");
+
+                        if (overlay) {
+                            overlay.innerHTML = `<span>✓</span>${
+                                watched ? "Watched" : "Mark watched"
+                            }`;
+                        }
+
+                        episode_button?.setAttribute(
+                            "aria-label",
+                            watched ?
+                                "Mark episode not watched" :
+                                "Mark episode watched"
+                        );
+                    }
+                );
+            }
         } catch (error) {
             console.error("Unable to save season progress:", error);
             alert("Unable to save that season. Please try again.");
