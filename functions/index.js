@@ -246,6 +246,125 @@ exports.setSupabaseRole = onCall(async (request) => {
     };
 });
 
+//? ---------------------------------
+//* ----- MyAnimeList Connection ----
+//? ---------------------------------
+//#region
+const mal_client_id = defineSecret("MAL_CLIENT_ID");
+const mal_client_secret = defineSecret("MAL_CLIENT_SECRET");
+const mal_redirect_uri =
+    "https://stellaz.org/entertainment_page/Entertainment.html";
+
+exports.getMALAuthorizationUrl = onCall(
+    {secrets: [mal_client_id]},
+    async (request) => {
+        if (!request.auth) {
+            throw new HttpsError("unauthenticated", "You must be logged in.");
+        }
+
+        const state = String(request.data?.state || "");
+        const code_verifier = String(request.data?.code_verifier || "");
+
+        if (state.length < 32 ||
+            code_verifier.length < 43 ||
+            code_verifier.length > 128) {
+            throw new HttpsError(
+                "invalid-argument",
+                "Invalid MyAnimeList authorization request."
+            );
+        }
+
+        const url = new URL("https://myanimelist.net/v1/oauth2/authorize");
+        url.searchParams.set("response_type", "code");
+        url.searchParams.set("client_id", mal_client_id.value());
+        url.searchParams.set("state", state);
+        url.searchParams.set("redirect_uri", mal_redirect_uri);
+        url.searchParams.set("code_challenge", code_verifier);
+        url.searchParams.set("code_challenge_method", "plain");
+
+        return {authorization_url: url.toString()};
+    }
+);
+
+exports.exchangeMALAuthorizationCode = onCall(
+    {secrets: [mal_client_id, mal_client_secret]},
+    async (request) => {
+        if (!request.auth) {
+            throw new HttpsError("unauthenticated", "You must be logged in.");
+        }
+
+        const code = String(request.data?.code || "");
+        const code_verifier = String(request.data?.code_verifier || "");
+
+        if (!code || code_verifier.length < 43 || code_verifier.length > 128) {
+            throw new HttpsError(
+                "invalid-argument",
+                "Invalid MyAnimeList authorization response."
+            );
+        }
+
+        const body = new URLSearchParams({
+            client_id: mal_client_id.value(),
+            client_secret: mal_client_secret.value(),
+            grant_type: "authorization_code",
+            code,
+            redirect_uri: mal_redirect_uri,
+            code_verifier,
+        });
+
+        const response = await fetch(
+            "https://myanimelist.net/v1/oauth2/token",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                },
+                body,
+            }
+        );
+
+        if (!response.ok) {
+            logger.error("MAL token exchange failed.", {
+                status: response.status,
+            });
+            throw new HttpsError(
+                "internal",
+                "MyAnimeList authorization could not be completed."
+            );
+        }
+
+        const tokens = await response.json();
+        const expires_at = Date.now() + Number(tokens.expires_in || 0) * 1000;
+
+        // Kept outside /users so the website's user Firestore rules cannot
+        // read OAuth tokens. Only trusted Admin SDK code accesses this data.
+        await db.collection("mal_connections").doc(request.auth.uid).set({
+            access_token: tokens.access_token,
+            refresh_token: tokens.refresh_token,
+            token_type: tokens.token_type || "Bearer",
+            expires_at,
+            connected_at: new Date(),
+        }, {merge: true});
+
+        return {success: true};
+    }
+);
+
+exports.getMALConnectionStatus = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError("unauthenticated", "You must be logged in.");
+    }
+
+    const connection = await db
+        .collection("mal_connections")
+        .doc(request.auth.uid)
+        .get();
+
+    return {connected: connection.exists};
+});
+//#endregion
+
+
 //? ------------------------------
 //* ----- TMDB Movie Data -------
 //? ------------------------------
