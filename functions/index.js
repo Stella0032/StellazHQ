@@ -616,6 +616,32 @@ exports.syncMALAnimeList = onCall(
                 const node = item.node || {};
                 const status = item.list_status || {};
 
+                let mal_score = Number(node.mean || 0) || null;
+
+                // MAL's user-list response does not reliably include the
+                // community mean score even when "mean" is requested.
+                // Fetch the anime details only when that value is missing.
+                if (!mal_score && node.id) {
+                    const details_url = new URL(
+                        `https://api.myanimelist.net/v2/anime/${node.id}`
+                    );
+                    details_url.searchParams.set("fields", "mean");
+
+                    const details_response = await fetch(details_url, {
+                        headers: {Authorization: `Bearer ${access_token}`},
+                    });
+
+                    if (details_response.ok) {
+                        const details = await details_response.json();
+                        mal_score = Number(details.mean || 0) || null;
+                    } else {
+                        logger.warn("MAL score lookup failed.", {
+                            anime_id: node.id,
+                            status: details_response.status,
+                        });
+                    }
+                }
+
                 anime.push({
                     mal_id: node.id,
                     title: node.title,
@@ -633,7 +659,7 @@ exports.syncMALAnimeList = onCall(
                     mal_updated_at: status.updated_at || null,
                     average_episode_duration_ms:
                         Number(node.average_episode_duration || 0),
-                    mal_score: Number(node.mean || 0) || null,
+                    mal_score,
                 });
             }
 
