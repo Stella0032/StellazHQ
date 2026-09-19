@@ -9,7 +9,15 @@ html[data-theme="neon"] body{
 
 html[data-theme="neon"] .ambient-background,
 html[data-theme="neon"] .space-bg{
-    filter:hue-rotate(92deg) saturate(1.8) brightness(.72);
+    filter:none;
+    background:
+        radial-gradient(circle at 82% 15%, rgba(43,255,88,.11), transparent 34%),
+        radial-gradient(circle at 12% 68%, rgba(21,190,63,.08), transparent 40%),
+        linear-gradient(135deg,#010402 0%,#020904 50%,#010402 100%);
+}
+
+html[data-theme="neon"] .ambient-background::after{
+    background:rgba(35,255,78,.035);
 }
 
 html[data-theme="neon"] .topbar{
