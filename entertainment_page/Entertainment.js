@@ -571,6 +571,7 @@ movie_library_toggle.addEventListener("click", () => {
 //? ------------------------------
 //#region
 const show_count = document.getElementById("show_count");
+const show_watch_time = document.getElementById("show_watch_time");
 const show_library_count = document.getElementById("show_library_count");
 const show_grid = document.getElementById("show_grid");
 const show_library_toggle = document.getElementById("show_library_toggle");
@@ -700,7 +701,8 @@ function populate_show_filters(shows) {
 
 async function enrich_missing_show_metadata(shows) {
     const missing = shows.filter(
-        (show) => !show.poster_url || show.tmdb_rating === null
+        (show) => !show.poster_url || show.tmdb_rating === null ||
+            show.average_episode_runtime_minutes === null
     );
     const get_tv_show_metadata =
         httpsCallable(functions, "getTVShowMetadata");
@@ -715,7 +717,9 @@ async function enrich_missing_show_metadata(shows) {
             const {error} = await supabase.from("tv_shows").update({
                 poster_url: metadata.poster_url,
                 genres: metadata.genres,
-                tmdb_rating: metadata.tmdb_rating
+                tmdb_rating: metadata.tmdb_rating,
+                average_episode_runtime_minutes:
+                    metadata.average_episode_runtime_minutes
             }).eq("id", show.id);
 
             if (error) throw error;
@@ -723,6 +727,8 @@ async function enrich_missing_show_metadata(shows) {
             show.poster_url = metadata.poster_url;
             show.genres = metadata.genres;
             show.tmdb_rating = metadata.tmdb_rating;
+            show.average_episode_runtime_minutes =
+                metadata.average_episode_runtime_minutes;
         } catch (error) {
             console.error("Unable to add TV metadata:", show.title, error);
         }
@@ -747,12 +753,36 @@ async function load_show_library() {
         }
 
         await enrich_missing_show_metadata(shows);
+
+        const {data: watched_episodes, error: progress_error} =
+            await supabase.from("tv_episode_progress")
+                .select("tv_show_id, episode_number, watched")
+                .eq("watched", true);
+
+        if (progress_error) throw progress_error;
+
+        const show_by_id = new Map(
+            shows.map((show) => [show.id, show])
+        );
+        const total_tv_minutes = (watched_episodes || []).reduce(
+            (total, episode) => {
+                const show = show_by_id.get(episode.tv_show_id);
+                return total +
+                    (show?.average_episode_runtime_minutes || 0);
+            },
+            0
+        );
+
+        show_watch_time.textContent =
+            `${Math.round(total_tv_minutes / 60)}h`;
+
         show_library = shows;
         populate_show_filters(shows);
         render_show_library();
     } catch (error) {
         console.error("Unable to load TV show library:", error);
         show_count.textContent = "Error";
+        show_watch_time.textContent = "—";
         show_library_count.textContent = "ERROR";
         show_grid.innerHTML =
             '<p class="library-loading">Unable to load your TV shows.</p>';
