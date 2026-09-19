@@ -823,20 +823,16 @@ async function open_show_seasons(show) {
             return `
                 <article class="season-card ${watched ? "watched" : ""}"
                          data-season-number="${season.season_number}">
-                    <div class="season-poster-action">
-                        <button class="season-open-button" type="button"
-                                data-season-open="${season.season_number}">
-                            ${poster}
-                        </button>
-                        <button class="season-watch-overlay ${watched ? "watched" : ""}"
-                                type="button"
-                                data-season-watched="${season.season_number}"
-                                data-episode-count="${season.episode_count}"
-                                aria-label="${watched ? "Mark season not watched" : "Mark season watched"}">
+                    <button class="season-poster-action" type="button"
+                            data-season-watched="${season.season_number}"
+                            data-episode-count="${season.episode_count}"
+                            aria-label="${watched ? "Mark season not watched" : "Mark season watched"}">
+                        ${poster}
+                        <span class="season-watch-overlay">
                             <span class="season-watch-check">✓</span>
                             <span>${watched ? "Watched" : "Mark watched"}</span>
-                        </button>
-                    </div>
+                        </span>
+                    </button>
                     <button class="season-text-button" type="button"
                             data-season-open="${season.season_number}">
                         <strong>${season.name}</strong>
@@ -996,8 +992,9 @@ season_grid.addEventListener("click", async (event) => {
 
             season_watch_progress.set(season_number, watched);
             card.classList.toggle("watched", watched);
-            watch_button.classList.toggle("watched", watched);
-            watch_button.querySelector("span:last-child").textContent =
+            watch_button.querySelector(".season-watch-overlay")
+                .classList.toggle("watched", watched);
+            watch_button.querySelector(".season-watch-overlay span:last-child").textContent =
                 watched ? "Watched" : "Mark watched";
             watch_button.setAttribute(
                 "aria-label",

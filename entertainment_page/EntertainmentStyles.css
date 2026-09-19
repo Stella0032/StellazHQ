@@ -1837,3 +1837,84 @@ a {
     }
 }
 /*#endregion*/
+
+
+/*? -------------------------------- */
+/*^ ----- Clean Watch Hover ------- */
+/*? -------------------------------- */
+/*#region*/
+.season-card,
+.season-card.watched {
+    padding: 7px;
+    overflow: visible;
+    border-color: transparent;
+    background: transparent;
+}
+
+.season-card:hover,
+.season-card:focus-within,
+.season-card.watched {
+    border-color: transparent;
+    background: transparent;
+}
+
+.season-poster-action {
+    position: relative;
+    width: 100%;
+    padding: 0;
+    display: block;
+    overflow: hidden;
+    border: 0;
+    border-radius: 9px;
+    color: inherit;
+    background: transparent;
+    cursor: pointer;
+}
+
+.season-poster-action img,
+.season-poster-action .season-poster-placeholder {
+    display: block;
+    width: 100%;
+    margin: 0;
+}
+
+.season-watch-overlay {
+    pointer-events: none;
+}
+
+.season-card.watched .season-watch-overlay {
+    color: #bff5da;
+}
+
+.season-text-button {
+    margin-top: 7px;
+    padding: 0 3px;
+}
+
+.season-text-button strong {
+    color: #f4f5fb;
+}
+
+.episode-card,
+.episode-card.watched {
+    border-color: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.025);
+}
+
+.episode-watch-image {
+    display: block;
+}
+
+.episode-watch-image img,
+.episode-watch-image .episode-still-placeholder {
+    display: block;
+    margin: 0;
+}
+
+@media (hover: none) {
+    .season-card.watched .season-watch-overlay,
+    .episode-card.watched .episode-watch-overlay {
+        opacity: 0;
+    }
+}
+/*#endregion*/
