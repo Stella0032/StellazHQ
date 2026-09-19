@@ -84,8 +84,21 @@ show_recommendations("movies");
 const movie_count = document.getElementById("movie_count");
 const movie_library_count = document.getElementById("movie_library_count");
 const movie_grid = document.getElementById("movie_grid");
+const movie_library_toggle = document.getElementById("movie_library_toggle");
 
-function create_movie_card(movie) {
+function get_collapsed_movie_count() {
+    if (window.innerWidth <= 700) {
+        return 4;
+    }
+
+    if (window.innerWidth <= 1100) {
+        return 10;
+    }
+
+    return 14;
+}
+
+function create_movie_card(movie, index) {
     const poster = movie.poster_url
         ? `<img class="movie-poster" src="${movie.poster_url}" alt="${movie.title} poster" loading="lazy">`
         : `<div class="movie-poster-placeholder"><span>${movie.title}</span></div>`;
@@ -94,8 +107,12 @@ function create_movie_card(movie) {
         ? ` · ★ ${movie.my_rating}/10`
         : "";
 
+    const extra_class = index >= get_collapsed_movie_count()
+        ? " library-extra"
+        : "";
+
     return `
-        <article class="movie-card">
+        <article class="movie-card${extra_class}">
             ${poster}
             <h3 title="${movie.title}">${movie.title}</h3>
             <p class="movie-meta">${movie.year}${rating}</p>
@@ -170,6 +187,13 @@ async function load_movie_library() {
 
         movie_grid.innerHTML = movies.map(create_movie_card).join("");
 
+        const has_hidden_movies = movies.length > get_collapsed_movie_count();
+        movie_library_toggle.hidden = !has_hidden_movies;
+
+        if (has_hidden_movies) {
+            movie_library_toggle.textContent = "Show all movies";
+        }
+
         movies.forEach((movie) => {
             console.log("Loaded Supabase movie:", movie.title, movie);
         });
@@ -180,6 +204,20 @@ async function load_movie_library() {
         movie_grid.innerHTML = '<p class="library-loading">Unable to load your movies.</p>';
     }
 }
+movie_library_toggle.addEventListener("click", () => {
+    const expanded = movie_grid.classList.toggle("expanded");
+
+    movie_library_toggle.textContent = expanded
+        ? "Show less"
+        : "Show all movies";
+
+    if (!expanded) {
+        document.getElementById("movie_library").scrollIntoView({
+            behavior: "smooth",
+            block: "start"
+        });
+    }
+});
 //#endregion
 
 
