@@ -112,6 +112,23 @@
 <div class="movie-library-header"><div><p class="eyebrow">YOUR COLLECTION</p><h2>Your Anime</h2></div><div class="library-header-actions"><button class="library-add-button" id="mal_sync_header_button" type="button" hidden>Sync MyAnimeList</button><span class="movie-library-count" id="mal_connection_label">NOT CONNECTED</span></div></div>
 <div class="mal-connect-card" id="mal_connect_card"><div><h3 id="mal_connect_title">Connect MyAnimeList</h3><p id="mal_connect_description">Connect your MyAnimeList account so Stellaz can sync your anime library.</p></div><button class="library-add-button" id="mal_connect_button" type="button">Connect MyAnimeList</button></div>
 <div class="anime-sync-summary" id="anime_sync_summary" hidden></div>
+<div class="movie-filters" id="anime_filters" aria-label="Anime filters" hidden>
+    <input class="movie-search" id="anime_search" type="search" placeholder="Search anime..." aria-label="Search anime">
+    <select class="movie-filter" id="anime_status_filter" aria-label="Filter anime by status">
+        <option value="">All statuses</option>
+        <option value="watching">Currently watching</option>
+        <option value="completed">Completed</option>
+        <option value="on_hold">On hold</option>
+        <option value="dropped">Dropped</option>
+        <option value="plan_to_watch">Plan to watch</option>
+    </select>
+    <select class="movie-filter" id="anime_sort" aria-label="Sort anime">
+        <option value="title-asc">Title A–Z</option>
+        <option value="title-desc">Title Z–A</option>
+        <option value="score-desc">Best rated by me</option>
+    </select>
+    <button class="movie-filter-clear" id="anime_filter_clear" type="button">Clear</button>
+</div>
 <div class="movie-grid anime-grid" id="anime_grid"></div>
 <button class="movie-library-toggle" id="anime_library_toggle" type="button" hidden>Show all anime</button>
 </section>
