@@ -11,6 +11,8 @@ const {setGlobalOptions} = require("firebase-functions");
 const {defineSecret} = require("firebase-functions/params");
 const {onRequest, onCall, HttpsError} = require("firebase-functions/https");
 const logger = require("firebase-functions/logger");
+const crypto = require("crypto");
+
 
 const {initializeApp} = require("firebase-admin/app");
 const {getFirestore} = require("firebase-admin/firestore");
@@ -102,6 +104,82 @@ exports.addMovie = onCall(async (request) => {
     movie_id: movie_id,
   };
 });
+
+//? ------------------------------
+//* ----- Invite-only Signup ----
+//? ------------------------------
+//#region
+exports.createInvitedAccount = onCall(async (request) => {
+    const email = String(request.data?.email || "").trim().toLowerCase();
+    const password = String(request.data?.password || "");
+    const invite_key = String(request.data?.invite_key || "").trim();
+
+    if (!email || !email.includes("@") || password.length < 6 || !invite_key) {
+        throw new HttpsError(
+            "invalid-argument",
+            "A valid email, password, and invite key are required."
+        );
+    }
+
+    const key_hash = crypto
+        .createHash("sha256")
+        .update(invite_key)
+        .digest("hex");
+
+    const invite_ref = db.collection("invite_keys").doc(key_hash);
+
+    await db.runTransaction(async (transaction) => {
+        const invite_doc = await transaction.get(invite_ref);
+        const invite = invite_doc.data();
+
+        if (!invite_doc.exists ||
+            invite?.is_active !== true ||
+            Number(invite?.uses || 0) >= Number(invite?.max_uses || 1) ||
+            (invite?.expires_at &&
+                invite.expires_at.toDate() <= new Date())) {
+            throw new HttpsError(
+                "permission-denied",
+                "That invite key is invalid, expired, or already used."
+            );
+        }
+
+        let user_record;
+
+        try {
+            user_record = await getAuth().createUser({
+                email,
+                password,
+                emailVerified: false,
+            });
+        } catch (error) {
+            if (error.code === "auth/email-already-exists") {
+                throw new HttpsError(
+                    "already-exists",
+                    "An account already exists for that email."
+                );
+            }
+
+            throw new HttpsError(
+                "invalid-argument",
+                "The account could not be created."
+            );
+        }
+
+        await getAuth().setCustomUserClaims(user_record.uid, {
+            role: "authenticated",
+        });
+
+        transaction.update(invite_ref, {
+            uses: Number(invite.uses || 0) + 1,
+            used_by: user_record.uid,
+            used_at: new Date(),
+        });
+    });
+
+    return {success: true};
+});
+//#endregion
+
 
 exports.setSupabaseRole = onCall(async (request) => {
     if (!request.auth) {
