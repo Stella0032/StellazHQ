@@ -226,11 +226,12 @@ a {
     --accent: var(--blue);
 
     position: relative;
-    min-height: 118px;
-    padding: 16px 20px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
+    min-height: 82px;
+    padding: 14px 18px;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    column-gap: 14px;
     overflow: hidden;
     border: 1px solid color-mix(in srgb, var(--accent) 45%, rgba(255, 255, 255, 0.12));
     border-radius: 18px;
@@ -280,8 +281,12 @@ a {
     color: var(--accent);
 }
 
+.library-card > div {
+    min-width: 0;
+}
+
 .library-card h2 {
-    margin: 8px 0 4px;
+    margin: 0 0 4px;
     font-size: 18px;
 }
 
@@ -292,9 +297,8 @@ a {
 }
 
 .card-arrow {
-    position: absolute;
-    right: 20px;
-    bottom: 17px;
+    position: static;
+    align-self: center;
     color: var(--accent);
     font-size: 24px;
 }
@@ -493,7 +497,7 @@ a {
     }
 
     .library-card {
-        min-height: 135px;
+        min-height: 82px;
     }
 
     .recommendations-panel {
