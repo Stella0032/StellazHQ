@@ -10,6 +10,56 @@ import { auth, functions, supabase } from "../firebase/firebase_config.js";
 const recommendation_grid = document.getElementById("recommendation_grid");
 const recommendation_count = document.querySelector(".recommendation-count");
 
+let recommendation_pool = [];
+let visible_recommendations = [];
+
+function create_recommendation_card(movie) {
+    const reason = movie.because_of?.length
+        ? `Because you liked ${movie.because_of.join(" and ")}`
+        : "Picked from your movie history";
+
+    const rating = movie.tmdb_rating !== null
+        ? ` · ⭐ ${Number(movie.tmdb_rating).toFixed(1)}`
+        : "";
+
+    return `
+        <article class="recommendation-card"
+                 tabindex="0"
+                 role="button"
+                 data-recommendation-id="${movie.tmdb_id}"
+                 aria-label="View details for ${movie.title}">
+            <div class="recommendation-poster-wrap">
+                <img class="recommendation-poster"
+                     src="${movie.poster_url}"
+                     alt="${movie.title} poster"
+                     loading="lazy">
+                <span class="recommendation-expand-icon" aria-hidden="true">＋</span>
+                <button class="recommendation-refresh"
+                        type="button"
+                        title="Show me something else"
+                        aria-label="Replace ${movie.title} with another suggestion">
+                    ↻
+                </button>
+            </div>
+            <h3 title="${movie.title}">${movie.title}</h3>
+            <p>${movie.year}${rating}</p>
+            <p class="recommendation-reason">${reason}</p>
+            <div class="recommendation-details">
+                <p class="recommendation-description">${movie.overview || "No description available."}</p>
+                <p class="recommendation-match">${reason}</p>
+            </div>
+        </article>
+    `;
+}
+
+function render_recommendations() {
+    recommendation_count.textContent =
+        `${visible_recommendations.length} PICKS`;
+
+    recommendation_grid.innerHTML =
+        visible_recommendations.map(create_recommendation_card).join("");
+}
+
 async function load_movie_recommendations(movies) {
     recommendation_grid.innerHTML =
         '<p class="recommendation-loading">Finding movies for you...</p>';
@@ -27,48 +77,17 @@ async function load_movie_recommendations(movies) {
             }))
         });
 
-        const recommendations = result.data.recommendations || [];
-        recommendation_count.textContent =
-            `${recommendations.length} PICKS`;
+        recommendation_pool = result.data.recommendations || [];
+        visible_recommendations = recommendation_pool.splice(0, 6);
 
-        if (recommendations.length === 0) {
+        if (visible_recommendations.length === 0) {
+            recommendation_count.textContent = "0 PICKS";
             recommendation_grid.innerHTML =
                 '<p class="recommendation-loading">Rate a few movies to improve your recommendations.</p>';
             return;
         }
 
-        recommendation_grid.innerHTML = recommendations.map((movie) => {
-            const reason = movie.because_of?.length
-                ? `Because you liked ${movie.because_of.join(" and ")}`
-                : "Picked from your movie history";
-
-            const rating = movie.tmdb_rating !== null
-                ? ` · ⭐ ${Number(movie.tmdb_rating).toFixed(1)}`
-                : "";
-
-            return `
-                <article class="recommendation-card"
-                         tabindex="0"
-                         role="button"
-                         data-recommendation-id="${movie.tmdb_id}"
-                         aria-label="View details for ${movie.title}">
-                    <div class="recommendation-poster-wrap">
-                        <img class="recommendation-poster"
-                             src="${movie.poster_url}"
-                             alt="${movie.title} poster"
-                             loading="lazy">
-                        <span class="recommendation-expand-icon" aria-hidden="true">＋</span>
-                    </div>
-                    <h3 title="${movie.title}">${movie.title}</h3>
-                    <p>${movie.year}${rating}</p>
-                    <p class="recommendation-reason">${reason}</p>
-                    <div class="recommendation-details">
-                        <p class="recommendation-description">${movie.overview || "No description available."}</p>
-                        <p class="recommendation-match">${reason}</p>
-                    </div>
-                </article>
-            `;
-        }).join("");
+        render_recommendations();
     } catch (error) {
         console.error("Unable to load recommendations:", error);
         recommendation_count.textContent = "—";
@@ -78,9 +97,35 @@ async function load_movie_recommendations(movies) {
 }
 
 recommendation_grid.addEventListener("click", (event) => {
+    const refresh_button = event.target.closest(".recommendation-refresh");
     const card = event.target.closest(".recommendation-card");
 
     if (!card) {
+        return;
+    }
+
+    if (refresh_button) {
+        event.stopPropagation();
+
+        const replacement = recommendation_pool.shift();
+
+        if (!replacement) {
+            refresh_button.disabled = true;
+            refresh_button.textContent = "✓";
+            refresh_button.title = "No more suggestions right now";
+            return;
+        }
+
+        const current_id = Number(card.dataset.recommendationId);
+        const index = visible_recommendations.findIndex(
+            (movie) => movie.tmdb_id === current_id
+        );
+
+        if (index !== -1) {
+            visible_recommendations[index] = replacement;
+            card.outerHTML = create_recommendation_card(replacement);
+        }
+
         return;
     }
 
