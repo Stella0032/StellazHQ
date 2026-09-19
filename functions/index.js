@@ -506,6 +506,120 @@ exports.getTVShowMetadata = onCall(
 
 
 
+exports.getTVShowSeasons = onCall(
+    {secrets: [tmdb_read_access_token]},
+    async (request) => {
+        if (!request.auth) {
+            throw new HttpsError("unauthenticated", "You must be logged in.");
+        }
+
+        const title = String(request.data?.title || "").trim();
+        const year = Number(request.data?.year);
+
+        if (!title) {
+            throw new HttpsError("invalid-argument", "TV show title is required.");
+        }
+
+        const headers = {
+            Authorization: `Bearer ${tmdb_read_access_token.value()}`,
+            accept: "application/json",
+        };
+        const search_url = new URL("https://api.themoviedb.org/3/search/tv");
+        search_url.searchParams.set("query", title);
+        search_url.searchParams.set("language", "en-US");
+        if (year) {
+            search_url.searchParams.set("first_air_date_year", String(year));
+        }
+
+        const search_response = await fetch(search_url, {headers});
+        if (!search_response.ok) {
+            throw new HttpsError("internal", "TMDB TV search failed.");
+        }
+
+        const search_data = await search_response.json();
+        const match = search_data.results?.[0];
+        if (!match) {
+            throw new HttpsError("not-found", "TV show not found.");
+        }
+
+        const details_response = await fetch(
+            `https://api.themoviedb.org/3/tv/${match.id}?language=en-US`,
+            {headers}
+        );
+        if (!details_response.ok) {
+            throw new HttpsError("internal", "TMDB TV details request failed.");
+        }
+
+        const show = await details_response.json();
+        const seasons = (show.seasons || [])
+            .filter((season) => season.season_number > 0)
+            .map((season) => ({
+                season_number: season.season_number,
+                name: season.name,
+                episode_count: season.episode_count,
+                air_date: season.air_date || null,
+                poster_url: season.poster_path ?
+                    `https://image.tmdb.org/t/p/w500${season.poster_path}` :
+                    null,
+            }));
+
+        return {
+            tmdb_id: show.id,
+            title: show.name,
+            seasons,
+        };
+    }
+);
+
+exports.getTVSeasonEpisodes = onCall(
+    {secrets: [tmdb_read_access_token]},
+    async (request) => {
+        if (!request.auth) {
+            throw new HttpsError("unauthenticated", "You must be logged in.");
+        }
+
+        const tmdb_id = Number(request.data?.tmdb_id);
+        const season_number = Number(request.data?.season_number);
+
+        if (!Number.isInteger(tmdb_id) || !Number.isInteger(season_number)) {
+            throw new HttpsError("invalid-argument", "Show and season are required.");
+        }
+
+        const response = await fetch(
+            `https://api.themoviedb.org/3/tv/${tmdb_id}/season/${season_number}?language=en-US`,
+            {
+                headers: {
+                    Authorization: `Bearer ${tmdb_read_access_token.value()}`,
+                    accept: "application/json",
+                },
+            }
+        );
+
+        if (!response.ok) {
+            throw new HttpsError("internal", "TMDB season request failed.");
+        }
+
+        const season = await response.json();
+
+        return {
+            name: season.name,
+            season_number: season.season_number,
+            episodes: (season.episodes || []).map((episode) => ({
+                episode_number: episode.episode_number,
+                name: episode.name,
+                air_date: episode.air_date || null,
+                runtime_minutes: episode.runtime || null,
+                tmdb_rating: episode.vote_average ?? null,
+                overview: episode.overview || "",
+                still_url: episode.still_path ?
+                    `https://image.tmdb.org/t/p/w500${episode.still_path}` :
+                    null,
+            })),
+        };
+    }
+);
+
+
 exports.getTVShowRecommendations = onCall(
     {secrets: [tmdb_read_access_token]},
     async (request) => {
