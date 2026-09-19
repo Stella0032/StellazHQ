@@ -127,7 +127,10 @@ exports.createInvitedAccount = onCall(async (request) => {
         .digest("hex");
 
     const invite_ref = db.collection("invite_keys").doc(key_hash);
+    const reservation_id = crypto.randomUUID();
 
+    // Reserve one use first. Firestore transactions can retry, so no
+    // Firebase Auth side effects happen inside this callback.
     await db.runTransaction(async (transaction) => {
         const invite_doc = await transaction.get(invite_ref);
         const invite = invite_doc.data();
@@ -143,38 +146,78 @@ exports.createInvitedAccount = onCall(async (request) => {
             );
         }
 
-        let user_record;
+        transaction.update(invite_ref, {
+            uses: Number(invite.uses || 0) + 1,
+            pending_reservation: reservation_id,
+            pending_email: email,
+            reserved_at: new Date(),
+        });
+    });
 
-        try {
-            user_record = await getAuth().createUser({
-                email,
-                password,
-                emailVerified: false,
-            });
-        } catch (error) {
-            if (error.code === "auth/email-already-exists") {
-                throw new HttpsError(
-                    "already-exists",
-                    "An account already exists for that email."
-                );
-            }
+    let user_record;
 
-            throw new HttpsError(
-                "invalid-argument",
-                "The account could not be created."
-            );
-        }
+    try {
+        user_record = await getAuth().createUser({
+            email,
+            password,
+            emailVerified: false,
+        });
 
         await getAuth().setCustomUserClaims(user_record.uid, {
             role: "authenticated",
         });
 
-        transaction.update(invite_ref, {
-            uses: Number(invite.uses || 0) + 1,
+        await invite_ref.update({
             used_by: user_record.uid,
             used_at: new Date(),
+            pending_reservation: FieldValue.delete(),
+            pending_email: FieldValue.delete(),
+            reserved_at: FieldValue.delete(),
         });
-    });
+    } catch (error) {
+        // Release this reservation if account creation or claim setup fails.
+        await db.runTransaction(async (transaction) => {
+            const invite_doc = await transaction.get(invite_ref);
+            const invite = invite_doc.data();
+
+            if (invite_doc.exists &&
+                invite?.pending_reservation === reservation_id) {
+                transaction.update(invite_ref, {
+                    uses: Math.max(Number(invite.uses || 1) - 1, 0),
+                    pending_reservation: FieldValue.delete(),
+                    pending_email: FieldValue.delete(),
+                    reserved_at: FieldValue.delete(),
+                });
+            }
+        });
+
+        if (user_record?.uid) {
+            try {
+                await getAuth().deleteUser(user_record.uid);
+            } catch (cleanup_error) {
+                console.error(
+                    "Unable to clean up partially created user:",
+                    cleanup_error
+                );
+            }
+        }
+
+        if (error.code === "auth/email-already-exists") {
+            throw new HttpsError(
+                "already-exists",
+                "An account already exists for that email."
+            );
+        }
+
+        if (error instanceof HttpsError) {
+            throw error;
+        }
+
+        throw new HttpsError(
+            "invalid-argument",
+            "The account could not be created."
+        );
+    }
 
     return {success: true};
 });
