@@ -160,8 +160,4 @@ signup_form.addEventListener("submit", async (event) => {
 document.getElementById("portfolioButton").addEventListener("click", () => {
     window.location.href = "portfolio_page/Portfolio.html";
 });
-
-document.getElementById("security_robot").addEventListener("click", () => {
-    window.location.href = "security_robot_page/security_robot.html";
-});
 //#endregion
