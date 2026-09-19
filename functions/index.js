@@ -362,6 +362,130 @@ exports.getMALConnectionStatus = onCall(async (request) => {
 
     return {connected: connection.exists};
 });
+
+
+async function get_valid_mal_access_token(uid) {
+    const ref = db.collection("mal_connections").doc(uid);
+    const snapshot = await ref.get();
+
+    if (!snapshot.exists) {
+        throw new HttpsError(
+            "failed-precondition",
+            "Connect MyAnimeList before syncing."
+        );
+    }
+
+    const connection = snapshot.data();
+
+    if (Number(connection.expires_at || 0) > Date.now() + 60000) {
+        return connection.access_token;
+    }
+
+    const body = new URLSearchParams({
+        client_id: mal_client_id.value(),
+        client_secret: mal_client_secret.value(),
+        grant_type: "refresh_token",
+        refresh_token: connection.refresh_token,
+    });
+
+    const response = await fetch(
+        "https://myanimelist.net/v1/oauth2/token",
+        {
+            method: "POST",
+            headers: {"Content-Type": "application/x-www-form-urlencoded"},
+            body,
+        }
+    );
+
+    if (!response.ok) {
+        throw new HttpsError(
+            "unauthenticated",
+            "Your MyAnimeList connection needs to be renewed."
+        );
+    }
+
+    const tokens = await response.json();
+    const expires_at = Date.now() + Number(tokens.expires_in || 0) * 1000;
+
+    await ref.set({
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token || connection.refresh_token,
+        token_type: tokens.token_type || "Bearer",
+        expires_at,
+        refreshed_at: new Date(),
+    }, {merge: true});
+
+    return tokens.access_token;
+}
+
+exports.syncMALAnimeList = onCall(
+    {secrets: [mal_client_id, mal_client_secret], timeoutSeconds: 120},
+    async (request) => {
+        if (!request.auth) {
+            throw new HttpsError("unauthenticated", "You must be logged in.");
+        }
+
+        const access_token =
+            await get_valid_mal_access_token(request.auth.uid);
+        const fields = [
+            "list_status",
+            "num_episodes",
+            "media_type",
+            "start_date",
+            "end_date",
+        ].join(",");
+
+        let url = new URL("https://api.myanimelist.net/v2/users/@me/animelist");
+        url.searchParams.set("limit", "1000");
+        url.searchParams.set("fields", fields);
+
+        const anime = [];
+
+        while (url) {
+            const response = await fetch(url, {
+                headers: {Authorization: `Bearer ${access_token}`},
+            });
+
+            if (!response.ok) {
+                logger.error("MAL anime list request failed.", {
+                    status: response.status,
+                });
+                throw new HttpsError(
+                    "internal",
+                    "MyAnimeList anime sync failed."
+                );
+            }
+
+            const data = await response.json();
+
+            for (const item of data.data || []) {
+                const node = item.node || {};
+                const status = item.list_status || {};
+
+                anime.push({
+                    mal_id: node.id,
+                    title: node.title,
+                    status: status.status || "plan_to_watch",
+                    episodes_watched: Number(status.num_episodes_watched || 0),
+                    total_episodes: Number(node.num_episodes || 0),
+                    my_rating: Number(status.score || 0) || null,
+                    poster_url:
+                        node.main_picture?.large ||
+                        node.main_picture?.medium ||
+                        null,
+                    media_type: node.media_type || null,
+                    start_date: status.start_date || null,
+                    finish_date: status.finish_date || null,
+                    mal_updated_at: status.updated_at || null,
+                });
+            }
+
+            url = data.paging?.next ? new URL(data.paging.next) : null;
+        }
+
+        return {anime, count: anime.length};
+    }
+);
 //#endregion
 
 

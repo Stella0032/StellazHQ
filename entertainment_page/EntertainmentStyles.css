@@ -2008,3 +2008,7 @@ a {
     }
 }
 /*#endregion*/
+
+.anime-sync-summary { margin: 18px 0 10px; color: var(--muted); font-size: 12px; }
+.anime-grid { margin-top: 18px; }
+.anime-card p { margin: 4px 0 0; color: var(--muted); font-size: 11px; }
