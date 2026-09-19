@@ -1606,10 +1606,9 @@ a {
 .show-title-button {
     max-width: 100%;
     margin: 10px 0 4px;
-    padding: 2px 4px;
+    padding: 0;
     overflow: hidden;
     border: 0;
-    border-radius: 6px;
     color: #f4f5fb;
     background: transparent;
     cursor: pointer;
@@ -1622,17 +1621,15 @@ a {
     transform-origin: left center;
     transition:
         color 0.18s ease,
-        background 0.18s ease,
         transform 0.18s ease,
         text-shadow 0.18s ease;
 }
 
 .show-title-button:hover,
 .show-title-button:focus-visible {
-    color: #e7c8ff;
-    background: rgba(194, 120, 255, 0.12);
-    text-shadow: 0 0 12px rgba(194, 120, 255, 0.45);
-    transform: scale(1.09);
+    color: #d9b4ff;
+    text-shadow: 0 0 10px rgba(194, 120, 255, 0.38);
+    transform: scale(1.06);
     outline: none;
 }
 
