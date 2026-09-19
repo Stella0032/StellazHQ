@@ -280,7 +280,8 @@ function create_movie_card(movie, index) {
         : "";
 
     return `
-        <article class="movie-card${extra_class}">
+        <article class="movie-card${extra_class}" data-library-item="movie" data-item-id="${movie.id}">
+            <button class="library-remove-button" type="button" data-remove-type="movie" data-remove-id="${movie.id}" aria-label="Remove ${movie.title} from your movies" title="Remove from library">×</button>
             <div class="movie-poster-wrap">
                 ${poster}
                 <div class="movie-rating-overlay">
@@ -608,7 +609,8 @@ function create_show_card(show, index) {
         : "";
 
     return `
-        <article class="movie-card${extra_class}">
+        <article class="movie-card${extra_class}" data-library-item="show" data-item-id="${show.id}">
+            <button class="library-remove-button" type="button" data-remove-type="show" data-remove-id="${show.id}" aria-label="Remove ${show.title} from your TV shows" title="Remove from library">×</button>
             <div class="movie-poster-wrap">
                 ${poster}
                 <div class="movie-rating-overlay">
@@ -768,6 +770,157 @@ show_filter_clear.addEventListener("click", () => {
 show_library_toggle.addEventListener("click", () => {
     const expanded = show_grid.classList.toggle("expanded");
     show_library_toggle.textContent = expanded ? "Show less" : "Show all shows";
+});
+//#endregion
+
+
+//? --------------------------------
+//* ----- Manual Library Tools ----
+//? --------------------------------
+//#region
+const movie_add_button = document.getElementById("movie_add_button");
+const show_add_button = document.getElementById("show_add_button");
+const library_add_dialog = document.getElementById("library_add_dialog");
+const library_add_form = document.getElementById("library_add_form");
+const library_dialog_title = document.getElementById("library_dialog_title");
+const library_dialog_close = document.getElementById("library_dialog_close");
+const library_add_title = document.getElementById("library_add_title");
+const library_add_year = document.getElementById("library_add_year");
+const library_add_submit = document.getElementById("library_add_submit");
+const library_remove_dialog = document.getElementById("library_remove_dialog");
+const library_remove_form = document.getElementById("library_remove_form");
+const library_remove_title = document.getElementById("library_remove_title");
+const library_remove_cancel = document.getElementById("library_remove_cancel");
+
+let manual_library_type = "movie";
+let pending_remove = null;
+
+function show_toast(message) {
+    toast.textContent = message;
+    toast.classList.add("show");
+    clearTimeout(window.entertainment_toast_timeout);
+    window.entertainment_toast_timeout = setTimeout(() => {
+        toast.classList.remove("show");
+    }, 2200);
+}
+
+function open_add_dialog(type) {
+    manual_library_type = type;
+    library_dialog_title.textContent =
+        type === "movie" ? "Add movie" : "Add TV show";
+    library_add_title.value = "";
+    library_add_year.value = "";
+    library_add_dialog.showModal();
+    setTimeout(() => library_add_title.focus(), 0);
+}
+
+movie_add_button.addEventListener("click", () => open_add_dialog("movie"));
+show_add_button.addEventListener("click", () => open_add_dialog("show"));
+library_dialog_close.addEventListener("click", () => library_add_dialog.close());
+
+library_add_form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const title = library_add_title.value.trim();
+    const year = Number(library_add_year.value);
+    const is_movie = manual_library_type === "movie";
+    const table = is_movie ? "movies" : "tv_shows";
+
+    if (!title || !Number.isInteger(year)) return;
+
+    library_add_submit.disabled = true;
+    library_add_submit.textContent = "Adding...";
+
+    try {
+        const {error} = await supabase.from(table).insert({
+            title,
+            year,
+            status: "watched"
+        });
+
+        if (error) {
+            if (error.code === "23505") {
+                throw new Error("That title is already in your library.");
+            }
+            throw error;
+        }
+
+        library_add_dialog.close();
+
+        if (is_movie) {
+            await load_movie_library();
+            show_entertainment_category("Movies");
+        } else {
+            await load_show_library();
+            show_entertainment_category("TV Shows");
+        }
+
+        show_toast(`${title} added.`);
+    } catch (error) {
+        console.error("Unable to add library title:", error);
+        alert(error.message || "Unable to add that title.");
+    } finally {
+        library_add_submit.disabled = false;
+        library_add_submit.textContent = "Add to library";
+    }
+});
+
+function request_remove(type, id) {
+    const library = type === "movie" ? movie_library : show_library;
+    const item = library.find((entry) => entry.id === id);
+    if (!item) return;
+
+    pending_remove = {type, id, title: item.title};
+    library_remove_title.textContent = `Remove ${item.title}?`;
+    library_remove_dialog.showModal();
+}
+
+movie_grid.addEventListener("click", (event) => {
+    const button = event.target.closest(".library-remove-button");
+    if (!button) return;
+    event.stopPropagation();
+    request_remove("movie", Number(button.dataset.removeId));
+});
+
+show_grid.addEventListener("click", (event) => {
+    const button = event.target.closest(".library-remove-button");
+    if (!button) return;
+    event.stopPropagation();
+    request_remove("show", Number(button.dataset.removeId));
+});
+
+library_remove_cancel.addEventListener("click", () => {
+    pending_remove = null;
+    library_remove_dialog.close();
+});
+
+library_remove_form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!pending_remove) return;
+
+    const {type, id, title} = pending_remove;
+    const table = type === "movie" ? "movies" : "tv_shows";
+
+    try {
+        const {error} = await supabase.from(table).delete().eq("id", id);
+        if (error) throw error;
+
+        pending_remove = null;
+        library_remove_dialog.close();
+
+        if (type === "movie") {
+            await load_movie_library();
+            show_entertainment_category("Movies");
+        } else {
+            await load_show_library();
+            show_entertainment_category("TV Shows");
+        }
+
+        show_toast(`${title} removed.`);
+    } catch (error) {
+        console.error("Unable to remove library title:", error);
+        alert("Unable to remove that title. Please try again.");
+    }
 });
 //#endregion
 
