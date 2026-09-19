@@ -587,6 +587,8 @@ const episode_list = document.getElementById("episode_list");
 
 let active_show_tmdb_id = null;
 let active_show_title = "";
+let active_show_id = null;
+let season_watch_progress = new Map();
 
 let show_library = [];
 
@@ -631,7 +633,11 @@ function create_show_card(show, index) {
                     <div class="rating-stars">${rating_buttons}</div>
                 </div>
             </div>
-            <h3 title="${show.title}">${show.title}</h3>
+            <button class="show-title-button" type="button"
+                    data-show-open="${show.id}"
+                    aria-label="Open seasons for ${show.title}">
+                ${show.title}
+            </button>
             <p class="movie-meta">${show.year}${tmdb_rating}${personal_rating}</p>
         </article>`;
 }
@@ -773,6 +779,7 @@ show_grid.addEventListener("click", async (event) => {
 });
 
 async function open_show_seasons(show) {
+    active_show_id = show.id;
     show_details_title.textContent = show.title;
     season_grid.innerHTML =
         '<p class="library-loading">Loading seasons...</p>';
@@ -791,18 +798,42 @@ async function open_show_seasons(show) {
         active_show_tmdb_id = result.data.tmdb_id;
         active_show_title = result.data.title;
 
+        const {data: progress, error: progress_error} = await supabase
+            .from("tv_season_progress")
+            .select("season_number, watched")
+            .eq("tv_show_id", show.id);
+
+        if (progress_error) throw progress_error;
+
+        season_watch_progress = new Map(
+            (progress || []).map((item) => [item.season_number, item.watched])
+        );
+
         season_grid.innerHTML = result.data.seasons.map((season) => {
             const poster = season.poster_url
                 ? `<img src="${season.poster_url}" alt="${season.name} poster" loading="lazy">`
                 : '<div class="season-poster-placeholder">No poster</div>';
 
+            const watched = season_watch_progress.get(
+                season.season_number
+            ) === true;
+
             return `
-                <button class="season-card" type="button"
-                        data-season-number="${season.season_number}">
-                    ${poster}
-                    <strong>${season.name}</strong>
-                    <span>${season.episode_count} episodes</span>
-                </button>`;
+                <article class="season-card ${watched ? "watched" : ""}"
+                         data-season-number="${season.season_number}">
+                    <button class="season-open-button" type="button"
+                            data-season-open="${season.season_number}">
+                        ${poster}
+                        <strong>${season.name}</strong>
+                        <span>${season.episode_count} episodes</span>
+                    </button>
+                    <label class="season-watched-toggle">
+                        <input type="checkbox"
+                               data-season-watched="${season.season_number}"
+                               ${watched ? "checked" : ""}>
+                        <span>${watched ? "Watched" : "Not watched"}</span>
+                    </label>
+                </article>`;
         }).join("") ||
             '<p class="library-loading">No seasons found.</p>';
     } catch (error) {
@@ -876,19 +907,56 @@ show_grid.addEventListener("click", (event) => {
         return;
     }
 
-    const card = event.target.closest('[data-library-item="show"]');
-    if (!card) return;
+    const title_button = event.target.closest("[data-show-open]");
+    if (!title_button) return;
 
     const show = show_library.find(
-        (item) => item.id === Number(card.dataset.itemId)
+        (item) => item.id === Number(title_button.dataset.showOpen)
     );
     if (show) open_show_seasons(show);
 });
 
-season_grid.addEventListener("click", (event) => {
-    const card = event.target.closest(".season-card");
-    if (!card) return;
-    open_season_episodes(Number(card.dataset.seasonNumber));
+season_grid.addEventListener("click", async (event) => {
+    const open_button = event.target.closest("[data-season-open]");
+
+    if (open_button) {
+        open_season_episodes(Number(open_button.dataset.seasonOpen));
+        return;
+    }
+
+    const checkbox = event.target.closest("[data-season-watched]");
+    if (!checkbox) return;
+
+    const season_number = Number(checkbox.dataset.seasonWatched);
+    const watched = checkbox.checked;
+    const card = checkbox.closest(".season-card");
+    const label = checkbox.nextElementSibling;
+
+    checkbox.disabled = true;
+
+    try {
+        const {error} = await supabase
+            .from("tv_season_progress")
+            .upsert({
+                tv_show_id: active_show_id,
+                season_number,
+                watched
+            }, {
+                onConflict: "user_id,tv_show_id,season_number"
+            });
+
+        if (error) throw error;
+
+        season_watch_progress.set(season_number, watched);
+        card.classList.toggle("watched", watched);
+        label.textContent = watched ? "Watched" : "Not watched";
+    } catch (error) {
+        console.error("Unable to save season progress:", error);
+        checkbox.checked = !watched;
+        alert("Unable to save that season. Please try again.");
+    } finally {
+        checkbox.disabled = false;
+    }
 });
 
 season_back_button.addEventListener("click", () => {
