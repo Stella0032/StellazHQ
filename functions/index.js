@@ -1430,3 +1430,276 @@ exports.getTVShowRecommendations = onCall(
 );
 
 //#endregion
+
+
+//? -------------------------
+//* ----- Stellaz AI -------
+//? -------------------------
+//#region
+const openai_api_key = defineSecret("OPENAI_API_KEY");
+const supabase_secret_key = defineSecret("SUPABASE_SECRET_KEY");
+const supabase_url = "https://xmycfxwapejnbpareaxc.supabase.co";
+
+/**
+ * Resolve one movie through TMDB and return the fields used by Stellaz.
+ * The year is optional because the AI may know the title but not its date.
+ */
+async function resolve_ai_movie(title, year) {
+    const search_url = new URL("https://api.themoviedb.org/3/search/movie");
+    search_url.searchParams.set("query", title);
+    search_url.searchParams.set("include_adult", "false");
+    search_url.searchParams.set("language", "en-US");
+
+    if (Number.isInteger(year)) {
+        search_url.searchParams.set("year", String(year));
+    }
+
+    const headers = {
+        Authorization: `Bearer ${tmdb_read_access_token.value()}`,
+        accept: "application/json",
+    };
+
+    const search_response = await fetch(search_url, {headers});
+
+    if (!search_response.ok) {
+        throw new Error(`TMDB search failed for ${title}.`);
+    }
+
+    const search_data = await search_response.json();
+    const match = search_data.results?.[0];
+
+    if (!match) {
+        return null;
+    }
+
+    const details_response = await fetch(
+        `https://api.themoviedb.org/3/movie/${match.id}?language=en-US`,
+        {headers}
+    );
+
+    if (!details_response.ok) {
+        throw new Error(`TMDB details failed for ${title}.`);
+    }
+
+    const movie = await details_response.json();
+    const release_year = movie.release_date ?
+        Number(movie.release_date.slice(0, 4)) :
+        null;
+
+    if (!release_year) {
+        return null;
+    }
+
+    return {
+        title: movie.title,
+        year: release_year,
+        franchise: movie.belongs_to_collection?.name || null,
+        production_company: movie.production_companies?.[0]?.name || null,
+        genres: (movie.genres || []).map((genre) => genre.name),
+        status: "watched",
+        tmdb_rating: movie.vote_average ?? null,
+        poster_url: movie.poster_path ?
+            `https://image.tmdb.org/t/p/w500${movie.poster_path}` :
+            null,
+        runtime_minutes: movie.runtime || null,
+    };
+}
+
+/**
+ * Upsert movies for the Firebase-authenticated user only.
+ * The UID always comes from request.auth and never from the AI/browser.
+ */
+async function save_ai_movies(uid, movies) {
+    const endpoint = new URL(`${supabase_url}/rest/v1/movies`);
+    endpoint.searchParams.set("on_conflict", "user_id,title,year");
+
+    const rows = movies.map((movie) => ({
+        user_id: uid,
+        ...movie,
+    }));
+
+    const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+            apikey: supabase_secret_key.value(),
+            Authorization: `Bearer ${supabase_secret_key.value()}`,
+            "Content-Type": "application/json",
+            Prefer: "resolution=merge-duplicates,return=representation",
+        },
+        body: JSON.stringify(rows),
+    });
+
+    if (!response.ok) {
+        const error_text = await response.text();
+        logger.error("Stellaz AI Supabase write failed.", {
+            status: response.status,
+            error: error_text,
+        });
+        throw new Error("The movie library could not be updated.");
+    }
+
+    return response.json();
+}
+
+exports.stellazAI = onCall(
+    {
+        secrets: [
+            openai_api_key,
+            supabase_secret_key,
+            tmdb_read_access_token,
+        ],
+    },
+    async (request) => {
+        if (!request.auth) {
+            throw new HttpsError(
+                "unauthenticated",
+                "You must be logged in to use Stellaz AI."
+            );
+        }
+
+        const message = String(request.data?.message || "").trim();
+
+        if (!message || message.length > 1000) {
+            throw new HttpsError(
+                "invalid-argument",
+                "Send a message between 1 and 1000 characters."
+            );
+        }
+
+        const ai_response = await fetch(
+            "https://api.openai.com/v1/chat/completions",
+            {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${openai_api_key.value()}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    model: "gpt-5.6-luna",
+                    reasoning_effort: "low",
+                    messages: [
+                        {
+                            role: "system",
+                            content:
+                                "You are Stellaz AI. For this first version, " +
+                                "you only interpret requests to add watched " +
+                                "movies. Extract every movie the user clearly " +
+                                "asked to add, including all films when they " +
+                                "name a franchise. Respect exclusions. Do not " +
+                                "include TV series, anime series, unreleased " +
+                                "films, or titles the user did not request. " +
+                                "Use the canonical English title and release " +
+                                "year when known. If the request is not an " +
+                                "add-movie request, return an empty movies list.",
+                        },
+                        {
+                            role: "user",
+                            content: message,
+                        },
+                    ],
+                    response_format: {
+                        type: "json_schema",
+                        json_schema: {
+                            name: "stellaz_movie_request",
+                            strict: true,
+                            schema: {
+                                type: "object",
+                                properties: {
+                                    movies: {
+                                        type: "array",
+                                        maxItems: 50,
+                                        items: {
+                                            type: "object",
+                                            properties: {
+                                                title: {type: "string"},
+                                                year: {
+                                                    type: ["integer", "null"],
+                                                },
+                                            },
+                                            required: ["title", "year"],
+                                            additionalProperties: false,
+                                        },
+                                    },
+                                },
+                                required: ["movies"],
+                                additionalProperties: false,
+                            },
+                        },
+                    },
+                }),
+            }
+        );
+
+        if (!ai_response.ok) {
+            const error_text = await ai_response.text();
+            logger.error("Stellaz AI OpenAI request failed.", {
+                status: ai_response.status,
+                error: error_text,
+            });
+            throw new HttpsError(
+                "internal",
+                "Stellaz AI could not understand that request."
+            );
+        }
+
+        const ai_data = await ai_response.json();
+        const content = ai_data.choices?.[0]?.message?.content;
+
+        if (!content) {
+            throw new HttpsError(
+                "internal",
+                "Stellaz AI returned an empty response."
+            );
+        }
+
+        const parsed = JSON.parse(content);
+        const requested_movies = Array.isArray(parsed.movies) ?
+            parsed.movies.slice(0, 50) :
+            [];
+
+        if (requested_movies.length === 0) {
+            return {
+                success: false,
+                message:
+                    "For now, Stellaz AI can add movies to your watched list.",
+                added: [],
+            };
+        }
+
+        const resolved = [];
+
+        for (const movie of requested_movies) {
+            const match = await resolve_ai_movie(
+                String(movie.title || "").trim(),
+                Number.isInteger(movie.year) ? movie.year : null
+            );
+
+            if (match) {
+                resolved.push(match);
+            }
+        }
+
+        if (resolved.length === 0) {
+            return {
+                success: false,
+                message: "I couldn't find those movies on TMDB.",
+                added: [],
+            };
+        }
+
+        const saved = await save_ai_movies(request.auth.uid, resolved);
+        const added = saved.map((movie) => ({
+            title: movie.title,
+            year: movie.year,
+        }));
+
+        return {
+            success: true,
+            message:
+                `Added ${added.length} movie${added.length === 1 ? "" : "s"} ` +
+                "to your watched list.",
+            added,
+        };
+    }
+);
+//#endregion
