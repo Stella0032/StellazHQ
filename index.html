@@ -3,62 +3,47 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Justin's Hub</title>
+        <title>Stellaz · Login</title>
         <link rel="stylesheet" href="indexStyles.css">
     </head>
     <body class="LoginBody">
-        <div class="template">
-            <main>
-                <p class="line1">Welcome to Stellaz</p>
-                <div class="loginImage"></div>
-                <div class="inputContainers">
-                    <input type="text" id="username" placeholder="Username">
-                </div>
-                <div class="inputContainers">
-                    <input type="password" id="password" placeholder="password">
-                </div>
-                <div class="showPasswordLabel">
-                    <input type="checkbox" id="showPassword">
-                    <label for="showPassword">Show Password</label>
-                </div>
-                <div class="buttons">
-                    <button type="button" id="loginButton">Login</button>
-                </div>
-                <div class="buttons">
-                    <button type="button" id="portfolioButton">Justin's Portfolio</button>
-                </div>
-                <div class="buttons">
-                    <button type="button" id="security_robot">Security Robot</button>
-                </div>
-                
-            </main>
-        </div>
+        <div class="ambient-background"></div>
+        <main class="login-shell">
+            <section class="login-brand-panel">
+                <p class="eyebrow"><span></span>PERSONAL COMMAND CENTER</p>
+                <a class="brand" href="index.html">STELLA<span>Z</span></a>
+                <h1>Your world.<br><strong>One place.</strong></h1>
+                <p class="brand-copy">Entertainment, projects, smart-home controls and more, brought together in one private hub.</p>
+                <div class="system-status"><span class="status-dot"></span>STELLAZ SYSTEM ONLINE</div>
+            </section>
+            <section class="login-card">
+                <div class="card-glow"></div>
+                <p class="card-kicker">SECURE ACCESS</p>
+                <h2>Welcome back</h2>
+                <p class="card-subtitle">Sign in to continue to Stellaz.</p>
+                <div class="inputContainers"><label for="username">Email</label><input type="email" id="username" placeholder="you@example.com" autocomplete="email"></div>
+                <div class="inputContainers"><label for="password">Password</label><input type="password" id="password" placeholder="Enter your password" autocomplete="current-password"></div>
+                <label class="showPasswordLabel" for="showPassword"><input type="checkbox" id="showPassword"><span>Show password</span></label>
+                <div class="buttons primary-action"><button type="button" id="loginButton">Login</button></div>
+                <div class="buttons secondary-action"><button type="button" id="openSignupButton">Create Account</button></div>
+                <div class="login-divider"><span>OR</span></div>
+                <div class="buttons portfolio-action"><button type="button" id="portfolioButton">Justin's Portfolio</button></div>
+                <p class="invite-note">New accounts require a private invite key.</p>
+            </section>
+        </main>
         <dialog id="signupDialog" class="signupDialog">
             <form id="signupForm">
                 <button type="button" id="closeSignupButton" class="signupClose" aria-label="Close">×</button>
-                <h2>Create Stellaz Account</h2>
-                <p class="signupIntro">You need an invite key from Justin to create an account.</p>
-                <div class="signupField">
-                    <label for="signupEmail">Email</label>
-                    <input type="email" id="signupEmail" autocomplete="email" required>
-                </div>
-                <div class="signupField">
-                    <label for="signupPassword">Password</label>
-                    <input type="password" id="signupPassword" autocomplete="new-password" minlength="6" required>
-                </div>
-                <div class="signupField">
-                    <label for="signupConfirmPassword">Confirm password</label>
-                    <input type="password" id="signupConfirmPassword" autocomplete="new-password" minlength="6" required>
-                </div>
-                <div class="signupField">
-                    <label for="signupInviteKey">Invite key</label>
-                    <input type="text" id="signupInviteKey" autocomplete="off" required>
-                </div>
+                <p class="card-kicker">INVITE ONLY</p><h2>Create Stellaz Account</h2>
+                <p class="signupIntro">Enter the private invite key you received from Justin.</p>
+                <div class="signupField"><label for="signupEmail">Email</label><input type="email" id="signupEmail" autocomplete="email" required></div>
+                <div class="signupField"><label for="signupPassword">Password</label><input type="password" id="signupPassword" autocomplete="new-password" minlength="6" required></div>
+                <div class="signupField"><label for="signupConfirmPassword">Confirm password</label><input type="password" id="signupConfirmPassword" autocomplete="new-password" minlength="6" required></div>
+                <div class="signupField"><label for="signupInviteKey">Invite key</label><input type="text" id="signupInviteKey" autocomplete="off" required></div>
                 <p id="signupMessage" class="signupMessage" aria-live="polite"></p>
                 <button type="submit" id="createAccountButton" class="createAccountButton">Create Account</button>
             </form>
         </dialog>
-
-        <script type="module" src="index.js?v=3"></script>
+        <script type="module" src="index.js?v=4"></script>
     </body>
 </html>
