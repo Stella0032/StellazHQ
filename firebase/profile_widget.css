@@ -117,3 +117,157 @@ html[data-theme="neon"] .theme-brand-name{
     color:#54ff79;
     text-shadow:0 0 12px rgba(57,255,103,.38);
 }
+
+
+/*? ---------------------------- */
+/*^ ----- The Flurpleverse ---- */
+/*? ---------------------------- */
+/*#region*/
+html[data-theme="flurple"]{
+    background:#08030f;
+    overscroll-behavior-y:none;
+}
+
+html[data-theme="flurple"] body{
+    background:#08030f;
+    color:#fff9e8;
+}
+
+html[data-theme="flurple"] .ambient-background,
+html[data-theme="flurple"] .space-bg{
+    filter:none;
+    background:
+        radial-gradient(ellipse at 82% 2%,rgba(255,190,64,.13) 0%,transparent 42%),
+        radial-gradient(ellipse at 16% 58%,rgba(157,67,255,.18) 0%,rgba(102,35,183,.08) 34%,transparent 64%),
+        linear-gradient(180deg,#170823 0%,#10051b 28%,#0a0312 62%,#08030f 100%);
+}
+
+html[data-theme="flurple"] .ambient-background::after{
+    background:rgba(188,102,255,.025);
+}
+
+html[data-theme="flurple"] .topbar{
+    background:rgba(14,5,24,.93);
+    border-bottom-color:rgba(231,177,65,.27);
+    box-shadow:0 10px 35px rgba(151,55,255,.08);
+}
+
+html[data-theme="flurple"] .brand{
+    color:#fff7dd;
+    text-shadow:0 0 17px rgba(184,92,255,.32);
+}
+
+html[data-theme="flurple"] .brand span{
+    color:#f4c75e;
+    text-shadow:0 0 16px rgba(244,199,94,.42);
+}
+
+html[data-theme="flurple"] .nav-links a:hover,
+html[data-theme="flurple"] .nav-links a.active,
+html[data-theme="flurple"] .eyebrow,
+html[data-theme="flurple"] .movie-library-count,
+html[data-theme="flurple"] .library-card strong{
+    color:#f4c75e;
+}
+
+html[data-theme="flurple"] .nav-links a.active::after{
+    background:linear-gradient(90deg,#9f4dff,#f4c75e);
+    box-shadow:0 0 12px rgba(202,117,255,.55);
+}
+
+html[data-theme="flurple"] .library-card,
+html[data-theme="flurple"] .menu-card,
+html[data-theme="flurple"] .movie-library-panel,
+html[data-theme="flurple"] .recommendations-panel{
+    border-color:rgba(220,166,65,.23);
+    background:linear-gradient(145deg,rgba(31,10,48,.92),rgba(12,5,22,.92));
+    box-shadow:0 18px 55px rgba(125,42,210,.08);
+}
+
+html[data-theme="flurple"] .library-card:hover,
+html[data-theme="flurple"] .menu-card:hover{
+    border-color:rgba(244,199,94,.57);
+    box-shadow:0 18px 55px rgba(133,46,224,.15),0 0 24px rgba(244,199,94,.08);
+}
+
+html[data-theme="flurple"] .movie-card{
+    border-color:rgba(192,104,255,.18);
+}
+
+html[data-theme="flurple"] .movie-card:hover{
+    border-color:rgba(244,199,94,.42);
+    box-shadow:0 12px 30px rgba(156,65,235,.13);
+}
+
+html[data-theme="flurple"] .library-add-button,
+html[data-theme="flurple"] .profile-save{
+    border-color:rgba(244,199,94,.62);
+    color:#1b0b27;
+    background:linear-gradient(135deg,#f8d778,#b45cff);
+    box-shadow:0 0 21px rgba(211,142,255,.18);
+}
+
+html[data-theme="flurple"] .profile-trigger,
+html[data-theme="flurple"] .profile-menu,
+html[data-theme="flurple"] .profile-dialog{
+    border-color:rgba(225,170,69,.25);
+    background:rgba(16,6,27,.97);
+}
+
+html[data-theme="flurple"] .profile-menu button:hover,
+html[data-theme="flurple"] .theme-choice:hover,
+html[data-theme="flurple"] .theme-choice.selected{
+    border-color:#f4c75e;
+    background:rgba(164,72,255,.12);
+    box-shadow:0 0 18px rgba(224,169,70,.13);
+}
+
+html[data-theme="flurple"] .profile-avatar{
+    color:#1b0b27;
+    background:linear-gradient(135deg,#f8d778,#b45cff);
+    box-shadow:0 0 18px rgba(198,102,255,.28);
+}
+
+html[data-theme="flurple"] .hero h1{
+    background:linear-gradient(90deg,#f7e3ff,#c56cff,#f6ce67);
+    background-clip:text;
+    -webkit-background-clip:text;
+    color:transparent;
+    text-shadow:0 0 25px rgba(174,75,255,.11);
+}
+
+html[data-theme="flurple"] .muckiverse-brand-name{
+    display:none;
+}
+
+html[data-theme="flurple"] .flurpleverse-brand-name{
+    display:inline-block;
+    color:#f4c75e;
+    text-shadow:0 0 12px rgba(244,199,94,.32);
+}
+
+html[data-theme="flurple"] .stellaz-ai-launcher,
+html[data-theme="flurple"] .stellaz-ai-panel{
+    border-color:rgba(244,199,94,.38);
+    background:rgba(18,6,30,.96);
+    box-shadow:0 20px 60px rgba(0,0,0,.5),0 0 30px rgba(168,67,255,.16);
+}
+
+html[data-theme="flurple"] .stellaz-ai-spark{
+    color:#f4c75e;
+}
+
+html[data-theme="flurple"] .stellaz-ai-message.assistant{
+    border-color:rgba(244,199,94,.24);
+    background:rgba(164,72,255,.11);
+}
+
+html[data-theme="flurple"] .stellaz-ai-form input:focus{
+    border-color:rgba(244,199,94,.62);
+}
+
+html[data-theme="flurple"] .stellaz-ai-form button{
+    color:#180922;
+    background:linear-gradient(135deg,#f7d36d,#b54fff);
+}
+/*#endregion*/
