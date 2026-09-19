@@ -1071,8 +1071,8 @@ a {
 .library-remove-button {
     position: absolute;
     z-index: 4;
-    top: 11px;
-    right: 11px;
+    top: 8px;
+    right: 8px;
     width: 25px;
     height: 25px;
     display: grid;
@@ -1090,8 +1090,8 @@ a {
     position: relative;
 }
 
-.movie-card:hover .library-remove-button,
-.movie-card:focus-within .library-remove-button {
+.movie-poster-wrap:hover .library-remove-button,
+.movie-poster-wrap:focus-within .library-remove-button {
     opacity: 1;
 }
 
@@ -1201,7 +1201,7 @@ a {
 }
 
 @media (hover: none) {
-    .library-remove-button {
+    .movie-poster-wrap:focus-within .library-remove-button {
         opacity: 1;
     }
 }

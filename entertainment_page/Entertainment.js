@@ -281,9 +281,9 @@ function create_movie_card(movie, index) {
 
     return `
         <article class="movie-card${extra_class}" data-library-item="movie" data-item-id="${movie.id}">
-            <button class="library-remove-button" type="button" data-remove-type="movie" data-remove-id="${movie.id}" aria-label="Remove ${movie.title} from your movies" title="Remove from library">×</button>
             <div class="movie-poster-wrap">
                 ${poster}
+                <button class="library-remove-button" type="button" data-remove-type="movie" data-remove-id="${movie.id}" aria-label="Remove ${movie.title} from your movies" title="Remove from library">×</button>
                 <div class="movie-rating-overlay">
                     <p>Rate this movie</p>
                     <div class="rating-stars">${rating_buttons}</div>
@@ -614,9 +614,9 @@ function create_show_card(show, index) {
 
     return `
         <article class="movie-card${extra_class}" data-library-item="show" data-item-id="${show.id}">
-            <button class="library-remove-button" type="button" data-remove-type="show" data-remove-id="${show.id}" aria-label="Remove ${show.title} from your TV shows" title="Remove from library">×</button>
             <div class="movie-poster-wrap">
                 ${poster}
+                <button class="library-remove-button" type="button" data-remove-type="show" data-remove-id="${show.id}" aria-label="Remove ${show.title} from your TV shows" title="Remove from library">×</button>
                 <div class="movie-rating-overlay">
                     <p>Rate this show</p>
                     <div class="rating-stars">${rating_buttons}</div>
