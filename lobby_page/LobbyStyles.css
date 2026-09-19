@@ -9,6 +9,7 @@
 html {
     min-height: 100%;
     background: #020914;
+    overscroll-behavior-y: none;
 }
 
 body {
