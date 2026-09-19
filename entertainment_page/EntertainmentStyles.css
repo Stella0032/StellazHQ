@@ -163,11 +163,11 @@ a {
 /*#region*/
 .entertainment-dashboard {
     width: min(1450px, calc(100% - 80px));
-    margin: 46px auto 45px;
+    margin: 26px auto 45px;
 }
 
 .hero {
-    min-height: 150px;
+    min-height: 104px;
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
@@ -183,9 +183,11 @@ a {
 
 .hero h1 {
     margin: 0;
-    font-size: clamp(42px, 5vw, 68px);
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(34px, 4vw, 52px);
+    font-weight: 500;
     line-height: 1;
-    letter-spacing: -2px;
+    letter-spacing: -1px;
 }
 
 .hero > div > p:last-child {
