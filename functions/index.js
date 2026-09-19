@@ -500,6 +500,16 @@ exports.getTVShowMetadata = onCall(
                 `https://image.tmdb.org/t/p/w500${show.poster_path}` :
                 null,
             tmdb_rating: show.vote_average ?? null,
+            average_episode_runtime_minutes:
+                Array.isArray(show.episode_run_time) &&
+                show.episode_run_time.length > 0 ?
+                    Math.round(
+                        show.episode_run_time.reduce(
+                            (total, runtime) => total + runtime,
+                            0
+                        ) / show.episode_run_time.length
+                    ) :
+                    null,
         };
     }
 );
