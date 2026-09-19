@@ -2192,3 +2192,168 @@ a {
     border-radius: 12px;
 }
 /*#endregion*/
+
+/*? ---------------------------- */
+/*^ ----- Stellaz AI ---------- */
+/*? ---------------------------- */
+/*#region*/
+.stellaz-ai-launcher {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    z-index: 90;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-height: 48px;
+    padding: 0 18px;
+    border: 1px solid rgba(216, 170, 255, 0.42);
+    border-radius: 999px;
+    color: #fff;
+    background: rgba(24, 18, 45, 0.92);
+    box-shadow: 0 12px 38px rgba(0, 0, 0, 0.34), 0 0 24px rgba(194, 120, 255, 0.15);
+    backdrop-filter: blur(18px);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+}
+
+.stellaz-ai-launcher:hover {
+    transform: translateY(-2px);
+    border-color: rgba(224, 190, 255, 0.72);
+}
+
+.stellaz-ai-spark {
+    color: #e4b9ff;
+    font-size: 17px;
+}
+
+.stellaz-ai-panel {
+    position: fixed;
+    right: 24px;
+    bottom: 84px;
+    z-index: 91;
+    width: min(390px, calc(100vw - 32px));
+    height: min(540px, calc(100vh - 120px));
+    overflow: hidden;
+    border: 1px solid rgba(216, 170, 255, 0.28);
+    border-radius: 20px;
+    background: rgba(13, 14, 30, 0.96);
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5), 0 0 35px rgba(194, 120, 255, 0.1);
+    backdrop-filter: blur(24px);
+}
+
+.stellaz-ai-panel[hidden] { display: none; }
+
+.stellaz-ai-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 17px 18px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.stellaz-ai-header p { margin: 0; font-size: 13px; font-weight: 800; letter-spacing: 0.1em; }
+.stellaz-ai-header span { color: var(--muted); font-size: 11px; }
+.stellaz-ai-header button {
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    font-size: 25px;
+    cursor: pointer;
+}
+
+.stellaz-ai-messages {
+    height: calc(100% - 145px);
+    overflow-y: auto;
+    padding: 18px;
+}
+
+.stellaz-ai-message {
+    width: fit-content;
+    max-width: 86%;
+    margin-bottom: 11px;
+    padding: 10px 13px;
+    border-radius: 14px;
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.stellaz-ai-message.assistant {
+    border: 1px solid rgba(194, 120, 255, 0.2);
+    background: rgba(194, 120, 255, 0.09);
+}
+
+.stellaz-ai-message.user {
+    margin-left: auto;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.stellaz-ai-message.pending { color: var(--muted); }
+
+.stellaz-ai-form {
+    display: grid;
+    grid-template-columns: 1fr 42px;
+    gap: 9px;
+    padding: 12px 14px 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.stellaz-ai-form input {
+    min-width: 0;
+    height: 42px;
+    padding: 0 13px;
+    border: 1px solid rgba(255, 255, 255, 0.11);
+    border-radius: 12px;
+    outline: none;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.05);
+    font: inherit;
+}
+
+.stellaz-ai-form input:focus { border-color: rgba(194, 120, 255, 0.58); }
+
+.stellaz-ai-form button {
+    border: 0;
+    border-radius: 12px;
+    color: #140d20;
+    background: linear-gradient(135deg, #e5c4ff, #ffb8dc);
+    font-size: 20px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.stellaz-ai-form button:disabled,
+.stellaz-ai-form input:disabled { opacity: 0.55; cursor: wait; }
+
+.stellaz-ai-note {
+    margin: 0;
+    text-align: center;
+    color: var(--muted);
+    font-size: 10px;
+}
+
+/* The Muckiverse */
+html[data-theme="neon"] .stellaz-ai-launcher,
+html[data-theme="neon"] .stellaz-ai-panel {
+    border-color: rgba(103, 226, 173, 0.4);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 28px rgba(103, 226, 173, 0.14);
+}
+
+html[data-theme="neon"] .stellaz-ai-spark { color: #70ffa8; }
+html[data-theme="neon"] .stellaz-ai-message.assistant {
+    border-color: rgba(103, 226, 173, 0.24);
+    background: rgba(103, 226, 173, 0.09);
+}
+html[data-theme="neon"] .stellaz-ai-form input:focus { border-color: rgba(103, 226, 173, 0.62); }
+html[data-theme="neon"] .stellaz-ai-form button {
+    background: linear-gradient(135deg, #b9ffd2, #70ffa8);
+}
+
+@media (max-width: 600px) {
+    .stellaz-ai-launcher { right: 16px; bottom: 16px; }
+    .stellaz-ai-panel { right: 16px; bottom: 76px; height: min(500px, calc(100vh - 105px)); }
+}
+/*#endregion*/
