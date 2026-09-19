@@ -40,9 +40,9 @@
                 <span class="card-arrow">→</span>
             </a>
 
-            <a class="library-card shows" href="#" data-library="TV Shows">
+            <a class="library-card shows" href="#show_library" data-library="TV Shows">
                 <span class="library-icon">▣</span>
-                <div><h2>TV Shows</h2><p>Watched: <strong>—</strong></p></div>
+                <div><h2>TV Shows</h2><p>Watched: <strong id="show_count">—</strong></p></div>
                 <span class="card-arrow">→</span>
             </a>
 
@@ -92,6 +92,31 @@
             </button>
         </section>
 
+        <section class="movie-library-panel show-library-panel" id="show_library">
+            <div class="movie-library-header">
+                <div>
+                    <p class="eyebrow">YOUR COLLECTION</p>
+                    <h2>Your TV Shows</h2>
+                </div>
+                <span class="movie-library-count" id="show_library_count">LOADING</span>
+            </div>
+            <div class="movie-filters" aria-label="TV show filters">
+                <input class="movie-search" id="show_search" type="search" placeholder="Search shows..." aria-label="Search TV shows">
+                <select class="movie-filter" id="show_genre_filter" aria-label="Filter shows by genre"><option value="">All genres</option></select>
+                <select class="movie-filter" id="show_sort" aria-label="Sort TV shows">
+                    <option value="year-desc">Newest first</option>
+                    <option value="year-asc">Oldest first</option>
+                    <option value="title-asc">Title A–Z</option>
+                    <option value="title-desc">Title Z–A</option>
+                </select>
+                <button class="movie-filter-clear" id="show_filter_clear" type="button">Clear</button>
+            </div>
+            <div class="movie-grid" id="show_grid">
+                <p class="library-loading">Loading your TV shows...</p>
+            </div>
+            <button class="movie-library-toggle" id="show_library_toggle" type="button" hidden>Show all shows</button>
+        </section>
+
         <section class="recommendations-panel">
             <div class="recommendations-header">
                 <div>
@@ -106,6 +131,6 @@
     </main>
 
     <div class="toast" id="toast" role="status"></div>
-    <script type="module" src="Entertainment.js?v=11"></script>
+    <script type="module" src="Entertainment.js?v=12"></script>
 </body>
 </html>
