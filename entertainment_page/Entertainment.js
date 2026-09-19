@@ -807,8 +807,20 @@ async function open_show_seasons(show) {
             '<p class="library-loading">No seasons found.</p>';
     } catch (error) {
         console.error("Unable to load seasons:", error);
+        const code = error?.code || "";
+        const message = code.includes("not-found")
+            ? "That show could not be matched on TMDB."
+            : code.includes("unimplemented") || code.includes("not-found")
+                ? "Season service is not deployed yet."
+                : "Unable to load seasons. Check the browser console for details.";
         season_grid.innerHTML =
-            '<p class="library-loading">Unable to load seasons.</p>';
+            `<div class="season-error">
+                <strong>Seasons couldn't load</strong>
+                <p>${message}</p>
+                <button type="button" id="season_retry_button">Try again</button>
+            </div>`;
+        document.getElementById("season_retry_button")
+            ?.addEventListener("click", () => open_show_seasons(show));
     }
 }
 
