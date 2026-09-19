@@ -545,13 +545,13 @@ a {
 
 .movie-grid {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 18px;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 16px;
 }
 
 .movie-card {
     min-width: 0;
-    padding: 10px;
+    padding: 7px;
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 16px;
     background: rgba(255, 255, 255, 0.035);
@@ -589,10 +589,10 @@ a {
 }
 
 .movie-card h3 {
-    margin: 11px 2px 4px;
+    margin: 8px 2px 3px;
     overflow: hidden;
     color: #f4f5fb;
-    font-size: 13px;
+    font-size: 12px;
     white-space: nowrap;
     text-overflow: ellipsis;
 }
@@ -603,6 +603,37 @@ a {
     font-size: 10px;
 }
 
+.movie-card.library-extra {
+    display: none;
+}
+
+.movie-grid.expanded .movie-card.library-extra {
+    display: block;
+}
+
+.movie-library-toggle {
+    min-width: 170px;
+    margin: 24px auto 0;
+    padding: 11px 20px;
+    display: block;
+    border: 1px solid rgba(73, 200, 255, 0.35);
+    border-radius: 999px;
+    color: #eef9ff;
+    background: rgba(73, 200, 255, 0.08);
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.movie-library-toggle:hover {
+    transform: translateY(-2px);
+    border-color: rgba(73, 200, 255, 0.7);
+    background: rgba(73, 200, 255, 0.14);
+}
+
+.movie-library-toggle[hidden] {
+    display: none;
+}
+
 .library-loading {
     grid-column: 1 / -1;
     color: var(--muted);
@@ -611,7 +642,7 @@ a {
 
 @media (max-width: 1100px) {
     .movie-grid {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: repeat(5, minmax(0, 1fr));
     }
 }
 
