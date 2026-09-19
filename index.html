@@ -33,6 +33,32 @@
                 
             </main>
         </div>
-        <script type="module" src="index.js"></script>
+        <dialog id="signupDialog" class="signupDialog">
+            <form id="signupForm">
+                <button type="button" id="closeSignupButton" class="signupClose" aria-label="Close">×</button>
+                <h2>Create Stellaz Account</h2>
+                <p class="signupIntro">You need an invite key from Justin to create an account.</p>
+                <div class="signupField">
+                    <label for="signupEmail">Email</label>
+                    <input type="email" id="signupEmail" autocomplete="email" required>
+                </div>
+                <div class="signupField">
+                    <label for="signupPassword">Password</label>
+                    <input type="password" id="signupPassword" autocomplete="new-password" minlength="6" required>
+                </div>
+                <div class="signupField">
+                    <label for="signupConfirmPassword">Confirm password</label>
+                    <input type="password" id="signupConfirmPassword" autocomplete="new-password" minlength="6" required>
+                </div>
+                <div class="signupField">
+                    <label for="signupInviteKey">Invite key</label>
+                    <input type="text" id="signupInviteKey" autocomplete="off" required>
+                </div>
+                <p id="signupMessage" class="signupMessage" aria-live="polite"></p>
+                <button type="submit" id="createAccountButton" class="createAccountButton">Create Account</button>
+            </form>
+        </dialog>
+
+        <script type="module" src="index.js?v=3"></script>
     </body>
 </html>
