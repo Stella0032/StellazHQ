@@ -19,20 +19,29 @@ let visible_recommendations = [];
 function create_recommendation_card(movie) {
     const media_label = active_recommendation_type === "show"
         ? "show"
-        : "movie";
-    const reason = movie.because_of?.length
-        ? `Because you liked ${movie.because_of.join(" and ")}`
-        : "Picked from your movie history";
+        : active_recommendation_type === "anime"
+            ? "anime"
+            : "movie";
+    const reason = active_recommendation_type === "anime"
+        ? "Recommended from your MyAnimeList history"
+        : movie.because_of?.length
+            ? `Because you liked ${movie.because_of.join(" and ")}`
+            : `Picked from your ${media_label} history`;
 
-    const rating = movie.tmdb_rating !== null
+    const rating = movie.tmdb_rating !== null &&
+        movie.tmdb_rating !== undefined
         ? ` · ⭐ ${Number(movie.tmdb_rating).toFixed(1)}`
         : "";
+    const recommendation_id = active_recommendation_type === "anime"
+        ? movie.mal_id
+        : movie.tmdb_id;
+    const year = movie.year || "";
 
     return `
         <article class="recommendation-card"
                  tabindex="0"
                  role="button"
-                 data-recommendation-id="${movie.tmdb_id}"
+                 data-recommendation-id="${recommendation_id}"
                  aria-label="View details for ${movie.title}">
             <div class="recommendation-poster-wrap">
                 <img class="recommendation-poster"
@@ -48,7 +57,7 @@ function create_recommendation_card(movie) {
                 </button>
             </div>
             <h3 title="${movie.title}">${movie.title}</h3>
-            <p>${movie.year}${rating}</p>
+            <p>${year}${rating}</p>
             <p class="recommendation-reason">${reason}</p>
             <div class="recommendation-details">
                 <p class="recommendation-description">${movie.overview || "No description available."}</p>
@@ -149,6 +158,52 @@ async function load_show_recommendations(shows) {
     }
 }
 
+
+async function load_anime_recommendations(anime) {
+    active_recommendation_type = "anime";
+    recommendation_title.textContent = "Recommended Anime For You";
+    recommendation_grid.innerHTML =
+        '<p class="recommendation-loading">Finding anime for you...</p>';
+
+    const rated = [...anime]
+        .filter((item) => item.status === "completed" || item.status === "watching")
+        .sort((a, b) => Number(b.my_rating || 0) - Number(a.my_rating || 0));
+    const seeds = rated.slice(0, 8);
+
+    if (seeds.length === 0) {
+        recommendation_count.textContent = "0 PICKS";
+        recommendation_grid.innerHTML =
+            '<p class="recommendation-loading">Watch or rate some anime to get recommendations.</p>';
+        return;
+    }
+
+    try {
+        const get_anime_recommendations =
+            httpsCallable(functions, "getMALAnimeRecommendations");
+        const result = await get_anime_recommendations({
+            seed_ids: seeds.map((item) => item.mal_id),
+            library_ids: anime.map((item) => item.mal_id)
+        });
+
+        recommendation_pool = result.data.recommendations || [];
+        visible_recommendations = recommendation_pool.splice(0, 6);
+
+        if (visible_recommendations.length === 0) {
+            recommendation_count.textContent = "0 PICKS";
+            recommendation_grid.innerHTML =
+                '<p class="recommendation-loading">No new anime recommendations found right now.</p>';
+            return;
+        }
+
+        render_recommendations();
+    } catch (error) {
+        console.error("Unable to load anime recommendations:", error);
+        recommendation_count.textContent = "—";
+        recommendation_grid.innerHTML =
+            '<p class="recommendation-loading">Unable to load anime recommendations.</p>';
+    }
+}
+
 recommendation_grid.addEventListener("click", (event) => {
     const refresh_button = event.target.closest(".recommendation-refresh");
     const card = event.target.closest(".recommendation-card");
@@ -170,8 +225,10 @@ recommendation_grid.addEventListener("click", (event) => {
         }
 
         const current_id = Number(card.dataset.recommendationId);
-        const index = visible_recommendations.findIndex(
-            (movie) => movie.tmdb_id === current_id
+        const index = visible_recommendations.findIndex((item) =>
+            Number(active_recommendation_type === "anime"
+                ? item.mal_id
+                : item.tmdb_id) === current_id
         );
 
         if (index !== -1) {
@@ -1843,6 +1900,7 @@ function show_entertainment_category(category) {
         load_show_recommendations(show_library);
         show_library_panel.scrollIntoView({behavior: "smooth", block: "start"});
     } else if (showing_anime) {
+        load_anime_recommendations(anime_library);
         anime_library_panel.scrollIntoView({behavior: "smooth", block: "start"});
     }
 }
