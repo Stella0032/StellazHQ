@@ -578,6 +578,15 @@ const show_search = document.getElementById("show_search");
 const show_genre_filter = document.getElementById("show_genre_filter");
 const show_sort = document.getElementById("show_sort");
 const show_filter_clear = document.getElementById("show_filter_clear");
+const show_details_dialog = document.getElementById("show_details_dialog");
+const show_details_title = document.getElementById("show_details_title");
+const show_details_close = document.getElementById("show_details_close");
+const season_back_button = document.getElementById("season_back_button");
+const season_grid = document.getElementById("season_grid");
+const episode_list = document.getElementById("episode_list");
+
+let active_show_tmdb_id = null;
+let active_show_title = "";
 
 let show_library = [];
 
@@ -761,6 +770,124 @@ show_grid.addEventListener("click", async (event) => {
         console.error("Unable to save TV show rating:", error);
         alert("Unable to save your rating. Please try again.");
     }
+});
+
+async function open_show_seasons(show) {
+    show_details_title.textContent = show.title;
+    season_grid.innerHTML =
+        '<p class="library-loading">Loading seasons...</p>';
+    episode_list.hidden = true;
+    season_grid.hidden = false;
+    season_back_button.hidden = true;
+    show_details_dialog.showModal();
+
+    try {
+        const get_seasons = httpsCallable(functions, "getTVShowSeasons");
+        const result = await get_seasons({
+            title: show.title,
+            year: show.year
+        });
+
+        active_show_tmdb_id = result.data.tmdb_id;
+        active_show_title = result.data.title;
+
+        season_grid.innerHTML = result.data.seasons.map((season) => {
+            const poster = season.poster_url
+                ? `<img src="${season.poster_url}" alt="${season.name} poster" loading="lazy">`
+                : '<div class="season-poster-placeholder">No poster</div>';
+
+            return `
+                <button class="season-card" type="button"
+                        data-season-number="${season.season_number}">
+                    ${poster}
+                    <strong>${season.name}</strong>
+                    <span>${season.episode_count} episodes</span>
+                </button>`;
+        }).join("") ||
+            '<p class="library-loading">No seasons found.</p>';
+    } catch (error) {
+        console.error("Unable to load seasons:", error);
+        season_grid.innerHTML =
+            '<p class="library-loading">Unable to load seasons.</p>';
+    }
+}
+
+async function open_season_episodes(season_number) {
+    season_grid.hidden = true;
+    episode_list.hidden = false;
+    season_back_button.hidden = false;
+    episode_list.innerHTML =
+        '<p class="library-loading">Loading episodes...</p>';
+
+    try {
+        const get_episodes =
+            httpsCallable(functions, "getTVSeasonEpisodes");
+        const result = await get_episodes({
+            tmdb_id: active_show_tmdb_id,
+            season_number
+        });
+
+        show_details_title.textContent =
+            `${active_show_title} · ${result.data.name}`;
+
+        episode_list.innerHTML = result.data.episodes.map((episode) => {
+            const still = episode.still_url
+                ? `<img src="${episode.still_url}" alt="" loading="lazy">`
+                : '<div class="episode-still-placeholder">▶</div>';
+            const runtime = episode.runtime_minutes
+                ? ` · ${episode.runtime_minutes} min`
+                : "";
+            const rating = episode.tmdb_rating
+                ? ` · ⭐ ${Number(episode.tmdb_rating).toFixed(1)}`
+                : "";
+
+            return `
+                <article class="episode-card">
+                    ${still}
+                    <div>
+                        <strong>E${episode.episode_number} · ${episode.name}</strong>
+                        <p>${episode.air_date || "Air date unavailable"}${runtime}${rating}</p>
+                        <p class="episode-overview">${episode.overview || "No description available."}</p>
+                    </div>
+                </article>`;
+        }).join("");
+    } catch (error) {
+        console.error("Unable to load episodes:", error);
+        episode_list.innerHTML =
+            '<p class="library-loading">Unable to load episodes.</p>';
+    }
+}
+
+show_grid.addEventListener("click", (event) => {
+    if (event.target.closest(".rating-star") ||
+        event.target.closest(".library-remove-button")) {
+        return;
+    }
+
+    const card = event.target.closest('[data-library-item="show"]');
+    if (!card) return;
+
+    const show = show_library.find(
+        (item) => item.id === Number(card.dataset.itemId)
+    );
+    if (show) open_show_seasons(show);
+});
+
+season_grid.addEventListener("click", (event) => {
+    const card = event.target.closest(".season-card");
+    if (!card) return;
+    open_season_episodes(Number(card.dataset.seasonNumber));
+});
+
+season_back_button.addEventListener("click", () => {
+    show_details_title.textContent = active_show_title;
+    episode_list.hidden = true;
+    season_grid.hidden = false;
+    season_back_button.hidden = true;
+});
+
+show_details_close.addEventListener("click", () => {
+    show_details_dialog.close();
 });
 
 [show_search, show_genre_filter, show_sort].forEach((control) => {
