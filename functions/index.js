@@ -845,6 +845,131 @@ exports.getMovieMetadata = onCall(
 );
 
 
+exports.getEntertainmentReleases = onCall(
+    {secrets: [tmdb_read_access_token, mal_client_id, mal_client_secret]},
+    async (request) => {
+        if (!request.auth) {
+            throw new HttpsError("unauthenticated", "You must be logged in.");
+        }
+
+        const type = String(request.data?.type || "movie");
+        const headers = {
+            Authorization: `Bearer ${tmdb_read_access_token.value()}`,
+            accept: "application/json",
+        };
+
+        if (type === "anime") {
+            const access_token =
+                await get_valid_mal_access_token(request.auth.uid);
+            const mal_headers = {Authorization: `Bearer ${access_token}`};
+            const now = new Date();
+            const month = now.getUTCMonth() + 1;
+            const season = month <= 3 ? "winter" :
+                month <= 6 ? "spring" :
+                    month <= 9 ? "summer" : "fall";
+            const year = now.getUTCFullYear();
+            const today = now.toISOString().slice(0, 10);
+
+            const season_url = new URL(
+                `https://api.myanimelist.net/v2/anime/season/${year}/${season}`
+            );
+            season_url.searchParams.set("limit", "100");
+            season_url.searchParams.set(
+                "fields",
+                "start_date,mean,main_picture"
+            );
+
+            const upcoming_url = new URL(
+                "https://api.myanimelist.net/v2/anime/ranking"
+            );
+            upcoming_url.searchParams.set("ranking_type", "upcoming");
+            upcoming_url.searchParams.set("limit", "20");
+            upcoming_url.searchParams.set(
+                "fields",
+                "start_date,mean,main_picture"
+            );
+
+            const [season_response, upcoming_response] = await Promise.all([
+                fetch(season_url, {headers: mal_headers}),
+                fetch(upcoming_url, {headers: mal_headers}),
+            ]);
+
+            const season_data = season_response.ok ?
+                await season_response.json() : {data: []};
+            const upcoming_data = upcoming_response.ok ?
+                await upcoming_response.json() : {data: []};
+
+            const map_anime = (item) => {
+                const node = item.node || {};
+                return {
+                    mal_id: node.id,
+                    title: node.title,
+                    release_date: node.start_date || null,
+                    poster_url: node.main_picture?.large ||
+                        node.main_picture?.medium || "",
+                    rating: node.mean ?? null,
+                };
+            };
+
+            const newly_released = (season_data.data || [])
+                .map(map_anime)
+                .filter((item) =>
+                    item.release_date && item.release_date <= today
+                )
+                .sort((a, b) =>
+                    String(b.release_date).localeCompare(a.release_date)
+                )
+                .slice(0, 7);
+
+            const upcoming = (upcoming_data.data || [])
+                .map(map_anime)
+                .filter((item) =>
+                    !item.release_date || item.release_date > today
+                )
+                .slice(0, 7);
+
+            return {newly_released, upcoming};
+        }
+
+        const media_type = type === "show" ? "tv" : "movie";
+        const new_endpoint = media_type === "movie" ?
+            "now_playing" : "on_the_air";
+        const upcoming_endpoint = media_type === "movie" ?
+            "upcoming" : "airing_today";
+
+        const fetch_tmdb = async (endpoint) => {
+            const url = new URL(
+                `https://api.themoviedb.org/3/${media_type}/${endpoint}`
+            );
+            url.searchParams.set("language", "en-US");
+            url.searchParams.set("page", "1");
+            const response = await fetch(url, {headers});
+            if (!response.ok) return [];
+            const data = await response.json();
+            return (data.results || [])
+                .filter((item) => item.poster_path)
+                .slice(0, 7)
+                .map((item) => ({
+                    tmdb_id: item.id,
+                    title: media_type === "tv" ? item.name : item.title,
+                    release_date: media_type === "tv" ?
+                        item.first_air_date : item.release_date,
+                    poster_url:
+                        `https://image.tmdb.org/t/p/w500${item.poster_path}`,
+                    rating: item.vote_average ?? null,
+                }));
+        };
+
+        const [newly_released, upcoming] = await Promise.all([
+            fetch_tmdb(new_endpoint),
+            fetch_tmdb(upcoming_endpoint),
+        ]);
+
+        return {newly_released, upcoming};
+    }
+);
+
+
 exports.getMovieRecommendations = onCall(
     {secrets: [tmdb_read_access_token]},
     async (request) => {
