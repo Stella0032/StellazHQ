@@ -716,3 +716,42 @@ a {
         grid-template-columns: 1fr;
     }
 }
+
+
+/*? ----------------------------- */
+/*^ ----- Personal Ratings ----- */
+/*? ----------------------------- */
+/*#region*/
+.personal-rating {
+    margin: 7px 2px 1px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #aeb3c7;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+.personal-rating-select {
+    min-width: 0;
+    padding: 3px 5px;
+    border: 1px solid rgba(73, 200, 255, 0.24);
+    border-radius: 6px;
+    color: #eef9ff;
+    background: rgba(73, 200, 255, 0.08);
+    cursor: pointer;
+    font-size: 10px;
+    outline: none;
+}
+
+.personal-rating-select:hover,
+.personal-rating-select:focus {
+    border-color: rgba(73, 200, 255, 0.65);
+}
+
+.personal-rating-select option {
+    color: #eef2ff;
+    background: #111329;
+}
+/*#endregion*/
