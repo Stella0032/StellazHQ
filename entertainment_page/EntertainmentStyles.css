@@ -1041,3 +1041,193 @@ a {
         left: 4px;
     }
 }
+
+
+/*? -------------------------------- */
+/*^ ----- Manual Library Tools ---- */
+/*? -------------------------------- */
+/*#region*/
+.library-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.library-add-button {
+    padding: 9px 14px;
+    border: 1px solid rgba(73, 200, 255, 0.4);
+    border-radius: 999px;
+    color: #eef9ff;
+    background: rgba(73, 200, 255, 0.08);
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.show-library-panel .library-add-button {
+    border-color: rgba(194, 120, 255, 0.45);
+    background: rgba(194, 120, 255, 0.08);
+}
+
+.library-remove-button {
+    position: absolute;
+    z-index: 4;
+    top: 11px;
+    right: 11px;
+    width: 25px;
+    height: 25px;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 50%;
+    color: #fff;
+    background: rgba(8, 9, 22, 0.84);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.18s ease, background 0.18s ease;
+}
+
+.movie-card {
+    position: relative;
+}
+
+.movie-card:hover .library-remove-button,
+.movie-card:focus-within .library-remove-button {
+    opacity: 1;
+}
+
+.library-remove-button:hover {
+    background: rgba(230, 70, 100, 0.9);
+}
+
+.library-dialog {
+    width: min(430px, calc(100% - 32px));
+    padding: 0;
+    border: 1px solid rgba(194, 120, 255, 0.38);
+    border-radius: 20px;
+    color: #f4f5fb;
+    background: #111329;
+    box-shadow: 0 28px 90px rgba(0, 0, 0, 0.6);
+}
+
+.library-dialog::backdrop {
+    background: rgba(3, 4, 12, 0.78);
+    backdrop-filter: blur(5px);
+}
+
+.library-dialog-form {
+    padding: 24px;
+}
+
+.library-dialog-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+.library-dialog h2 {
+    margin: 0 0 20px;
+}
+
+.library-dialog-close {
+    width: 34px;
+    height: 34px;
+    border: 0;
+    color: #cfd3e3;
+    background: transparent;
+    cursor: pointer;
+    font-size: 25px;
+}
+
+.library-dialog label {
+    margin-top: 14px;
+    display: grid;
+    gap: 7px;
+    color: #bfc5d8;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.library-dialog input {
+    height: 44px;
+    padding: 0 13px;
+    border: 1px solid rgba(255, 255, 255, 0.13);
+    border-radius: 10px;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.06);
+    outline: none;
+}
+
+.library-dialog-note {
+    color: #9299b0;
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+.library-dialog-submit,
+.library-dialog-cancel,
+.library-remove-confirm {
+    min-height: 42px;
+    padding: 0 17px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.library-dialog-submit {
+    width: 100%;
+    margin-top: 8px;
+    border: 1px solid rgba(73, 200, 255, 0.45);
+    color: #eef9ff;
+    background: rgba(73, 200, 255, 0.13);
+}
+
+.library-dialog-actions {
+    margin-top: 20px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.library-dialog-cancel {
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #eef2ff;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.library-remove-confirm {
+    border: 1px solid rgba(240, 75, 105, 0.55);
+    color: #fff;
+    background: rgba(240, 75, 105, 0.18);
+}
+
+@media (hover: none) {
+    .library-remove-button {
+        opacity: 1;
+    }
+}
+
+@media (max-width: 700px) {
+    .movie-library-header {
+        align-items: flex-start;
+    }
+
+    .library-header-actions {
+        flex-direction: column-reverse;
+        align-items: flex-end;
+        gap: 8px;
+    }
+
+    .library-add-button {
+        padding: 7px 10px;
+        font-size: 9px;
+    }
+
+    .library-remove-button {
+        top: 5px;
+        right: 5px;
+        width: 20px;
+        height: 20px;
+        font-size: 11px;
+    }
+}
+/*#endregion*/
