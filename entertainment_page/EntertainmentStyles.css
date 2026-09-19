@@ -2030,3 +2030,36 @@ a {
 .mal-connect-card[hidden] {
     display: none;
 }
+
+
+.anime-edit-title {
+    cursor: pointer;
+}
+
+.anime-edit-title:hover,
+.anime-edit-title:focus-visible {
+    color: #d9b4ff;
+    text-shadow: 0 0 12px rgba(194, 120, 255, 0.45);
+}
+
+.anime-edit-shell {
+    max-width: 480px;
+}
+
+.anime-edit-form {
+    display: grid;
+    gap: 18px;
+    padding: 20px 24px 26px;
+}
+
+.anime-edit-form label {
+    display: grid;
+    gap: 8px;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.anime-edit-form .movie-filter,
+.anime-edit-form .movie-search {
+    width: 100%;
+}
