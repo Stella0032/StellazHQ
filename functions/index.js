@@ -370,7 +370,7 @@ exports.getMovieRecommendations = onCall(
 
                 return b.score - a.score;
             })
-            .slice(0, 6)
+            .slice(0, 18)
             .map((movie) => ({
                 ...movie,
                 because_of: [...new Set(movie.because_of)].slice(0, 2),
