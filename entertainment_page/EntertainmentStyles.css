@@ -543,6 +543,54 @@ a {
     letter-spacing: 3px;
 }
 
+.movie-filters {
+    margin-bottom: 20px;
+    display: grid;
+    grid-template-columns: minmax(190px, 1.5fr) repeat(3, minmax(150px, 1fr)) auto;
+    gap: 10px;
+}
+
+.movie-search,
+.movie-filter,
+.movie-filter-clear {
+    min-width: 0;
+    height: 40px;
+    padding: 0 13px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    color: #eef2ff;
+    background: rgba(255, 255, 255, 0.055);
+    outline: none;
+}
+
+.movie-search::placeholder {
+    color: #858ca5;
+}
+
+.movie-search:focus,
+.movie-filter:focus {
+    border-color: rgba(73, 200, 255, 0.6);
+}
+
+.movie-filter {
+    cursor: pointer;
+}
+
+.movie-filter option {
+    color: #eef2ff;
+    background: #111329;
+}
+
+.movie-filter-clear {
+    padding: 0 16px;
+    cursor: pointer;
+}
+
+.movie-filter-clear:hover {
+    border-color: rgba(73, 200, 255, 0.6);
+    background: rgba(73, 200, 255, 0.1);
+}
+
 .movie-grid {
     display: grid;
     grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -654,5 +702,17 @@ a {
     .movie-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 12px;
+    }
+}
+
+@media (max-width: 900px) {
+    .movie-filters {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 520px) {
+    .movie-filters {
+        grid-template-columns: 1fr;
     }
 }
