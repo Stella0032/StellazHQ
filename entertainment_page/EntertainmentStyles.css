@@ -1597,3 +1597,116 @@ a {
     }
 }
 /*#endregion*/
+
+
+/*? -------------------------------- */
+/*^ ----- TV Click & Progress ----- */
+/*? -------------------------------- */
+/*#region*/
+.show-title-button {
+    max-width: 100%;
+    margin: 10px 0 4px;
+    padding: 2px 4px;
+    overflow: hidden;
+    border: 0;
+    border-radius: 6px;
+    color: #f4f5fb;
+    background: transparent;
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    text-align: left;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    transform-origin: left center;
+    transition:
+        color 0.18s ease,
+        background 0.18s ease,
+        transform 0.18s ease,
+        text-shadow 0.18s ease;
+}
+
+.show-title-button:hover,
+.show-title-button:focus-visible {
+    color: #e7c8ff;
+    background: rgba(194, 120, 255, 0.12);
+    text-shadow: 0 0 12px rgba(194, 120, 255, 0.45);
+    transform: scale(1.09);
+    outline: none;
+}
+
+.season-card {
+    overflow: hidden;
+}
+
+.season-card.watched {
+    border-color: rgba(103, 226, 173, 0.42);
+    background: rgba(103, 226, 173, 0.055);
+}
+
+.season-open-button {
+    width: 100%;
+    padding: 0;
+    display: grid;
+    gap: 6px;
+    border: 0;
+    color: inherit;
+    background: transparent;
+    cursor: pointer;
+    text-align: left;
+}
+
+.season-open-button img,
+.season-open-button .season-poster-placeholder {
+    transition: transform 0.18s ease, filter 0.18s ease;
+}
+
+.season-open-button:hover img,
+.season-open-button:focus-visible img {
+    transform: scale(1.025);
+    filter: brightness(1.08);
+}
+
+.season-watched-toggle {
+    margin: 2px 3px 4px;
+    padding: 7px 8px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    border-radius: 8px;
+    color: #aeb4c7;
+    background: rgba(255, 255, 255, 0.045);
+    cursor: pointer;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.season-watched-toggle input {
+    accent-color: #b978ff;
+    cursor: pointer;
+}
+
+.season-card.watched .season-watched-toggle {
+    color: #aef0d0;
+    background: rgba(103, 226, 173, 0.09);
+}
+
+@media (max-width: 700px) {
+    .show-title-button {
+        margin-top: 5px;
+        font-size: 8px;
+    }
+
+    .show-title-button:hover,
+    .show-title-button:focus-visible {
+        transform: scale(1.04);
+    }
+
+    .season-watched-toggle {
+        padding: 5px;
+        gap: 4px;
+        font-size: 8px;
+    }
+}
+/*#endregion*/
