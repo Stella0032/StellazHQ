@@ -443,7 +443,7 @@ exports.getMALAnimeRecommendations = onCall(
 
         for (const seed_id of seed_ids) {
             const response = await fetch(
-                `https://api.myanimelist.net/v2/anime/${seed_id}/recommendations?limit=20`,
+                `https://api.myanimelist.net/v2/anime/${seed_id}?fields=recommendations{limit:20}`,
                 {headers: {Authorization: `Bearer ${access_token}`}}
             );
 
@@ -457,7 +457,7 @@ exports.getMALAnimeRecommendations = onCall(
 
             const payload = await response.json();
 
-            for (const item of payload.data || []) {
+            for (const item of payload.recommendations || []) {
                 const node = item.node || {};
                 const mal_id = Number(node.id);
 
