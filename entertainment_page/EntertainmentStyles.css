@@ -20,6 +20,7 @@
 html {
     min-height: 100%;
     background: #090817;
+    overscroll-behavior-y: none;
 }
 
 body {
