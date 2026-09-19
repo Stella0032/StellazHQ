@@ -1464,7 +1464,7 @@ async function load_anime_library() {
 
     anime_count.textContent = watched_anime.length;
     anime_watch_time.textContent = watched_ms > 0
-        ? Math.round(watched_ms / 3600000) + "h"
+        ? Math.round(watched_ms / 3600) + "h"
         : "—";
 
     anime_grid.classList.remove("expanded");
@@ -1496,7 +1496,7 @@ async function load_anime_library() {
     const has_synced_anime = anime.length > 0;
     anime_sync_summary.hidden = !has_synced_anime;
     anime_sync_summary.textContent =
-        anime.length + " anime synced from MyAnimeList";
+        watched_anime.length + " watched · " + anime.length + " total synced from MyAnimeList";
 
     if (has_synced_anime) {
         mal_connect_card.hidden = true;
