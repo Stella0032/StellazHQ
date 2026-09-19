@@ -1707,3 +1707,133 @@ a {
     }
 }
 /*#endregion*/
+
+
+/*? -------------------------------- */
+/*^ ----- Episode Watch Tracking -- */
+/*? -------------------------------- */
+/*#region*/
+.season-poster-action {
+    position: relative;
+}
+
+.season-open-button {
+    display: block;
+}
+
+.season-watch-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    border: 0;
+    border-radius: 9px;
+    color: #fff;
+    background: rgba(8, 10, 23, 0.78);
+    backdrop-filter: blur(3px);
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 800;
+    opacity: 0;
+    transition: opacity 0.18s ease;
+}
+
+.season-poster-action:hover .season-watch-overlay,
+.season-watch-overlay:focus-visible {
+    opacity: 1;
+}
+
+.season-watch-overlay.watched {
+    color: #bff5da;
+}
+
+.season-watch-check {
+    width: 31px;
+    height: 31px;
+    display: grid;
+    place-items: center;
+    border: 2px solid currentColor;
+    border-radius: 50%;
+    font-size: 17px;
+}
+
+.season-text-button {
+    width: 100%;
+    padding: 0 3px 4px;
+    display: grid;
+    gap: 4px;
+    border: 0;
+    color: inherit;
+    background: transparent;
+    cursor: pointer;
+    text-align: left;
+}
+
+.season-text-button span {
+    color: #969db2;
+    font-size: 10px;
+}
+
+.episode-watch-image {
+    position: relative;
+    width: 150px;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    border-radius: 8px;
+    color: #fff;
+    background: transparent;
+    cursor: pointer;
+}
+
+.episode-watch-image .episode-watch-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    color: #fff;
+    background: rgba(8, 10, 23, 0.76);
+    font-size: 11px;
+    font-weight: 800;
+    opacity: 0;
+    transition: opacity 0.18s ease;
+}
+
+.episode-watch-image:hover .episode-watch-overlay,
+.episode-watch-image:focus-visible .episode-watch-overlay {
+    opacity: 1;
+}
+
+.episode-card.watched {
+    border-color: rgba(103, 226, 173, 0.30);
+    background: rgba(103, 226, 173, 0.045);
+}
+
+.episode-card.watched .episode-watch-overlay {
+    color: #bff5da;
+}
+
+@media (hover: none) {
+    .season-watch-overlay,
+    .episode-watch-image .episode-watch-overlay {
+        opacity: 0;
+    }
+
+    .season-watch-overlay.watched,
+    .episode-card.watched .episode-watch-overlay {
+        opacity: 1;
+        background: rgba(8, 10, 23, 0.56);
+    }
+}
+
+@media (max-width: 700px) {
+    .episode-watch-image {
+        width: 110px;
+    }
+}
+/*#endregion*/

@@ -589,6 +589,8 @@ let active_show_tmdb_id = null;
 let active_show_title = "";
 let active_show_id = null;
 let season_watch_progress = new Map();
+let active_season_number = null;
+let active_season_episodes = [];
 
 let show_library = [];
 
@@ -821,18 +823,25 @@ async function open_show_seasons(show) {
             return `
                 <article class="season-card ${watched ? "watched" : ""}"
                          data-season-number="${season.season_number}">
-                    <button class="season-open-button" type="button"
+                    <div class="season-poster-action">
+                        <button class="season-open-button" type="button"
+                                data-season-open="${season.season_number}">
+                            ${poster}
+                        </button>
+                        <button class="season-watch-overlay ${watched ? "watched" : ""}"
+                                type="button"
+                                data-season-watched="${season.season_number}"
+                                data-episode-count="${season.episode_count}"
+                                aria-label="${watched ? "Mark season not watched" : "Mark season watched"}">
+                            <span class="season-watch-check">✓</span>
+                            <span>${watched ? "Watched" : "Mark watched"}</span>
+                        </button>
+                    </div>
+                    <button class="season-text-button" type="button"
                             data-season-open="${season.season_number}">
-                        ${poster}
                         <strong>${season.name}</strong>
                         <span>${season.episode_count} episodes</span>
                     </button>
-                    <label class="season-watched-toggle">
-                        <input type="checkbox"
-                               data-season-watched="${season.season_number}"
-                               ${watched ? "checked" : ""}>
-                        <span>${watched ? "Watched" : "Not watched"}</span>
-                    </label>
                 </article>`;
         }).join("") ||
             '<p class="library-loading">No seasons found.</p>';
@@ -856,6 +865,7 @@ async function open_show_seasons(show) {
 }
 
 async function open_season_episodes(season_number) {
+    active_season_number = season_number;
     season_grid.hidden = true;
     episode_list.hidden = false;
     season_back_button.hidden = false;
@@ -872,6 +882,21 @@ async function open_season_episodes(season_number) {
 
         show_details_title.textContent =
             `${active_show_title} · ${result.data.name}`;
+        active_season_episodes = result.data.episodes;
+
+        const {data: episode_progress, error: episode_progress_error} =
+            await supabase.from("tv_episode_progress")
+                .select("episode_number, watched")
+                .eq("tv_show_id", active_show_id)
+                .eq("season_number", season_number);
+
+        if (episode_progress_error) throw episode_progress_error;
+
+        const watched_episodes = new Map(
+            (episode_progress || []).map(
+                (item) => [item.episode_number, item.watched]
+            )
+        );
 
         episode_list.innerHTML = result.data.episodes.map((episode) => {
             const still = episode.still_url
@@ -884,9 +909,21 @@ async function open_season_episodes(season_number) {
                 ? ` · ⭐ ${Number(episode.tmdb_rating).toFixed(1)}`
                 : "";
 
+            const watched =
+                watched_episodes.get(episode.episode_number) === true;
+
             return `
-                <article class="episode-card">
-                    ${still}
+                <article class="episode-card ${watched ? "watched" : ""}"
+                         data-episode-number="${episode.episode_number}">
+                    <button class="episode-watch-image" type="button"
+                            data-episode-watched="${episode.episode_number}"
+                            aria-label="${watched ? "Mark episode not watched" : "Mark episode watched"}">
+                        ${still}
+                        <span class="episode-watch-overlay">
+                            <span>✓</span>
+                            ${watched ? "Watched" : "Mark watched"}
+                        </span>
+                    </button>
                     <div>
                         <strong>E${episode.episode_number} · ${episode.name}</strong>
                         <p>${episode.air_date || "Air date unavailable"}${runtime}${rating}</p>
@@ -917,45 +954,135 @@ show_grid.addEventListener("click", (event) => {
 });
 
 season_grid.addEventListener("click", async (event) => {
-    const open_button = event.target.closest("[data-season-open]");
+    const watch_button = event.target.closest("[data-season-watched]");
 
-    if (open_button) {
-        open_season_episodes(Number(open_button.dataset.seasonOpen));
+    if (watch_button) {
+        const season_number = Number(watch_button.dataset.seasonWatched);
+        const episode_count = Number(watch_button.dataset.episodeCount);
+        const watched = !watch_button.classList.contains("watched");
+        const card = watch_button.closest(".season-card");
+
+        watch_button.disabled = true;
+
+        try {
+            const {error: season_error} = await supabase
+                .from("tv_season_progress")
+                .upsert({
+                    tv_show_id: active_show_id,
+                    season_number,
+                    watched
+                }, {
+                    onConflict: "user_id,tv_show_id,season_number"
+                });
+            if (season_error) throw season_error;
+
+            const episodes = Array.from(
+                {length: episode_count},
+                (_, index) => ({
+                    tv_show_id: active_show_id,
+                    season_number,
+                    episode_number: index + 1,
+                    watched
+                })
+            );
+
+            const {error: episode_error} = await supabase
+                .from("tv_episode_progress")
+                .upsert(episodes, {
+                    onConflict:
+                        "user_id,tv_show_id,season_number,episode_number"
+                });
+            if (episode_error) throw episode_error;
+
+            season_watch_progress.set(season_number, watched);
+            card.classList.toggle("watched", watched);
+            watch_button.classList.toggle("watched", watched);
+            watch_button.querySelector("span:last-child").textContent =
+                watched ? "Watched" : "Mark watched";
+            watch_button.setAttribute(
+                "aria-label",
+                watched ? "Mark season not watched" : "Mark season watched"
+            );
+        } catch (error) {
+            console.error("Unable to save season progress:", error);
+            alert("Unable to save that season. Please try again.");
+        } finally {
+            watch_button.disabled = false;
+        }
         return;
     }
 
-    const checkbox = event.target.closest("[data-season-watched]");
-    if (!checkbox) return;
+    const open_button = event.target.closest("[data-season-open]");
+    if (open_button) {
+        open_season_episodes(Number(open_button.dataset.seasonOpen));
+    }
+});
 
-    const season_number = Number(checkbox.dataset.seasonWatched);
-    const watched = checkbox.checked;
-    const card = checkbox.closest(".season-card");
-    const label = checkbox.nextElementSibling;
+episode_list.addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-episode-watched]");
+    if (!button) return;
 
-    checkbox.disabled = true;
+    const episode_number = Number(button.dataset.episodeWatched);
+    const card = button.closest(".episode-card");
+    const watched = !card.classList.contains("watched");
+
+    button.disabled = true;
 
     try {
         const {error} = await supabase
+            .from("tv_episode_progress")
+            .upsert({
+                tv_show_id: active_show_id,
+                season_number: active_season_number,
+                episode_number,
+                watched
+            }, {
+                onConflict:
+                    "user_id,tv_show_id,season_number,episode_number"
+            });
+        if (error) throw error;
+
+        card.classList.toggle("watched", watched);
+        const overlay = button.querySelector(".episode-watch-overlay");
+        overlay.innerHTML = `<span>✓</span>${
+            watched ? "Watched" : "Mark watched"
+        }`;
+
+        const {data: progress, error: progress_error} = await supabase
+            .from("tv_episode_progress")
+            .select("episode_number, watched")
+            .eq("tv_show_id", active_show_id)
+            .eq("season_number", active_season_number);
+
+        if (progress_error) throw progress_error;
+
+        const watched_count = (progress || []).filter(
+            (item) => item.watched
+        ).length;
+        const season_watched =
+            active_season_episodes.length > 0 &&
+            watched_count >= active_season_episodes.length;
+
+        const {error: season_error} = await supabase
             .from("tv_season_progress")
             .upsert({
                 tv_show_id: active_show_id,
-                season_number,
-                watched
+                season_number: active_season_number,
+                watched: season_watched
             }, {
                 onConflict: "user_id,tv_show_id,season_number"
             });
+        if (season_error) throw season_error;
 
-        if (error) throw error;
-
-        season_watch_progress.set(season_number, watched);
-        card.classList.toggle("watched", watched);
-        label.textContent = watched ? "Watched" : "Not watched";
+        season_watch_progress.set(
+            active_season_number,
+            season_watched
+        );
     } catch (error) {
-        console.error("Unable to save season progress:", error);
-        checkbox.checked = !watched;
-        alert("Unable to save that season. Please try again.");
+        console.error("Unable to save episode progress:", error);
+        alert("Unable to save that episode. Please try again.");
     } finally {
-        checkbox.disabled = false;
+        button.disabled = false;
     }
 });
 
