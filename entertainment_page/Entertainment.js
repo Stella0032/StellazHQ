@@ -1407,6 +1407,101 @@ library_remove_form.addEventListener("submit", async (event) => {
 //#endregion
 
 
+
+//? ---------------------------------
+//* ----- MyAnimeList Connection ----
+//? ---------------------------------
+//#region
+const mal_connect_button = document.getElementById("mal_connect_button");
+const mal_connection_label = document.getElementById("mal_connection_label");
+const mal_connect_title = document.getElementById("mal_connect_title");
+const mal_connect_description = document.getElementById("mal_connect_description");
+
+function random_url_safe_string(length) {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
+    const bytes = new Uint8Array(length);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, (byte) => chars[byte % chars.length]).join("");
+}
+
+async function load_mal_connection_status() {
+    try {
+        const get_status = httpsCallable(functions, "getMALConnectionStatus");
+        const result = await get_status();
+        if (result.data.connected) {
+            mal_connection_label.textContent = "CONNECTED";
+            mal_connect_title.textContent = "MyAnimeList Connected ✓";
+            mal_connect_description.textContent =
+                "Your MyAnimeList account is connected to this Stellaz profile.";
+            mal_connect_button.textContent = "Sync MyAnimeList";
+            mal_connect_button.dataset.connected = "true";
+        }
+    } catch (error) {
+        console.error("Unable to check MAL connection:", error);
+    }
+}
+
+async function begin_mal_connection() {
+    const state = random_url_safe_string(48);
+    const code_verifier = random_url_safe_string(64);
+    sessionStorage.setItem("mal_oauth_state", state);
+    sessionStorage.setItem("mal_code_verifier", code_verifier);
+
+    const get_url = httpsCallable(functions, "getMALAuthorizationUrl");
+    const result = await get_url({state, code_verifier});
+    window.location.href = result.data.authorization_url;
+}
+
+async function finish_mal_connection() {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+    const returned_state = params.get("state");
+    if (!code) return;
+
+    const expected_state = sessionStorage.getItem("mal_oauth_state");
+    const code_verifier = sessionStorage.getItem("mal_code_verifier");
+    history.replaceState({}, document.title, window.location.pathname);
+
+    if (!expected_state || returned_state !== expected_state || !code_verifier) {
+        alert("MyAnimeList connection could not be verified. Please try again.");
+        return;
+    }
+
+    try {
+        const exchange_code =
+            httpsCallable(functions, "exchangeMALAuthorizationCode");
+        await exchange_code({code, code_verifier});
+        sessionStorage.removeItem("mal_oauth_state");
+        sessionStorage.removeItem("mal_code_verifier");
+        await load_mal_connection_status();
+        show_toast("MyAnimeList connected.");
+        show_entertainment_category("Anime");
+    } catch (error) {
+        console.error("Unable to finish MAL connection:", error);
+        alert("Unable to connect MyAnimeList. Please try again.");
+    }
+}
+
+mal_connect_button.addEventListener("click", async () => {
+    if (mal_connect_button.dataset.connected === "true") {
+        show_toast("Anime syncing is the next step.");
+        return;
+    }
+
+    mal_connect_button.disabled = true;
+    mal_connect_button.textContent = "Connecting...";
+
+    try {
+        await begin_mal_connection();
+    } catch (error) {
+        console.error("Unable to start MAL connection:", error);
+        mal_connect_button.disabled = false;
+        mal_connect_button.textContent = "Connect MyAnimeList";
+        alert("Unable to start MyAnimeList connection.");
+    }
+});
+//#endregion
+
 //? ------------------------------
 //* ----- Authentication ---------
 //? ------------------------------
@@ -1429,6 +1524,8 @@ onAuthStateChanged(auth, async (user) => {
 
         await load_movie_library();
         await load_show_library();
+        await load_mal_connection_status();
+        await finish_mal_connection();
     } catch (error) {
         console.error("Unable to prepare Supabase access:", error);
         movie_count.textContent = "Error";
@@ -1445,38 +1542,33 @@ const library_cards = document.querySelectorAll("[data-library]");
 const toast = document.getElementById("toast");
 const movie_library_panel = document.getElementById("movie_library");
 const show_library_panel = document.getElementById("show_library");
+const anime_library_panel = document.getElementById("anime_library");
 
 function show_entertainment_category(category) {
     const showing_movies = category === "Movies";
+    const showing_shows = category === "TV Shows";
+    const showing_anime = category === "Anime";
 
-    movie_library_panel.classList.toggle(
-        "category-panel-hidden",
-        !showing_movies
-    );
-    show_library_panel.classList.toggle(
-        "category-panel-hidden",
-        showing_movies
-    );
+    movie_library_panel.classList.toggle("category-panel-hidden", !showing_movies);
+    show_library_panel.classList.toggle("category-panel-hidden", !showing_shows);
+    anime_library_panel.classList.toggle("category-panel-hidden", !showing_anime);
 
     if (showing_movies) {
         load_movie_recommendations(movie_library);
-        movie_library_panel.scrollIntoView({
-            behavior: "smooth",
-            block: "start"
-        });
-    } else {
+        movie_library_panel.scrollIntoView({behavior: "smooth", block: "start"});
+    } else if (showing_shows) {
         load_show_recommendations(show_library);
-        show_library_panel.scrollIntoView({
-            behavior: "smooth",
-            block: "start"
-        });
+        show_library_panel.scrollIntoView({behavior: "smooth", block: "start"});
+    } else if (showing_anime) {
+        anime_library_panel.scrollIntoView({behavior: "smooth", block: "start"});
     }
 }
 
 library_cards.forEach((card) => {
     card.addEventListener("click", (event) => {
         if (card.dataset.library === "Movies" ||
-            card.dataset.library === "TV Shows") {
+            card.dataset.library === "TV Shows" ||
+            card.dataset.library === "Anime") {
             event.preventDefault();
             show_entertainment_category(card.dataset.library);
             return;
