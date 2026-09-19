@@ -1312,3 +1312,177 @@ a {
     font-size: 11px;
 }
 /*#endregion*/
+
+
+/*? -------------------------------- */
+/*^ ----- TV Seasons & Episodes --- */
+/*? -------------------------------- */
+/*#region*/
+.show-details-dialog {
+    width: min(1050px, calc(100% - 28px));
+    max-height: 90vh;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid rgba(194, 120, 255, 0.38);
+    border-radius: 22px;
+    color: #f4f5fb;
+    background: #0f1125;
+    box-shadow: 0 30px 100px rgba(0, 0, 0, 0.65);
+}
+
+.show-details-dialog::backdrop {
+    background: rgba(3, 4, 12, 0.82);
+    backdrop-filter: blur(5px);
+}
+
+.show-details-shell {
+    max-height: 90vh;
+    padding: 24px;
+    overflow-y: auto;
+}
+
+.show-details-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+}
+
+.show-details-header h2 {
+    margin: 0 0 20px;
+}
+
+.season-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.season-card {
+    min-width: 0;
+    padding: 6px;
+    display: grid;
+    gap: 6px;
+    border: 1px solid transparent;
+    border-radius: 13px;
+    color: #f4f5fb;
+    background: rgba(255, 255, 255, 0.025);
+    cursor: pointer;
+    text-align: left;
+}
+
+.season-card:hover,
+.season-card:focus-visible {
+    border-color: rgba(194, 120, 255, 0.55);
+    background: rgba(194, 120, 255, 0.07);
+    outline: none;
+}
+
+.season-card img,
+.season-poster-placeholder {
+    width: 100%;
+    aspect-ratio: 2 / 3;
+    border-radius: 9px;
+    object-fit: cover;
+}
+
+.season-poster-placeholder {
+    display: grid;
+    place-items: center;
+    color: #8f96ad;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.season-card strong {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.season-card span {
+    color: #969db2;
+    font-size: 10px;
+}
+
+.season-back-button {
+    margin: 0 0 18px;
+    padding: 8px 12px;
+    border: 1px solid rgba(194, 120, 255, 0.35);
+    border-radius: 999px;
+    color: #e9d8ff;
+    background: rgba(194, 120, 255, 0.08);
+    cursor: pointer;
+}
+
+.episode-list {
+    display: grid;
+    gap: 10px;
+}
+
+.episode-card {
+    padding: 10px;
+    display: grid;
+    grid-template-columns: 150px 1fr;
+    gap: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 13px;
+    background: rgba(255, 255, 255, 0.025);
+}
+
+.episode-card img,
+.episode-still-placeholder {
+    width: 150px;
+    aspect-ratio: 16 / 9;
+    border-radius: 8px;
+    object-fit: cover;
+}
+
+.episode-still-placeholder {
+    display: grid;
+    place-items: center;
+    color: #969db2;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.episode-card p {
+    margin: 5px 0 0;
+    color: #969db2;
+    font-size: 11px;
+}
+
+.episode-card .episode-overview {
+    color: #c7ccdc;
+    line-height: 1.45;
+}
+
+@media (max-width: 700px) {
+    .show-details-shell {
+        padding: 16px;
+    }
+
+    .season-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    .season-card {
+        padding: 3px;
+        font-size: 10px;
+    }
+
+    .episode-card {
+        grid-template-columns: 110px 1fr;
+        gap: 9px;
+        padding: 7px;
+    }
+
+    .episode-card img,
+    .episode-still-placeholder {
+        width: 110px;
+    }
+
+    .episode-card .episode-overview {
+        display: none;
+    }
+}
+/*#endregion*/
