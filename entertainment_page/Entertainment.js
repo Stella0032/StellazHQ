@@ -2033,3 +2033,87 @@ library_cards.forEach((card) => {
     });
 });
 //#endregion
+
+
+//? ----------------------------
+//* ----- Stellaz AI Chat -----
+//? ----------------------------
+//#region
+const stellaz_ai_launcher = document.getElementById("stellaz_ai_launcher");
+const stellaz_ai_panel = document.getElementById("stellaz_ai_panel");
+const stellaz_ai_close = document.getElementById("stellaz_ai_close");
+const stellaz_ai_form = document.getElementById("stellaz_ai_form");
+const stellaz_ai_input = document.getElementById("stellaz_ai_input");
+const stellaz_ai_send = document.getElementById("stellaz_ai_send");
+const stellaz_ai_messages = document.getElementById("stellaz_ai_messages");
+
+function add_stellaz_ai_message(text, type, extra_class = "") {
+    const message = document.createElement("div");
+    message.className = `stellaz-ai-message ${type} ${extra_class}`.trim();
+    message.textContent = text;
+    stellaz_ai_messages.appendChild(message);
+    stellaz_ai_messages.scrollTop = stellaz_ai_messages.scrollHeight;
+    return message;
+}
+
+function set_stellaz_ai_open(is_open) {
+    stellaz_ai_panel.hidden = !is_open;
+    stellaz_ai_launcher.setAttribute("aria-expanded", String(is_open));
+    if (is_open) {
+        stellaz_ai_input.focus();
+    }
+}
+
+stellaz_ai_launcher.addEventListener("click", () => {
+    set_stellaz_ai_open(stellaz_ai_panel.hidden);
+});
+
+stellaz_ai_close.addEventListener("click", () => {
+    set_stellaz_ai_open(false);
+});
+
+stellaz_ai_form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const message = stellaz_ai_input.value.trim();
+    if (!message || !auth.currentUser) return;
+
+    add_stellaz_ai_message(message, "user");
+    stellaz_ai_input.value = "";
+    stellaz_ai_input.disabled = true;
+    stellaz_ai_send.disabled = true;
+
+    const pending = add_stellaz_ai_message(
+        "Working on that…",
+        "assistant",
+        "pending"
+    );
+
+    try {
+        const stellaz_ai = httpsCallable(functions, "stellazAI");
+        const result = await stellaz_ai({message});
+        pending.remove();
+
+        add_stellaz_ai_message(
+            result.data?.message || "Done.",
+            "assistant"
+        );
+
+        if (result.data?.success) {
+            await load_movie_library();
+            load_movie_recommendations(movie_library);
+        }
+    } catch (error) {
+        console.error("Stellaz AI failed:", error);
+        pending.remove();
+        add_stellaz_ai_message(
+            "Something went wrong. Please try again.",
+            "assistant"
+        );
+    } finally {
+        stellaz_ai_input.disabled = false;
+        stellaz_ai_send.disabled = false;
+        stellaz_ai_input.focus();
+    }
+});
+//#endregion

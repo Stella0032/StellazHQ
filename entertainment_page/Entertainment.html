@@ -294,8 +294,35 @@
         </form>
     </dialog>
 
+
+    <button class="stellaz-ai-launcher" id="stellaz_ai_launcher" type="button" aria-label="Open Stellaz AI" aria-expanded="false">
+        <span class="stellaz-ai-spark">✦</span>
+        <span>STELLAZ AI</span>
+    </button>
+
+    <section class="stellaz-ai-panel" id="stellaz_ai_panel" aria-label="Stellaz AI" hidden>
+        <div class="stellaz-ai-header">
+            <div>
+                <p>STELLAZ AI</p>
+                <span>Movie assistant</span>
+            </div>
+            <button id="stellaz_ai_close" type="button" aria-label="Close Stellaz AI">×</button>
+        </div>
+        <div class="stellaz-ai-messages" id="stellaz_ai_messages" aria-live="polite">
+            <div class="stellaz-ai-message assistant">
+                Tell me what movies to add. Try “Add all the Harry Potter movies.”
+            </div>
+        </div>
+        <form class="stellaz-ai-form" id="stellaz_ai_form">
+            <input id="stellaz_ai_input" type="text" maxlength="1000"
+                   autocomplete="off" placeholder="Ask Stellaz AI..." aria-label="Message Stellaz AI">
+            <button id="stellaz_ai_send" type="submit" aria-label="Send message">↑</button>
+        </form>
+        <p class="stellaz-ai-note">For now, Stellaz AI can add watched movies.</p>
+    </section>
+
     <div class="toast" id="toast" role="status"></div>
-    <script type="module" src="Entertainment.js?v=28"></script>
+    <script type="module" src="Entertainment.js?v=29"></script>
     <script type="module" src="../firebase/profile_widget.js"></script>
 </body>
 </html>
