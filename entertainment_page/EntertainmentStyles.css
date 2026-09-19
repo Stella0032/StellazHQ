@@ -1972,3 +1972,39 @@ a {
     box-shadow: 0 0 22px rgba(103, 226, 173, 0.12);
 }
 /*#endregion*/
+
+
+/*? --------------------------------- */
+/*^ ----- MyAnimeList Connection ---- */
+/*? --------------------------------- */
+/*#region*/
+.mal-connect-card {
+    margin-top: 20px;
+    padding: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    border: 1px solid rgba(194, 120, 255, 0.28);
+    border-radius: 16px;
+    background: rgba(18, 20, 45, 0.5);
+}
+
+.mal-connect-card h3 {
+    margin: 0 0 7px;
+    font-size: 18px;
+}
+
+.mal-connect-card p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+@media (max-width: 700px) {
+    .mal-connect-card {
+        align-items: stretch;
+        flex-direction: column;
+    }
+}
+/*#endregion*/
