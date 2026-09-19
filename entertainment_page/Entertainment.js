@@ -1496,19 +1496,21 @@ function render_anime_library() {
         const progress = item.total_episodes
             ? item.episodes_watched + "/" + item.total_episodes + " eps"
             : item.episodes_watched + " eps";
-        const score = item.my_rating
-            ? " · MAL " + Number(item.my_rating).toFixed(1) + "/10"
-            : " · MAL —";
+        const mal_score = item.mal_score
+            ? "MAL: " + Number(item.mal_score).toFixed(2)
+            : "MAL: —";
+        const personal_score = item.my_rating
+            ? " · ★ " + Number(item.my_rating).toFixed(1) + "/10"
+            : " · ★ —";
         const extra_class = index >= get_collapsed_movie_count()
             ? " library-extra"
             : "";
 
         return '<article class="movie-card anime-card' + extra_class + '">' +
             '<div class="movie-poster-wrap">' + poster +
-            '<div class="anime-rating-overlay">' +
-            score.replace(" · ", "") + '</div></div>' +
+            '</div>' +
             '<h3 class="anime-edit-title" data-anime-id="' + item.id + '" tabindex="0" role="button" title="Edit on MyAnimeList">' + item.title + '</h3><p>' +
-            progress + score + '</p></article>';
+            progress + " · " + mal_score + personal_score + '</p></article>';
     }).join("");
 
     const has_hidden_anime =
@@ -1698,6 +1700,7 @@ async function sync_mal_anime() {
                 finish_date: item.finish_date,
                 mal_updated_at: item.mal_updated_at,
                 average_episode_duration_ms: item.average_episode_duration_ms,
+                mal_score: item.mal_score,
                 synced_at: new Date().toISOString()
             }));
 
