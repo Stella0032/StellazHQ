@@ -67,6 +67,23 @@
                 </div>
                 <span class="movie-library-count" id="movie_library_count">LOADING</span>
             </div>
+            <div class="movie-filters" aria-label="Movie filters">
+                <input class="movie-search" id="movie_search" type="search" placeholder="Search movies..." aria-label="Search movies">
+                <select class="movie-filter" id="genre_filter" aria-label="Filter by genre">
+                    <option value="">All genres</option>
+                </select>
+                <select class="movie-filter" id="franchise_filter" aria-label="Filter by franchise">
+                    <option value="">All franchises</option>
+                </select>
+                <select class="movie-filter" id="movie_sort" aria-label="Sort movies">
+                    <option value="year-desc">Newest first</option>
+                    <option value="year-asc">Oldest first</option>
+                    <option value="title-asc">Title A–Z</option>
+                    <option value="title-desc">Title Z–A</option>
+                </select>
+                <button class="movie-filter-clear" id="movie_filter_clear" type="button">Clear</button>
+            </div>
+
             <div class="movie-grid" id="movie_grid">
                 <p class="library-loading">Loading your movies...</p>
             </div>
@@ -96,6 +113,6 @@
     </main>
 
     <div class="toast" id="toast" role="status"></div>
-    <script type="module" src="Entertainment.js?v=3"></script>
+    <script type="module" src="Entertainment.js?v=4"></script>
 </body>
 </html>
