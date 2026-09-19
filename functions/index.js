@@ -379,4 +379,74 @@ exports.getMovieRecommendations = onCall(
         return {recommendations};
     }
 );
+
+
+exports.getTVShowMetadata = onCall(
+    {secrets: [tmdb_read_access_token]},
+    async (request) => {
+        if (!request.auth) {
+            throw new HttpsError("unauthenticated", "You must be logged in.");
+        }
+
+        const title = request.data?.title;
+        const year = request.data?.year;
+
+        if (!title || typeof title !== "string") {
+            throw new HttpsError("invalid-argument", "TV show title is required.");
+        }
+
+        const search_url = new URL("https://api.themoviedb.org/3/search/tv");
+        search_url.searchParams.set("query", title);
+        search_url.searchParams.set("include_adult", "false");
+        search_url.searchParams.set("language", "en-US");
+
+        if (year) {
+            search_url.searchParams.set("first_air_date_year", String(year));
+        }
+
+        const headers = {
+            Authorization: `Bearer ${tmdb_read_access_token.value()}`,
+            accept: "application/json",
+        };
+
+        const search_response = await fetch(search_url, {headers});
+
+        if (!search_response.ok) {
+            throw new HttpsError("internal", "TMDB TV search failed.");
+        }
+
+        const search_data = await search_response.json();
+        const match = search_data.results?.[0];
+
+        if (!match) {
+            throw new HttpsError("not-found", "No matching TV show was found on TMDB.");
+        }
+
+        const details_url =
+            `https://api.themoviedb.org/3/tv/${match.id}?language=en-US`;
+        const details_response = await fetch(details_url, {headers});
+
+        if (!details_response.ok) {
+            throw new HttpsError("internal", "TMDB TV details request failed.");
+        }
+
+        const show = await details_response.json();
+
+        return {
+            tmdb_id: show.id,
+            title: show.name,
+            year: show.first_air_date ?
+                Number(show.first_air_date.slice(0, 4)) :
+                null,
+            genres: Array.isArray(show.genres) ?
+                show.genres.map((genre) => genre.name) :
+                [],
+            poster_url: show.poster_path ?
+                `https://image.tmdb.org/t/p/w500${show.poster_path}` :
+                null,
+            tmdb_rating: show.vote_average ?? null,
+        };
+    }
+);
+
 //#endregion
