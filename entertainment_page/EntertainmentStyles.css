@@ -109,6 +109,20 @@ a {
     color: #7bdcff;
 }
 
+.brand-lockup {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+}
+
+.theme-brand-name {
+    display: none;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    white-space: nowrap;
+}
+
 .nav-links {
     display: flex;
     justify-content: center;
