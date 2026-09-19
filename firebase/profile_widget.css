@@ -84,3 +84,13 @@ html[data-theme="neon"] .profile-avatar{
     background:linear-gradient(135deg,#72ff8c,#18d84a);
     box-shadow:0 0 18px rgba(48,255,91,.25);
 }
+
+
+/* Muckiverse owns the full browser page, including overscroll edges. */
+html[data-theme="neon"]{
+    background:#010402;
+    overscroll-behavior-y:none;
+}
+html[data-theme="neon"] body{
+    background:#010402;
+}
