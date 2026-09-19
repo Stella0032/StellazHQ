@@ -2145,3 +2145,26 @@ a {
         max-width: 180px;
     }
 }
+
+
+/*? ---------------------------- */
+/*^ ----- Release Rows -------- */
+/*? ---------------------------- */
+/*#region*/
+.release-panel {
+    margin-top: 24px;
+}
+
+.release-card {
+    cursor: default;
+}
+
+.release-card:hover {
+    transform: translateY(-4px);
+}
+
+.release-card .recommendation-poster-wrap {
+    overflow: hidden;
+    border-radius: 12px;
+}
+/*#endregion*/
