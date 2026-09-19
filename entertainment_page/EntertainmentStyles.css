@@ -1918,3 +1918,34 @@ a {
     }
 }
 /*#endregion*/
+
+
+/*? -------------------------------- */
+/*^ ----- Watched Visual State ---- */
+/*? -------------------------------- */
+/*#region*/
+.season-card.watched {
+    border-radius: 13px;
+    box-shadow:
+        0 0 0 1px rgba(103, 226, 173, 0.28),
+        0 0 22px rgba(103, 226, 173, 0.10);
+}
+
+.season-card.watched .season-poster-action {
+    box-shadow: 0 0 16px rgba(103, 226, 173, 0.16);
+}
+
+.season-card.watched .season-poster-action img {
+    filter: brightness(1.05);
+}
+
+.episode-card.watched {
+    border-color: rgba(103, 226, 173, 0.28);
+    background: rgba(103, 226, 173, 0.055);
+    box-shadow: 0 0 18px rgba(103, 226, 173, 0.07);
+}
+
+.episode-card.watched .episode-watch-image img {
+    filter: brightness(1.06);
+}
+/*#endregion*/
