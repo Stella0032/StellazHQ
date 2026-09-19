@@ -405,6 +405,10 @@ function get_filtered_movies() {
                 return a.title.localeCompare(b.title);
             case "title-desc":
                 return b.title.localeCompare(a.title);
+            case "tmdb-desc":
+                return (b.tmdb_rating ?? -1) - (a.tmdb_rating ?? -1);
+            case "mine-desc":
+                return (b.my_rating ?? -1) - (a.my_rating ?? -1);
             default:
                 return b.year - a.year;
         }
@@ -635,6 +639,10 @@ function get_filtered_shows() {
             case "year-asc": return a.year - b.year;
             case "title-asc": return a.title.localeCompare(b.title);
             case "title-desc": return b.title.localeCompare(a.title);
+            case "tmdb-desc":
+                return (b.tmdb_rating ?? -1) - (a.tmdb_rating ?? -1);
+            case "mine-desc":
+                return (b.my_rating ?? -1) - (a.my_rating ?? -1);
             default: return b.year - a.year;
         }
     });
