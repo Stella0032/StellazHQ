@@ -100,7 +100,7 @@ html[data-theme="neon"]{
     overscroll-behavior-y:none;
 }
 html[data-theme="neon"] body{
-    background:#010402;
+    background:transparent;
 }
 
 
@@ -113,6 +113,10 @@ html[data-theme="neon"] .hero h1{
 }
 
 html[data-theme="neon"] .theme-brand-name{
+    display:none;
+}
+
+html[data-theme="neon"] .muckiverse-brand-name{
     display:inline-block;
     color:#54ff79;
     text-shadow:0 0 12px rgba(57,255,103,.38);
