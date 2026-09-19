@@ -47,14 +47,25 @@ async function load_movie_recommendations(movies) {
                 : "";
 
             return `
-                <article class="recommendation-card">
-                    <img class="recommendation-poster"
-                         src="${movie.poster_url}"
-                         alt="${movie.title} poster"
-                         loading="lazy">
+                <article class="recommendation-card"
+                         tabindex="0"
+                         role="button"
+                         data-recommendation-id="${movie.tmdb_id}"
+                         aria-label="View details for ${movie.title}">
+                    <div class="recommendation-poster-wrap">
+                        <img class="recommendation-poster"
+                             src="${movie.poster_url}"
+                             alt="${movie.title} poster"
+                             loading="lazy">
+                        <span class="recommendation-expand-icon" aria-hidden="true">＋</span>
+                    </div>
                     <h3 title="${movie.title}">${movie.title}</h3>
                     <p>${movie.year}${rating}</p>
                     <p class="recommendation-reason">${reason}</p>
+                    <div class="recommendation-details">
+                        <p class="recommendation-description">${movie.overview || "No description available."}</p>
+                        <p class="recommendation-match">${reason}</p>
+                    </div>
                 </article>
             `;
         }).join("");
@@ -65,6 +76,32 @@ async function load_movie_recommendations(movies) {
             '<p class="recommendation-loading">Unable to load recommendations.</p>';
     }
 }
+
+recommendation_grid.addEventListener("click", (event) => {
+    const card = event.target.closest(".recommendation-card");
+
+    if (!card) {
+        return;
+    }
+
+    card.classList.toggle("expanded");
+});
+
+recommendation_grid.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") {
+        return;
+    }
+
+    const card = event.target.closest(".recommendation-card");
+
+    if (!card) {
+        return;
+    }
+
+    event.preventDefault();
+    card.classList.toggle("expanded");
+});
+
 //#endregion
 
 
