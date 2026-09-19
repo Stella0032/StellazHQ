@@ -111,9 +111,25 @@ function create_movie_card(movie, index) {
         ? `<img class="movie-poster" src="${movie.poster_url}" alt="${movie.title} poster" loading="lazy">`
         : `<div class="movie-poster-placeholder"><span>${movie.title}</span></div>`;
 
-    const personal_rating = movie.my_rating !== null
-        ? ` · YOU ${movie.my_rating}/10`
+    const personal_rating_value = movie.my_rating !== null
+        ? Number(movie.my_rating)
         : "";
+
+    const personal_rating = `
+        <label class="personal-rating">
+            YOU
+            <select class="personal-rating-select"
+                    data-movie-id="${movie.id}"
+                    aria-label="Your rating for ${movie.title}">
+                <option value="" ${personal_rating_value === "" ? "selected" : ""}>—</option>
+                ${Array.from({length: 11}, (_, rating) => `
+                    <option value="${rating}" ${personal_rating_value === rating ? "selected" : ""}>
+                        ${rating}/10
+                    </option>
+                `).join("")}
+            </select>
+        </label>
+    `;
 
     const tomato_rating = movie.tomato_rating !== null
         ? ` · 🍅 ${movie.tomato_rating}%`
@@ -136,10 +152,50 @@ function create_movie_card(movie, index) {
         <article class="movie-card${extra_class}">
             ${poster}
             <h3 title="${movie.title}">${movie.title}</h3>
-            <p class="movie-meta">${movie.year}${tomato_rating}${audience_rating}${tmdb_rating}${personal_rating}</p>
+            <p class="movie-meta">${movie.year}${tomato_rating}${audience_rating}${tmdb_rating}</p>
+            ${personal_rating}
         </article>
     `;
 }
+
+async function save_personal_rating(movie_id, rating) {
+    const my_rating = rating === "" ? null : Number(rating);
+
+    const { error } = await supabase
+        .from("movies")
+        .update({my_rating})
+        .eq("id", movie_id);
+
+    if (error) {
+        throw error;
+    }
+
+    const movie = movie_library.find((item) => item.id === movie_id);
+
+    if (movie) {
+        movie.my_rating = my_rating;
+    }
+}
+
+movie_grid.addEventListener("change", async (event) => {
+    if (!event.target.classList.contains("personal-rating-select")) {
+        return;
+    }
+
+    const select = event.target;
+    const movie_id = Number(select.dataset.movieId);
+    select.disabled = true;
+
+    try {
+        await save_personal_rating(movie_id, select.value);
+        console.log("Saved personal rating:", movie_id, select.value);
+    } catch (error) {
+        console.error("Unable to save personal rating:", error);
+        alert("Unable to save your rating. Please try again.");
+    } finally {
+        select.disabled = false;
+    }
+});
 
 function populate_movie_filters(movies) {
     const genres = [...new Set(
