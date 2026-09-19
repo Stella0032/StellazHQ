@@ -1895,12 +1895,15 @@ function show_entertainment_category(category) {
 
     if (showing_movies) {
         load_movie_recommendations(movie_library);
+        load_release_rows("movie");
         movie_library_panel.scrollIntoView({behavior: "smooth", block: "start"});
     } else if (showing_shows) {
         load_show_recommendations(show_library);
+        load_release_rows("show");
         show_library_panel.scrollIntoView({behavior: "smooth", block: "start"});
     } else if (showing_anime) {
         load_anime_recommendations(anime_library);
+        load_release_rows("anime");
         anime_library_panel.scrollIntoView({behavior: "smooth", block: "start"});
     }
 }
