@@ -140,6 +140,21 @@
         </section>
     </main>
 
+    <dialog class="show-details-dialog" id="show_details_dialog">
+        <div class="show-details-shell">
+            <div class="show-details-header">
+                <div>
+                    <p class="eyebrow">TV SHOW</p>
+                    <h2 id="show_details_title">Seasons</h2>
+                </div>
+                <button class="library-dialog-close" id="show_details_close" type="button" aria-label="Close">×</button>
+            </div>
+            <button class="season-back-button" id="season_back_button" type="button" hidden>← All seasons</button>
+            <div class="season-grid" id="season_grid"></div>
+            <div class="episode-list" id="episode_list" hidden></div>
+        </div>
+    </dialog>
+
     <dialog class="library-dialog" id="library_add_dialog">
         <form class="library-dialog-form" id="library_add_form">
             <div class="library-dialog-header">
@@ -176,6 +191,6 @@
     </dialog>
 
     <div class="toast" id="toast" role="status"></div>
-    <script type="module" src="Entertainment.js?v=17"></script>
+    <script type="module" src="Entertainment.js?v=18"></script>
 </body>
 </html>
