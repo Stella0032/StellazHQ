@@ -1421,6 +1421,12 @@ const anime_sync_summary = document.getElementById("anime_sync_summary");
 const anime_library_toggle = document.getElementById("anime_library_toggle");
 const anime_count = document.getElementById("anime_count");
 const anime_watch_time = document.getElementById("anime_watch_time");
+const anime_filters = document.getElementById("anime_filters");
+const anime_search = document.getElementById("anime_search");
+const anime_status_filter = document.getElementById("anime_status_filter");
+const anime_sort = document.getElementById("anime_sort");
+const anime_filter_clear = document.getElementById("anime_filter_clear");
+let anime_library = [];
 const mal_connect_card = document.getElementById("mal_connect_card");
 const mal_sync_header_button = document.getElementById("mal_sync_header_button");
 
@@ -1450,13 +1456,64 @@ async function load_mal_connection_status() {
 }
 
 
+function render_anime_library() {
+    const search = anime_search.value.trim().toLowerCase();
+    const status = anime_status_filter.value;
+
+    let visible_anime = anime_library.filter((item) => {
+        const matches_search = !search ||
+            item.title.toLowerCase().includes(search);
+        const matches_status = !status || item.status === status;
+        return matches_search && matches_status;
+    });
+
+    if (anime_sort.value === "title-desc") {
+        visible_anime.sort((a, b) => b.title.localeCompare(a.title));
+    } else if (anime_sort.value === "score-desc") {
+        visible_anime.sort((a, b) =>
+            Number(b.my_rating || 0) - Number(a.my_rating || 0));
+    } else {
+        visible_anime.sort((a, b) => a.title.localeCompare(b.title));
+    }
+
+    anime_grid.classList.remove("expanded");
+    anime_grid.innerHTML = visible_anime.map((item, index) => {
+        const poster = item.poster_url
+            ? '<img class="movie-poster" src="' + item.poster_url +
+                '" alt="" loading="lazy">'
+            : '<div class="movie-poster-placeholder">ANIME</div>';
+        const progress = item.total_episodes
+            ? item.episodes_watched + "/" + item.total_episodes + " eps"
+            : item.episodes_watched + " eps";
+        const score = item.my_rating
+            ? " · MAL " + Number(item.my_rating).toFixed(1) + "/10"
+            : " · MAL —";
+        const extra_class = index >= get_collapsed_movie_count()
+            ? " library-extra"
+            : "";
+
+        return '<article class="movie-card anime-card' + extra_class + '">' +
+            '<div class="movie-poster-wrap">' + poster +
+            '<div class="anime-rating-overlay">' +
+            score.replace(" · ", "") + '</div></div>' +
+            '<h3>' + item.title + '</h3><p>' +
+            progress + score + '</p></article>';
+    }).join("");
+
+    const has_hidden_anime =
+        visible_anime.length > get_collapsed_movie_count();
+    anime_library_toggle.hidden = !has_hidden_anime;
+    anime_library_toggle.textContent = "Show all anime";
+}
+
 async function load_anime_library() {
     const {data, error} = await supabase.from("anime").select("*").order("title");
     if (error) throw error;
 
-    const anime = data || [];
-    const watched_anime = anime.filter((item) => item.status === "completed");
-    const watched_ms = anime.reduce((total, item) => {
+    anime_library = data || [];
+    const watched_anime =
+        anime_library.filter((item) => item.status === "completed");
+    const watched_ms = anime_library.reduce((total, item) => {
         const episode_ms = Number(item.average_episode_duration_ms || 0);
         const watched_episodes = Number(item.episodes_watched || 0);
         return total + (episode_ms * watched_episodes);
@@ -1467,36 +1524,14 @@ async function load_anime_library() {
         ? Math.round(watched_ms / 3600) + "h"
         : "—";
 
-    anime_grid.classList.remove("expanded");
-    anime_grid.innerHTML = anime.map((item, index) => {
-        const poster = item.poster_url
-            ? '<img class="movie-poster" src="' + item.poster_url + '" alt="" loading="lazy">'
-            : '<div class="movie-poster-placeholder">ANIME</div>';
-        const progress = item.total_episodes
-            ? item.episodes_watched + "/" + item.total_episodes + " eps"
-            : item.episodes_watched + " eps";
-        const score = item.my_rating
-            ? " · MAL " + Number(item.my_rating).toFixed(1) + "/10"
-            : " · MAL —";
+    render_anime_library();
 
-        const extra_class = index >= get_collapsed_movie_count()
-            ? " library-extra"
-            : "";
-
-        return '<article class="movie-card anime-card' + extra_class + '">' +
-            '<div class="movie-poster-wrap">' + poster +
-            '<div class="anime-rating-overlay">' + score.replace(" · ", "") + '</div></div>' +
-            '<h3>' + item.title + '</h3><p>' + progress + score + '</p></article>';
-    }).join("");
-
-    const has_hidden_anime = anime.length > get_collapsed_movie_count();
-    anime_library_toggle.hidden = !has_hidden_anime;
-    anime_library_toggle.textContent = "Show all anime";
-
-    const has_synced_anime = anime.length > 0;
+    const has_synced_anime = anime_library.length > 0;
     anime_sync_summary.hidden = !has_synced_anime;
     anime_sync_summary.textContent =
-        watched_anime.length + " watched · " + anime.length + " total synced from MyAnimeList";
+        watched_anime.length + " watched · " +
+        anime_library.length + " total synced from MyAnimeList";
+    anime_filters.hidden = !has_synced_anime;
 
     if (has_synced_anime) {
         mal_connect_card.hidden = true;
@@ -1504,6 +1539,17 @@ async function load_anime_library() {
         mal_sync_header_button.hidden = false;
     }
 }
+
+anime_search.addEventListener("input", render_anime_library);
+anime_status_filter.addEventListener("change", render_anime_library);
+anime_sort.addEventListener("change", render_anime_library);
+anime_filter_clear.addEventListener("click", () => {
+    anime_search.value = "";
+    anime_status_filter.value = "";
+    anime_sort.value = "title-asc";
+    render_anime_library();
+});
+
 
 anime_library_toggle.addEventListener("click", () => {
     const expanded = anime_grid.classList.toggle("expanded");
