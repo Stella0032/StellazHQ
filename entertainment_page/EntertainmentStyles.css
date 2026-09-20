@@ -3223,10 +3223,3 @@ html.anime-category-active body::after {
         background-position: left center, right center;
     }
 }
-
-
-.anime-add-results{display:grid;gap:10px;margin-top:16px;max-height:55vh;overflow:auto}
-.anime-add-result{display:grid;grid-template-columns:54px 1fr auto;align-items:center;gap:12px;width:100%;padding:9px;border:1px solid rgba(255,255,255,.14);border-radius:14px;background:rgba(255,255,255,.06);color:inherit;text-align:left;cursor:pointer}
-.anime-add-result:hover{background:rgba(255,255,255,.11);transform:translateY(-1px)}
-.anime-add-result img{width:54px;height:76px;object-fit:cover;border-radius:8px}
-.anime-add-result span{display:grid;gap:4px}.anime-add-result small{opacity:.72}.anime-add-result b{white-space:nowrap}
