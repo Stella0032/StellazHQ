@@ -3411,11 +3411,11 @@ html.anime-category-active body::after {
     display: none;
 }
 
-.plex-import-dialog { width:min(620px,calc(100% - 28px)); border:1px solid var(--glass-border); border-radius:20px; padding:28px; color:var(--text); background:#101126; box-shadow:0 28px 90px rgba(0,0,0,.55); }
+.plex-import-dialog { width:min(900px,calc(100% - 28px)); border:1px solid var(--glass-border); border-radius:20px; padding:28px; color:var(--text); background:#101126; box-shadow:0 28px 90px rgba(0,0,0,.55); }
 .plex-import-dialog::backdrop { background:rgba(4,5,16,.76); backdrop-filter:blur(7px); }
 .plex-import-dialog h2 { margin:6px 0 8px; font-size:28px; }
 .plex-import-summary,.plex-import-note { color:var(--muted); line-height:1.5; }
-.plex-import-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin:22px 0; }
+.plex-import-stats { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin:22px 0; }
 .plex-import-stats div { padding:16px 10px; text-align:center; border:1px solid var(--glass-border); border-radius:14px; background:rgba(255,255,255,.035); }
 .plex-import-stats strong { display:block; font-size:24px; }
 .plex-import-stats span { display:block; margin-top:4px; color:var(--muted); font-size:11px; }
@@ -3430,3 +3430,7 @@ html.anime-category-active body::after {
 @keyframes plex-spin { to { transform:rotate(360deg); } }
 @keyframes plex-dots { 0%{content:""} 25%{content:"."} 50%{content:".."} 75%,100%{content:"..."} }
 @media (prefers-reduced-motion:reduce) { .plex-loading-spinner,.plex-loading-dots::after { animation:none; } .plex-loading-dots::after { content:"…"; } }
+
+@media (max-width:900px) and (min-width:621px) {
+    .plex-import-stats { grid-template-columns:repeat(3,1fr); }
+}
