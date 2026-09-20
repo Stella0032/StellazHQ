@@ -941,7 +941,6 @@ const show_sort = document.getElementById("show_sort");
 const show_filter_clear = document.getElementById("show_filter_clear");
 const show_details_dialog = document.getElementById("show_details_dialog");
 const show_details_title = document.getElementById("show_details_title");
-const show_details_eyebrow = document.getElementById("show_details_eyebrow");
 const show_details_close = document.getElementById("show_details_close");
 const season_back_button = document.getElementById("season_back_button");
 const season_grid = document.getElementById("season_grid");
@@ -1176,9 +1175,8 @@ show_grid.addEventListener("click", async (event) => {
     }
 });
 
-async function open_show_seasons(show, media_label = "TV SHOW") {
-    active_show_id = show.id ?? null;
-    show_details_eyebrow.textContent = media_label;
+async function open_show_seasons(show) {
+    active_show_id = show.id;
     show_details_title.textContent = show.title;
     season_grid.innerHTML =
         '<p class="library-loading">Loading seasons...</p>';
@@ -1351,7 +1349,6 @@ season_grid.addEventListener("click", async (event) => {
     const watch_button = event.target.closest("[data-season-watched]");
 
     if (watch_button) {
-        if (active_show_id === null) return;
         const season_number = Number(watch_button.dataset.seasonWatched);
         const episode_count = Number(watch_button.dataset.episodeCount);
         const card = watch_button.closest(".season-card");
@@ -1443,7 +1440,7 @@ season_grid.addEventListener("click", async (event) => {
 
 episode_list.addEventListener("click", async (event) => {
     const button = event.target.closest("[data-episode-watched]");
-    if (!button || active_show_id === null) return;
+    if (!button) return;
 
     const episode_number = Number(button.dataset.episodeWatched);
     const card = button.closest(".episode-card");
@@ -2075,7 +2072,6 @@ let selected_anime_episode = 0;
 const anime_edit_score = document.getElementById("anime_edit_score");
 const anime_edit_close = document.getElementById("anime_edit_close");
 const anime_edit_save = document.getElementById("anime_edit_save");
-const anime_view_seasons = document.getElementById("anime_view_seasons");
 const mal_connect_card = document.getElementById("mal_connect_card");
 const mal_sync_header_button = document.getElementById("mal_sync_header_button");
 
@@ -2305,21 +2301,6 @@ anime_grid.addEventListener("keydown", (event) => {
 });
 
 anime_edit_close.addEventListener("click", () => anime_edit_dialog.close());
-
-anime_view_seasons.addEventListener("click", () => {
-    if (!active_anime) return;
-
-    const year = active_anime.start_date
-        ? Number(String(active_anime.start_date).slice(0, 4))
-        : undefined;
-
-    anime_edit_dialog.close();
-    open_show_seasons({
-        id: null,
-        title: active_anime.title,
-        year
-    }, "ANIME");
-});
 
 anime_episode_picker.addEventListener("click", (event) => {
     const button = event.target.closest(".anime-episode-button");
