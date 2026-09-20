@@ -3198,7 +3198,7 @@ html.anime-category-active body::after {
 @media (min-width: 1200px) {
     html.anime-category-active body::before,
     html.anime-category-active body::after {
-        background-size: min(26vw, 500px) auto, min(26vw, 500px) auto;
+        background-size: auto 100%, auto 100%;
         background-position: left center, right center;
         background-repeat: no-repeat, no-repeat;
     }
