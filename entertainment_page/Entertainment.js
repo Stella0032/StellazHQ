@@ -3097,86 +3097,92 @@ async function ensure_plex_metadata_for_item(type, item) {
 
 async function auto_sync_plex_activity() {
     try {
+        // Use the exact same Plex snapshot as the manual Import Plex dialog.
         const result = await httpsCallable(functions, "getPlexImportPreview")();
         const data = result.data || {};
         save_plex_metadata_store(data);
 
-        // Automatic import is deliberately rating-only. Watched state can be
-        // shared by multiple people using the same Plex account/server, while
-        // a rating is the explicit signal that this title belongs in Stellaz.
-        const rated_movies = (data.movies || []).filter((item) => item.rating != null);
-        const rated_shows = (data.shows || []).filter((item) => item.rating != null);
-        const new_movies = rated_movies.filter((item) =>
-            !movie_library.some((existing) => same_library_title(existing, item)));
-        const new_shows = rated_shows.filter((item) =>
-            !show_library.some((existing) => same_library_title(existing, item)));
+        const rated_movies = (data.movies || []).filter((item) =>
+            item.rating != null && Number(item.rating) > 0);
+        const rated_shows = (data.shows || []).filter((item) =>
+            item.rating != null && Number(item.rating) > 0);
 
-        const movie_rows = new_movies.map((item) => ({
-            title: item.title,
-            year: item.year,
-            ...(item.tmdb_id ? {tmdb_id: Number(item.tmdb_id)} : {}),
-            ...(item.plex_thumb ? {plex_thumb: item.plex_thumb} : {}),
-            ...(item.genres?.length ? {genres: item.genres} : {}),
-            ...(item.runtime_minutes ? {runtime_minutes: item.runtime_minutes} : {}),
-            status: "watched",
-            my_rating: Number(item.rating)
-        }));
-        const show_rows = new_shows.map((item) => ({
-            title: item.title,
-            year: item.year,
-            ...(item.tmdb_id ? {tmdb_id: Number(item.tmdb_id)} : {}),
-            ...(item.plex_thumb ? {plex_thumb: item.plex_thumb} : {}),
-            ...(item.genres?.length ? {genres: item.genres} : {}),
-            ...(item.average_episode_runtime_minutes ?
-                {average_episode_runtime_minutes: item.average_episode_runtime_minutes} : {}),
-            status: "watched",
-            my_rating: Number(item.rating)
-        }));
+        const added_titles = [];
+        const failed_titles = [];
 
-        if (movie_rows.length) {
-            const {error} = await supabase.from("movies").insert(movie_rows);
-            if (error) throw error;
-        }
-        if (show_rows.length) {
-            const {error} = await supabase.from("tv_shows").insert(show_rows);
-            if (error) throw error;
-        }
-
-        // Existing Stellaz titles receive rating/metadata updates from Plex,
-        // but Plex watched state never adds or restores a title automatically.
+        // Insert rated missing titles one at a time. One bad Plex item must not
+        // prevent another rated title (for example Mad Men) from being added.
         for (const item of rated_movies) {
             const existing = movie_library.find((movie) => same_library_title(movie, item));
-            if (!existing) continue;
-            const patch = {};
-            if (Number(existing.my_rating) !== Number(item.rating)) {
-                patch.my_rating = Number(item.rating);
-            }
-            if (item.plex_thumb) patch.plex_thumb = item.plex_thumb;
-            if (item.tmdb_id) patch.tmdb_id = Number(item.tmdb_id);
-            if (Object.keys(patch).length) {
+            if (existing) {
+                const patch = {my_rating: Number(item.rating)};
+                if (item.plex_thumb) patch.plex_thumb = item.plex_thumb;
+                if (item.tmdb_id) patch.tmdb_id = Number(item.tmdb_id);
                 const {error} = await supabase.from("movies").update(patch).eq("id", existing.id);
-                if (error) throw error;
+                if (error) failed_titles.push(item.title);
+                continue;
+            }
+            const row = {
+                title: item.title,
+                year: item.year,
+                ...(item.tmdb_id ? {tmdb_id: Number(item.tmdb_id)} : {}),
+                ...(item.plex_thumb ? {plex_thumb: item.plex_thumb} : {}),
+                ...(item.genres?.length ? {genres: item.genres} : {}),
+                ...(item.runtime_minutes ? {runtime_minutes: item.runtime_minutes} : {}),
+                status: "watched",
+                my_rating: Number(item.rating)
+            };
+            const {error} = await supabase.from("movies").insert(row);
+            if (error) {
+                failed_titles.push(item.title);
+                console.error("Unable to auto-add rated Plex movie:", item.title, error);
+            } else {
+                added_titles.push(item.title);
             }
         }
 
         for (const item of rated_shows) {
             const existing = show_library.find((show) => same_library_title(show, item));
-            if (!existing) continue;
-            const patch = {};
-            if (Number(existing.my_rating) !== Number(item.rating)) {
-                patch.my_rating = Number(item.rating);
-            }
-            if (item.plex_thumb) patch.plex_thumb = item.plex_thumb;
-            if (item.tmdb_id) patch.tmdb_id = Number(item.tmdb_id);
-            if (Object.keys(patch).length) {
+            if (existing) {
+                const patch = {my_rating: Number(item.rating)};
+                if (item.plex_thumb) patch.plex_thumb = item.plex_thumb;
+                if (item.tmdb_id) patch.tmdb_id = Number(item.tmdb_id);
                 const {error} = await supabase.from("tv_shows").update(patch).eq("id", existing.id);
-                if (error) throw error;
+                if (error) failed_titles.push(item.title);
+                continue;
+            }
+            const row = {
+                title: item.title,
+                year: item.year,
+                ...(item.tmdb_id ? {tmdb_id: Number(item.tmdb_id)} : {}),
+                ...(item.plex_thumb ? {plex_thumb: item.plex_thumb} : {}),
+                ...(item.genres?.length ? {genres: item.genres} : {}),
+                ...(item.average_episode_runtime_minutes ?
+                    {average_episode_runtime_minutes: item.average_episode_runtime_minutes} : {}),
+                status: "watched",
+                my_rating: Number(item.rating)
+            };
+            const {error} = await supabase.from("tv_shows").insert(row);
+            if (error) {
+                failed_titles.push(item.title);
+                console.error("Unable to auto-add rated Plex show:", item.title, error);
+            } else {
+                added_titles.push(item.title);
             }
         }
 
-        if (movie_rows.length || show_rows.length || rated_movies.length || rated_shows.length) {
-            await load_movie_library();
-            await load_show_library();
+        console.log("Plex rated titles:", {
+            movies: rated_movies.map((item) => [item.title, item.rating]),
+            shows: rated_shows.map((item) => [item.title, item.rating]),
+            added: added_titles,
+            failed: failed_titles
+        });
+
+        if (added_titles.length || rated_movies.length || rated_shows.length) {
+            await Promise.all([load_movie_library(), load_show_library()]);
+        }
+        if (added_titles.length) {
+            show_toast(`Added from Plex ratings: ${added_titles.join(", ")}`);
         }
 
         sync_plex_metadata_for_library().catch((error) =>
@@ -3220,8 +3226,9 @@ async function open_plex_import_preview() {
                 same_library_title(existing, item) &&
                 Number(existing.my_rating) !== Number(item.rating)));
         const rating_updates = movie_rating_updates.length + show_rating_updates.length;
-        const ratings_on_new_titles = [...new_movies, ...new_shows]
-            .filter((item) => item.rating != null).length;
+        const rated_new_titles = [...new_movies, ...new_shows]
+            .filter((item) => item.rating != null && Number(item.rating) > 0);
+        const ratings_on_new_titles = rated_new_titles.length;
         plex_import_preview = {
             ...data, new_movies, new_shows,
             movie_rating_updates, show_rating_updates
@@ -3235,7 +3242,7 @@ async function open_plex_import_preview() {
         try { save_plex_metadata_store(data); } catch (_) {}
         if (plex_import_title) plex_import_title.hidden = false;
         plex_import_confirm.hidden = false;
-        plex_import_summary.textContent = `Found ${data.movies.length} movies and ${data.shows.length} TV shows on ${data.server}.`;
+        plex_import_summary.textContent = `Found ${data.movies.length} movies and ${data.shows.length} TV shows on ${data.server}.` + (rated_new_titles.length ? ` Rated missing: ${rated_new_titles.map((item) => item.title).join(", ")}.` : "");
         plex_import_stats.innerHTML = `
             <div><strong>${new_movies.length}</strong><span>new movies</span></div>
             <div><strong>${new_shows.length}</strong><span>new TV shows</span></div>
