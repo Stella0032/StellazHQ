@@ -127,7 +127,6 @@ a {
     display: flex;
     justify-content: center;
     gap: clamp(12px, 2vw, 30px);
-    transform: translateX(-28px);
 }
 
 .nav-links a {
@@ -2366,3 +2365,10 @@ html[data-theme="neon"] .stellaz-ai-form button {
     .stellaz-ai-panel { right: 16px; bottom: 76px; height: min(500px, calc(100vh - 105px)); }
 }
 /*#endregion*/
+
+
+/* Alternate theme labels make the left side wider, so visually rebalance nav. */
+html[data-theme="neon"] .nav-links,
+html[data-theme="flurple"] .nav-links {
+    transform: translateX(-28px);
+}
