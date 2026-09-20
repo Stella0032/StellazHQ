@@ -1862,3 +1862,66 @@ exports.stellazAI = onCall(
     }
 );
 //#endregion
+
+//? ------------------------------
+//* ----- Plex Connection --------
+//? ------------------------------
+//#region
+const plex_client_identifier = "stellaz-hq-web";
+
+exports.beginPlexConnection = onCall(async (request) => {
+    if (!request.auth) throw new HttpsError("unauthenticated", "You must be logged in.");
+    const forward_url = String(request.data?.forward_url || "");
+    if (!/^https:\/\/(?:[^/]+\.)?stellaz\.org(?:\/|$)/i.test(forward_url) &&
+        !/^http:\/\/localhost(?::\d+)?(?:\/|$)/i.test(forward_url)) {
+        throw new HttpsError("invalid-argument", "Invalid Plex return URL.");
+    }
+    const response = await fetch("https://plex.tv/api/v2/pins?strong=true", {
+        method: "POST",
+        headers: {"Accept": "application/json", "X-Plex-Product": "Stellaz HQ",
+            "X-Plex-Client-Identifier": plex_client_identifier},
+    });
+    if (!response.ok) throw new HttpsError("internal", "Plex connection could not start.");
+    const pin = await response.json();
+    await db.collection("plex_connection_attempts").doc(request.auth.uid).set({
+        pin_id: Number(pin.id), created_at: new Date(),
+    });
+    const params = new URLSearchParams({
+        clientID: plex_client_identifier, code: pin.code, forwardUrl: forward_url,
+        "context[device][product]": "Stellaz HQ",
+    });
+    return {authorization_url: "https://app.plex.tv/auth#?" + params.toString()};
+});
+
+exports.finishPlexConnection = onCall(async (request) => {
+    if (!request.auth) throw new HttpsError("unauthenticated", "You must be logged in.");
+    const attempt_ref = db.collection("plex_connection_attempts").doc(request.auth.uid);
+    const attempt = await attempt_ref.get();
+    if (!attempt.exists) throw new HttpsError("failed-precondition", "Start Plex connection first.");
+    const response = await fetch("https://plex.tv/api/v2/pins/" + Number(attempt.data().pin_id), {
+        headers: {"Accept": "application/json", "X-Plex-Client-Identifier": plex_client_identifier},
+    });
+    if (!response.ok) throw new HttpsError("internal", "Plex connection could not be checked.");
+    const pin = await response.json();
+    if (!pin.authToken) return {connected: false};
+    const account_response = await fetch("https://plex.tv/api/v2/user", {
+        headers: {"Accept": "application/json", "X-Plex-Token": pin.authToken,
+            "X-Plex-Client-Identifier": plex_client_identifier},
+    });
+    if (!account_response.ok) throw new HttpsError("internal", "Plex account could not be verified.");
+    const account = await account_response.json();
+    await db.collection("plex_connections").doc(request.auth.uid).set({
+        access_token: pin.authToken, plex_user_id: String(account.id || ""),
+        username: account.username || account.title || "", connected_at: new Date(),
+    }, {merge: true});
+    await attempt_ref.delete();
+    return {connected: true, username: account.username || account.title || "Plex"};
+});
+
+exports.getPlexConnectionStatus = onCall(async (request) => {
+    if (!request.auth) throw new HttpsError("unauthenticated", "You must be logged in.");
+    const connection = await db.collection("plex_connections").doc(request.auth.uid).get();
+    if (!connection.exists) return {connected: false};
+    return {connected: true, username: connection.data().username || "Plex"};
+});
+//#endregion
