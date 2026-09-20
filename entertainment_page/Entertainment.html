@@ -390,12 +390,12 @@
         <h2>Your Plex library</h2>
         <p class="plex-import-summary" id="plex_import_summary">Checking Plex…</p>
         <div class="plex-import-stats" id="plex_import_stats"></div>
-        <p class="plex-import-note">Only titles that are not already in Stellaz will be imported. Existing Stellaz titles will not be changed.</p>
-        <button class="library-add-button" id="plex_import_confirm" type="button" disabled>Import new titles</button>
+        <p class="plex-import-note">New Plex titles will be added. If an existing Stellaz title has a Plex rating, the Plex rating will replace the Stellaz rating. Other existing Stellaz data will not be changed.</p>
+        <button class="library-add-button" id="plex_import_confirm" type="button" disabled>Import Plex data</button>
     </dialog>
 
     <div class="toast" id="toast" role="status"></div>
-    <script type="module" src="Entertainment.js?v=49"></script>
+    <script type="module" src="Entertainment.js?v=50"></script>
     <script type="module" src="../firebase/profile_widget.js"></script>
 </body>
 </html>
