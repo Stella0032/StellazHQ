@@ -538,6 +538,7 @@ function create_movie_card(movie, index) {
         <article class="movie-card${extra_class}" data-library-item="movie" data-item-id="${movie.id}">
             <div class="movie-poster-wrap">
                 ${poster}
+                ${movie.status === "watch_later" ? '<span class="watch-later-badge">WATCH LATER</span>' : ""}
                 <button class="library-remove-button" type="button" data-remove-type="movie" data-remove-id="${movie.id}" aria-label="Remove ${movie.title} from your movies" title="Remove from library">×</button>
                 <div class="movie-rating-overlay">
                     <p>Rate this movie</p>
@@ -894,6 +895,7 @@ function create_show_card(show, index) {
         <article class="movie-card${extra_class}" data-library-item="show" data-item-id="${show.id}">
             <div class="movie-poster-wrap">
                 ${poster}
+                ${show.status === "watch_later" ? '<span class="watch-later-badge">WATCH LATER</span>' : ""}
                 <button class="library-remove-button" type="button" data-remove-type="show" data-remove-id="${show.id}" aria-label="Remove ${show.title} from your TV shows" title="Remove from library">×</button>
                 <div class="movie-rating-overlay">
                     <p>Rate this show</p>
