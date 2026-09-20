@@ -3008,6 +3008,20 @@ plex_import_confirm?.addEventListener("click", async () => {
             if (error) throw error;
         }
 
+        // Plex import candidates are personal watched/rated activity.
+        // Mark every newly imported TV show as watched in Stellaz so an older
+        // import cannot leave the user with dozens of shows to fix manually.
+        if (show_rows.length) {
+            const imported_titles = plex_import_preview.new_shows;
+            for (const item of imported_titles) {
+                const {error} = await supabase.from("tv_shows")
+                    .update({status: "watched"})
+                    .eq("title", item.title)
+                    .eq("year", item.year);
+                if (error) throw error;
+            }
+        }
+
         const imported_shows = new Map();
         await load_movie_library();
         await load_show_library();
