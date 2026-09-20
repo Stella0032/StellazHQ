@@ -2138,8 +2138,9 @@ function render_anime_library() {
             : "";
 
         return '<article class="movie-card anime-card' + extra_class + '">' +
-            '<div class="movie-poster-wrap">' + poster +
-            '</div>' +
+            '<div class="movie-poster-wrap anime-edit-poster" data-anime-id="' +
+            item.id + '" tabindex="0" role="button" title="Edit on MyAnimeList">' +
+            poster + '</div>' +
             '<h3 class="anime-edit-title" data-anime-id="' + item.id + '" tabindex="0" role="button" title="Edit on MyAnimeList">' + item.title + '</h3><p>' +
             progress + " · " + mal_score + personal_score + '</p></article>';
     }).join("");
@@ -2220,16 +2221,20 @@ function open_anime_editor(anime_id) {
 }
 
 anime_grid.addEventListener("click", (event) => {
-    const title = event.target.closest(".anime-edit-title");
-    if (title) open_anime_editor(Number(title.dataset.animeId));
+    const trigger = event.target.closest(
+        ".anime-edit-title, .anime-edit-poster"
+    );
+    if (trigger) open_anime_editor(Number(trigger.dataset.animeId));
 });
 
 anime_grid.addEventListener("keydown", (event) => {
     if (event.key !== "Enter" && event.key !== " ") return;
-    const title = event.target.closest(".anime-edit-title");
-    if (!title) return;
+    const trigger = event.target.closest(
+        ".anime-edit-title, .anime-edit-poster"
+    );
+    if (!trigger) return;
     event.preventDefault();
-    open_anime_editor(Number(title.dataset.animeId));
+    open_anime_editor(Number(trigger.dataset.animeId));
 });
 
 anime_edit_close.addEventListener("click", () => anime_edit_dialog.close());
