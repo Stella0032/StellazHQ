@@ -1197,15 +1197,18 @@ async function open_show_seasons(show, media_label = "TV SHOW") {
         active_show_tmdb_id = result.data.tmdb_id;
         active_show_title = result.data.title;
 
-        const {data: progress, error: progress_error} = await supabase
-            .from("tv_season_progress")
-            .select("season_number, watched")
-            .eq("tv_show_id", show.id);
-
-        if (progress_error) throw progress_error;
+        let progress = [];
+        if (active_show_id !== null) {
+            const {data, error: progress_error} = await supabase
+                .from("tv_season_progress")
+                .select("season_number, watched")
+                .eq("tv_show_id", active_show_id);
+            if (progress_error) throw progress_error;
+            progress = data || [];
+        }
 
         season_watch_progress = new Map(
-            (progress || []).map((item) => [item.season_number, item.watched])
+            progress.map((item) => [item.season_number, item.watched])
         );
 
         season_grid.innerHTML = result.data.seasons.map((season) => {
@@ -1221,14 +1224,21 @@ async function open_show_seasons(show, media_label = "TV SHOW") {
                 <article class="season-card ${watched ? "watched" : ""}"
                          data-season-number="${season.season_number}">
                     <button class="season-poster-action" type="button"
-                            data-season-watched="${season.season_number}"
-                            data-episode-count="${season.episode_count}"
-                            aria-label="${watched ? "Mark season not watched" : "Mark season watched"}">
+                            ${active_show_id !== null ? `
+                                data-season-watched="${season.season_number}"
+                                data-episode-count="${season.episode_count}"
+                                aria-label="${watched ? "Mark season not watched" : "Mark season watched"}"
+                            ` : `
+                                data-season-open="${season.season_number}"
+                                aria-label="View ${season.name} episodes"
+                            `}>
                         ${poster}
-                        <span class="season-watch-overlay">
-                            <span class="season-watch-check">✓</span>
-                            <span>${watched ? "Watched" : "Mark watched"}</span>
-                        </span>
+                        ${active_show_id !== null ? `
+                            <span class="season-watch-overlay">
+                                <span class="season-watch-check">✓</span>
+                                <span>${watched ? "Watched" : "Mark watched"}</span>
+                            </span>
+                        ` : ""}
                     </button>
                     <button class="season-text-button" type="button"
                             data-season-open="${season.season_number}">
@@ -1253,7 +1263,7 @@ async function open_show_seasons(show, media_label = "TV SHOW") {
                 <button type="button" id="season_retry_button">Try again</button>
             </div>`;
         document.getElementById("season_retry_button")
-            ?.addEventListener("click", () => open_show_seasons(show));
+            ?.addEventListener("click", () => open_show_seasons(show, media_label));
     }
 }
 
@@ -1277,16 +1287,19 @@ async function open_season_episodes(season_number) {
             `${active_show_title} · ${result.data.name}`;
         active_season_episodes = result.data.episodes;
 
-        const {data: episode_progress, error: episode_progress_error} =
-            await supabase.from("tv_episode_progress")
-                .select("episode_number, watched")
-                .eq("tv_show_id", active_show_id)
-                .eq("season_number", season_number);
-
-        if (episode_progress_error) throw episode_progress_error;
+        let episode_progress = [];
+        if (active_show_id !== null) {
+            const {data, error: episode_progress_error} =
+                await supabase.from("tv_episode_progress")
+                    .select("episode_number, watched")
+                    .eq("tv_show_id", active_show_id)
+                    .eq("season_number", season_number);
+            if (episode_progress_error) throw episode_progress_error;
+            episode_progress = data || [];
+        }
 
         const watched_episodes = new Map(
-            (episode_progress || []).map(
+            episode_progress.map(
                 (item) => [item.episode_number, item.watched]
             )
         );
@@ -1308,15 +1321,15 @@ async function open_season_episodes(season_number) {
             return `
                 <article class="episode-card ${watched ? "watched" : ""}"
                          data-episode-number="${episode.episode_number}">
-                    <button class="episode-watch-image" type="button"
-                            data-episode-watched="${episode.episode_number}"
-                            aria-label="${watched ? "Mark episode not watched" : "Mark episode watched"}">
+                    <div class="episode-watch-image">
                         ${still}
-                        <span class="episode-watch-overlay">
-                            <span>✓</span>
-                            ${watched ? "Watched" : "Mark watched"}
-                        </span>
-                    </button>
+                        ${active_show_id !== null ? `
+                            <span class="episode-watch-overlay">
+                                <span>✓</span>
+                                ${watched ? "Watched" : "Mark watched"}
+                            </span>
+                        ` : ""}
+                    </div>
                     <div>
                         <strong>E${episode.episode_number} · ${episode.name}</strong>
                         <p>${episode.air_date || "Air date unavailable"}${runtime}${rating}</p>
