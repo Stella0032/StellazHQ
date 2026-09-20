@@ -3018,3 +3018,29 @@ html[data-theme="neon"].anime-category-active .anime-library-panel::before {
 html[data-theme="neon"].anime-category-active .anime-library-panel .movie-grid {
     position: relative;
 }
+
+/* Slow cinematic drift for the Muckiverse Anime artwork. */
+html[data-theme="neon"].anime-category-active .anime-library-panel {
+    background-size: auto, auto, 108% auto;
+    background-position: center, center, 50% 28%;
+    animation: muckiverse-anime-drift 22s ease-in-out infinite alternate;
+}
+
+@keyframes muckiverse-anime-drift {
+    0% {
+        background-size: auto, auto, 108% auto;
+        background-position: center, center, 47% 28%;
+    }
+    100% {
+        background-size: auto, auto, 116% auto;
+        background-position: center, center, 54% 31%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html[data-theme="neon"].anime-category-active .anime-library-panel {
+        animation: none;
+        background-size: auto, auto, cover;
+        background-position: center, center, center 28%;
+    }
+}
