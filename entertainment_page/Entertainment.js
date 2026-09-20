@@ -2225,6 +2225,49 @@ function render_anime_library() {
     anime_library_toggle.textContent = "Show all anime";
 }
 
+let anime_background_timer = null;
+let anime_background_posters = [];
+let current_anime_background = "";
+
+function rotate_anime_library_background() {
+    if (!anime_background_posters.length) {
+        document.documentElement.style.removeProperty("--anime-library-backdrop");
+        return;
+    }
+
+    const alternatives = anime_background_posters.filter(
+        (poster) => poster !== current_anime_background
+    );
+    const pool = alternatives.length ? alternatives : anime_background_posters;
+    current_anime_background =
+        pool[Math.floor(Math.random() * pool.length)];
+
+    document.documentElement.style.setProperty(
+        "--anime-library-backdrop",
+        `url("${current_anime_background}")`
+    );
+}
+
+function start_anime_library_backgrounds() {
+    clearInterval(anime_background_timer);
+
+    anime_background_posters = anime_library
+        .filter((item) => item.poster_url && Number(item.my_rating || 0) > 0)
+        .sort((a, b) => Number(b.my_rating || 0) - Number(a.my_rating || 0))
+        .slice(0, 10)
+        .map((item) => item.poster_url);
+
+    current_anime_background = "";
+    rotate_anime_library_background();
+
+    if (anime_background_posters.length > 1) {
+        anime_background_timer = setInterval(
+            rotate_anime_library_background,
+            7000
+        );
+    }
+}
+
 async function load_anime_library() {
     const {data, error} = await supabase.from("anime").select("*").order("title");
     if (error) throw error;
@@ -2244,6 +2287,7 @@ async function load_anime_library() {
         : "—";
 
     render_anime_library();
+    start_anime_library_backgrounds();
 
     const has_synced_anime = anime_library.length > 0;
     anime_sync_summary.hidden = !has_synced_anime;
