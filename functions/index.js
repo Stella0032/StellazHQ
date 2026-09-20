@@ -2038,6 +2038,7 @@ exports.getPlexPoster = onCall(async (request) => {
     if (!connection.exists || !connection.data().access_token) {
         throw new HttpsError("failed-precondition", "Connect Plex first.");
     }
+
     const account_token = connection.data().access_token;
     const resources = await plex_json(
         "https://clients.plex.tv/api/v2/resources?includeHttps=1&includeRelay=1",
@@ -2046,13 +2047,31 @@ exports.getPlexPoster = onCall(async (request) => {
     const servers = (resources || []).filter((resource) =>
         String(resource.provides || "").split(",").includes("server")
     );
+
+    // Use the same reachable-server selection strategy as the successful
+    // Plex metadata scan. Previously poster loading tried raw connections in
+    // Plex's returned order, which could spend the whole callable timeout on
+    // unreachable addresses before reaching the working server.
     for (const server of servers) {
         const token = server.accessToken || account_token;
-        for (const candidate of (server.connections || [])) {
+        const candidates = [...(server.connections || [])].sort((a, b) => {
+            const score = (item) => (item.protocol === "https" ? 4 : 0) +
+                (!item.relay ? 2 : 0) + (!item.local ? 1 : 0);
+            return score(b) - score(a);
+        });
+        for (const candidate of candidates) {
             if (!candidate.uri) continue;
+            const base = candidate.uri.replace(/\/$/, "");
             try {
-                const response = await fetch(candidate.uri.replace(/\/$/, "") + thumb, {
-                    headers: {"X-Plex-Token": token}
+                // Verify this connection first, exactly like getPlexImportPreview.
+                await plex_json(base + "/", token);
+                const response = await fetch(base + thumb, {
+                    headers: {
+                        "X-Plex-Token": token,
+                        "Accept": "image/*",
+                        "X-Plex-Product": "Stellaz HQ",
+                        "X-Plex-Client-Identifier": plex_client_identifier,
+                    },
                 });
                 if (!response.ok) continue;
                 const bytes = Buffer.from(await response.arrayBuffer());
