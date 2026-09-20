@@ -2944,6 +2944,7 @@ async function load_plex_connection_status() {
         if (result.data.connected) {
             document.getElementById("plex_connection_badge")?.removeAttribute("hidden");
             document.getElementById("plex_import_button")?.removeAttribute("hidden");
+            document.querySelector(".plex-import-button-tv")?.removeAttribute("hidden");
             sync_plex_metadata_for_library().catch((error) =>
                 console.error("Unable to sync Plex library metadata:", error)
             );
@@ -3157,6 +3158,7 @@ async function open_plex_import_preview() {
     }
 }
 plex_import_button?.addEventListener("click", open_plex_import_preview);
+document.querySelector(".plex-import-button-tv")?.addEventListener("click", open_plex_import_preview);
 plex_import_close?.addEventListener("click", () => plex_import_dialog.close());
 plex_import_confirm?.addEventListener("click", async () => {
     if (!plex_import_preview) return;
