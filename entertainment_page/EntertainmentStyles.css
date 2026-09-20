@@ -3184,3 +3184,11 @@ html[data-theme="neon"].anime-category-active .anime-library-panel {
 html[data-theme="flurple"].anime-category-active .anime-library-panel {
     background: rgba(29, 12, 44, .22);
 }
+
+
+/* Keep wide Anime backdrops fully visible instead of cropping them to fill. */
+html.anime-category-active body::before,
+html.anime-category-active body::after {
+    background-size: contain;
+    background-position: center top;
+}
