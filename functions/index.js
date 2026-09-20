@@ -784,6 +784,54 @@ exports.searchEntertainmentTitles = onCall(
 );
 
 
+exports.getAnimeBackdrop = onCall(
+    {secrets: [tmdb_read_access_token]},
+    async (request) => {
+        if (!request.auth) {
+            throw new HttpsError("unauthenticated", "You must be logged in.");
+        }
+
+        const title = String(request.data?.title || "").trim();
+        if (!title) {
+            throw new HttpsError("invalid-argument", "Anime title is required.");
+        }
+
+        const search_url = new URL("https://api.themoviedb.org/3/search/tv");
+        search_url.searchParams.set("query", title);
+        search_url.searchParams.set("include_adult", "false");
+        search_url.searchParams.set("language", "en-US");
+        search_url.searchParams.set("page", "1");
+
+        const response = await fetch(search_url, {
+            headers: {
+                Authorization: `Bearer ${tmdb_read_access_token.value()}`,
+                accept: "application/json",
+            },
+        });
+
+        if (!response.ok) {
+            throw new HttpsError("internal", "TMDB anime search failed.");
+        }
+
+        const data = await response.json();
+        const normalized = title.toLowerCase();
+        const candidates = (data.results || []).filter((item) =>
+            item.backdrop_path
+        );
+        const match = candidates.find((item) =>
+            String(item.name || "").toLowerCase() === normalized ||
+            String(item.original_name || "").toLowerCase() === normalized
+        ) || candidates[0];
+
+        return {
+            backdrop_url: match?.backdrop_path ?
+                `https://image.tmdb.org/t/p/original${match.backdrop_path}` :
+                null,
+        };
+    }
+);
+
+
 exports.getMovieMetadata = onCall(
     {secrets: [tmdb_read_access_token]},
     async (request) => {
