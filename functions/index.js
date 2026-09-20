@@ -1953,6 +1953,45 @@ function plex_guids(item) {
     return (item.Guid || []).map((entry) => entry.id).filter(Boolean);
 }
 
+exports.getPlexPoster = onCall(async (request) => {
+    if (!request.auth) throw new HttpsError("unauthenticated", "You must be logged in.");
+    const thumb = String(request.data?.thumb || "");
+    if (!thumb.startsWith("/")) {
+        throw new HttpsError("invalid-argument", "A valid Plex poster path is required.");
+    }
+
+    const connection = await db.collection("plex_connections").doc(request.auth.uid).get();
+    if (!connection.exists || !connection.data().access_token) {
+        throw new HttpsError("failed-precondition", "Connect Plex first.");
+    }
+    const account_token = connection.data().access_token;
+    const resources = await plex_json(
+        "https://clients.plex.tv/api/v2/resources?includeHttps=1&includeRelay=1",
+        account_token
+    );
+    const servers = (resources || []).filter((resource) =>
+        String(resource.provides || "").split(",").includes("server")
+    );
+    for (const server of servers) {
+        const token = server.accessToken || account_token;
+        for (const candidate of (server.connections || [])) {
+            if (!candidate.uri) continue;
+            try {
+                const response = await fetch(candidate.uri.replace(/\/$/, "") + thumb, {
+                    headers: {"X-Plex-Token": token}
+                });
+                if (!response.ok) continue;
+                const bytes = Buffer.from(await response.arrayBuffer());
+                return {
+                    content_type: response.headers.get("content-type") || "image/jpeg",
+                    data: bytes.toString("base64")
+                };
+            } catch (_) {}
+        }
+    }
+    throw new HttpsError("not-found", "Plex poster could not be loaded.");
+});
+
 exports.getPlexImportPreview = onCall(async (request) => {
     if (!request.auth) throw new HttpsError("unauthenticated", "You must be logged in.");
 
