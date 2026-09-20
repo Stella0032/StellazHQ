@@ -2728,3 +2728,50 @@ html[data-theme="flurple"] .nav-links {
     transform: translateY(-1px);
     background: rgba(45, 170, 105, 0.88);
 }
+
+
+/* Library posters/titles now open the same rich detail view as recommendations. */
+.library-detail-open,
+.library-title-button {
+    padding: 0;
+    border: 0;
+    color: inherit;
+    background: transparent;
+    cursor: pointer;
+    font: inherit;
+}
+
+.library-detail-open {
+    width: 100%;
+    display: block;
+}
+
+.library-title-button {
+    max-width: 100%;
+    margin: 10px 0 4px;
+    overflow: hidden;
+    font-weight: 700;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.library-title-button:hover {
+    text-decoration: underline;
+}
+
+.library-dialog-rating {
+    width: 100%;
+}
+
+.library-dialog-rating p {
+    margin: 0 0 8px;
+    color: #cbd0df;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.library-dialog-rating .rating-stars {
+    justify-content: flex-start;
+}
