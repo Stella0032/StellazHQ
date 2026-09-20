@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Entertainment | Stellaz HQ</title>
-    <link rel="stylesheet" href="EntertainmentStyles.css?v=23">
+    <link rel="stylesheet" href="EntertainmentStyles.css?v=25">
     <link rel="stylesheet" href="../firebase/profile_widget.css?v=2">
 </head>
 <body>
@@ -67,6 +67,14 @@
         </section>
 
         <section class="movie-library-panel" id="movie_library">
+            <div class="plex-connect-card" id="plex_connect_card">
+                <div>
+                    <h3 id="plex_connect_title">Connect Plex</h3>
+                    <p id="plex_connect_description">Link your Plex account so Stellaz can import your movie and TV ratings.</p>
+                </div>
+                <button class="library-add-button" id="plex_connect_button" type="button">Connect Plex</button>
+            </div>
+
             <div class="movie-library-header">
                 <div>
                     <p class="eyebrow">YOUR COLLECTION</p>
@@ -370,7 +378,7 @@
     </section>
 
     <div class="toast" id="toast" role="status"></div>
-    <script type="module" src="Entertainment.js?v=44"></script>
+    <script type="module" src="Entertainment.js?v=46"></script>
     <script type="module" src="../firebase/profile_widget.js"></script>
 </body>
 </html>
