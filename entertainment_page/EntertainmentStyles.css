@@ -2987,60 +2987,48 @@ html[data-theme="flurple"] .nav-links {
 }
 
 
-/* Muckiverse: dedicated Anime category background */
-html[data-theme="neon"].anime-category-active .anime-library-panel {
+/* Anime library: rotating backdrop from the user's top-rated anime. */
+html.anime-category-active .anime-library-panel {
     position: relative;
     overflow: hidden;
     isolation: isolate;
     background:
         linear-gradient(90deg,
-            rgba(4, 10, 8, 0.78) 0%,
-            rgba(4, 10, 8, 0.58) 46%,
-            rgba(4, 10, 8, 0.32) 100%),
+            rgba(7, 8, 22, 0.88) 0%,
+            rgba(7, 8, 22, 0.70) 46%,
+            rgba(7, 8, 22, 0.52) 100%),
         linear-gradient(180deg,
-            rgba(4, 10, 8, 0.20) 0%,
-            rgba(4, 10, 8, 0.62) 100%),
-        url("../images/muckiverse-anime-background.png") center 28% / cover no-repeat;
+            rgba(7, 8, 22, 0.25) 0%,
+            rgba(7, 8, 22, 0.78) 100%),
+        var(--anime-library-backdrop, none) center 28% / cover no-repeat;
     backdrop-filter: none;
+    transition: background-image 0.7s ease;
 }
 
-html[data-theme="neon"].anime-category-active .anime-library-panel::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-    background: linear-gradient(180deg,
-        rgba(103, 226, 173, 0.035),
-        rgba(2, 8, 6, 0.20));
-}
-
-html[data-theme="neon"].anime-category-active .anime-library-panel .movie-grid {
-    position: relative;
-}
-
-/* Slow cinematic drift for the Muckiverse Anime artwork. */
 html[data-theme="neon"].anime-category-active .anime-library-panel {
-    background-size: auto, auto, 108% auto;
-    background-position: center, center, 50% 28%;
-    animation: muckiverse-anime-drift 22s ease-in-out infinite alternate;
+    background:
+        linear-gradient(90deg,
+            rgba(4, 10, 8, 0.86) 0%,
+            rgba(4, 10, 8, 0.67) 46%,
+            rgba(4, 10, 8, 0.48) 100%),
+        linear-gradient(180deg,
+            rgba(4, 10, 8, 0.22) 0%,
+            rgba(4, 10, 8, 0.72) 100%),
+        var(--anime-library-backdrop, none) center 28% / cover no-repeat;
 }
 
-@keyframes muckiverse-anime-drift {
-    0% {
-        background-size: auto, auto, 108% auto;
-        background-position: center, center, 47% 28%;
-    }
-    100% {
-        background-size: auto, auto, 116% auto;
-        background-position: center, center, 54% 31%;
-    }
+html[data-theme="flurple"].anime-category-active .anime-library-panel {
+    background:
+        linear-gradient(90deg,
+            rgba(25, 10, 38, 0.87) 0%,
+            rgba(25, 10, 38, 0.68) 46%,
+            rgba(25, 10, 38, 0.48) 100%),
+        linear-gradient(180deg,
+            rgba(25, 10, 38, 0.22) 0%,
+            rgba(25, 10, 38, 0.74) 100%),
+        var(--anime-library-backdrop, none) center 28% / cover no-repeat;
 }
 
-@media (prefers-reduced-motion: reduce) {
-    html[data-theme="neon"].anime-category-active .anime-library-panel {
-        animation: none;
-        background-size: auto, auto, cover;
-        background-position: center, center, center 28%;
-    }
+html.anime-category-active .anime-library-panel .movie-grid {
+    position: relative;
 }
