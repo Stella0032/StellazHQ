@@ -3266,3 +3266,14 @@ html.anime-category-active body::after {
         background-repeat: no-repeat, no-repeat !important;
     }
 }
+
+.anime-add-shell { max-width: 760px; }
+.anime-add-search-form { display: flex; gap: 10px; margin: 18px 0; }
+.anime-add-search-form .movie-search { flex: 1; }
+.anime-add-results { display: grid; gap: 10px; max-height: 55vh; overflow-y: auto; }
+.anime-add-result { width: 100%; display: grid; grid-template-columns: 54px 1fr auto; gap: 12px; align-items: center; padding: 9px; border: 1px solid var(--glass-border); border-radius: 12px; color: var(--text); background: rgba(255,255,255,.05); text-align: left; cursor: pointer; }
+.anime-add-result img { width: 54px; height: 76px; object-fit: cover; border-radius: 8px; }
+.anime-add-result span { display: grid; gap: 5px; }
+.anime-add-result small { color: var(--muted); }
+.anime-add-result b { color: var(--purple); white-space: nowrap; }
+.anime-add-result:disabled { opacity: .55; cursor: wait; }
