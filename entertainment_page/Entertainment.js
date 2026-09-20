@@ -1922,17 +1922,62 @@ library_add_form.addEventListener("submit", async (event) => {
     library_add_submit.textContent = "Adding...";
 
     try {
-        const {error} = await supabase.from(table).insert({
-            title,
-            year,
-            status
-        });
+        const {data: added_item, error} = await supabase.from(table)
+            .insert({title, year, status})
+            .select()
+            .single();
 
         if (error) {
             if (error.code === "23505") {
                 throw new Error("That title is already in your library.");
             }
             throw error;
+        }
+
+        // A newly added watched TV series starts fully watched by default.
+        // Populate season + episode progress so every existing entry is checked.
+        if (!is_movie && status === "watched" && added_item?.id) {
+            const get_seasons = httpsCallable(functions, "getTVShowSeasons");
+            const result = await get_seasons({title, year});
+            const seasons = (result.data.seasons || []).filter(
+                (season) => Number(season.season_number) > 0
+            );
+
+            if (seasons.length) {
+                const season_rows = seasons.map((season) => ({
+                    tv_show_id: added_item.id,
+                    season_number: Number(season.season_number),
+                    watched: true
+                }));
+                const episode_rows = seasons.flatMap((season) =>
+                    Array.from(
+                        {length: Number(season.episode_count || 0)},
+                        (_, index) => ({
+                            tv_show_id: added_item.id,
+                            season_number: Number(season.season_number),
+                            episode_number: index + 1,
+                            watched: true
+                        })
+                    )
+                );
+
+                const {error: season_error} = await supabase
+                    .from("tv_season_progress")
+                    .upsert(season_rows, {
+                        onConflict: "user_id,tv_show_id,season_number"
+                    });
+                if (season_error) throw season_error;
+
+                if (episode_rows.length) {
+                    const {error: episode_error} = await supabase
+                        .from("tv_episode_progress")
+                        .upsert(episode_rows, {
+                            onConflict:
+                                "user_id,tv_show_id,season_number,episode_number"
+                        });
+                    if (episode_error) throw episode_error;
+                }
+            }
         }
 
         library_add_dialog.close();
