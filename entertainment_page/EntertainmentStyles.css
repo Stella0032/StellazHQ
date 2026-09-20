@@ -82,6 +82,8 @@ a {
 /*? -------------------- */
 /*#region*/
 .topbar {
+    position: relative;
+    z-index: 100;
     width: min(1500px, calc(100% - 40px));
     height: 72px;
     margin: 14px auto 0;
