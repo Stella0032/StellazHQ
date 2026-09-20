@@ -837,8 +837,20 @@ a {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .movie-filters > :nth-child(-n + 5) {
+    .movie-filters > :nth-child(-n + 4) {
         grid-column: 1 / -1;
+    }
+
+    #movie_search {
+        grid-column: 1 / -1;
+    }
+
+    #movie_filter_clear {
+        grid-column: 1;
+    }
+
+    #movie_library_toggle {
+        grid-column: 2;
     }
 
     #movie_filter_clear,
