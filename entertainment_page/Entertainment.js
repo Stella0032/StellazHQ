@@ -905,6 +905,19 @@ function render_movie_library() {
     movie_library_toggle.textContent = "Show all movies";
 }
 
+
+async function get_plex_poster_data_url(plex_thumb) {
+    if (!plex_thumb) return null;
+    try {
+        const result = await httpsCallable(functions, "getPlexPoster")({thumb: plex_thumb});
+        if (!result.data?.data) return null;
+        return `data:${result.data.content_type || "image/jpeg"};base64,${result.data.data}`;
+    } catch (error) {
+        console.error("Unable to load Plex poster:", error);
+        return null;
+    }
+}
+
 async function enrich_missing_movie_metadata(movies) {
     const movies_missing_metadata = movies.filter(
         (movie) => !movie.poster_url || movie.tmdb_rating === null
@@ -924,11 +937,13 @@ async function enrich_missing_movie_metadata(movies) {
             });
 
             const metadata = result.data;
+            const poster_url = metadata.poster_url ||
+                await get_plex_poster_data_url(movie.plex_thumb);
 
             const { error } = await supabase
                 .from("movies")
                 .update({
-                    poster_url: metadata.poster_url,
+                    poster_url,
                     genres: metadata.genres,
                     runtime_minutes: metadata.runtime_minutes,
                     tmdb_rating: metadata.tmdb_rating
@@ -939,7 +954,7 @@ async function enrich_missing_movie_metadata(movies) {
                 throw error;
             }
 
-            movie.poster_url = metadata.poster_url;
+            movie.poster_url = poster_url;
             movie.genres = metadata.genres;
             movie.runtime_minutes = metadata.runtime_minutes;
             movie.tmdb_rating = metadata.tmdb_rating;
@@ -947,6 +962,12 @@ async function enrich_missing_movie_metadata(movies) {
             console.log("Added TMDB metadata:", movie.title);
         } catch (error) {
             console.error("Unable to add TMDB metadata:", movie.title, error);
+            const poster_url = await get_plex_poster_data_url(movie.plex_thumb);
+            if (poster_url) {
+                const {error: poster_error} = await supabase.from("movies")
+                    .update({poster_url}).eq("id", movie.id);
+                if (!poster_error) movie.poster_url = poster_url;
+            }
         }
     }
 
@@ -1186,8 +1207,10 @@ async function enrich_missing_show_metadata(shows) {
                 tmdb_id: show.tmdb_id || null
             });
             const metadata = result.data;
+            const poster_url = metadata.poster_url ||
+                await get_plex_poster_data_url(show.plex_thumb);
             const {error} = await supabase.from("tv_shows").update({
-                poster_url: metadata.poster_url,
+                poster_url,
                 genres: metadata.genres,
                 tmdb_rating: metadata.tmdb_rating,
                 average_episode_runtime_minutes:
@@ -1196,13 +1219,19 @@ async function enrich_missing_show_metadata(shows) {
 
             if (error) throw error;
 
-            show.poster_url = metadata.poster_url;
+            show.poster_url = poster_url;
             show.genres = metadata.genres;
             show.tmdb_rating = metadata.tmdb_rating;
             show.average_episode_runtime_minutes =
                 metadata.average_episode_runtime_minutes;
         } catch (error) {
             console.error("Unable to add TV metadata:", show.title, error);
+            const poster_url = await get_plex_poster_data_url(show.plex_thumb);
+            if (poster_url) {
+                const {error: poster_error} = await supabase.from("tv_shows")
+                    .update({poster_url}).eq("id", show.id);
+                if (!poster_error) show.poster_url = poster_url;
+            }
         }
     }
 }
@@ -2972,6 +3001,7 @@ plex_import_confirm?.addEventListener("click", async () => {
             title: item.title,
             year: item.year,
             ...(item.tmdb_id ? {tmdb_id: Number(item.tmdb_id)} : {}),
+            ...(item.plex_thumb ? {plex_thumb: item.plex_thumb} : {}),
             status: item.watched ? "watched" : "watch_later",
             ...(item.rating != null ? {my_rating: Number(item.rating)} : {})
         }));
@@ -2979,6 +3009,7 @@ plex_import_confirm?.addEventListener("click", async () => {
             title: item.title,
             year: item.year,
             ...(item.tmdb_id ? {tmdb_id: Number(item.tmdb_id)} : {}),
+            ...(item.plex_thumb ? {plex_thumb: item.plex_thumb} : {}),
             status: Number(item.watched_episodes || 0) > 0 ? "watched" : "watch_later",
             ...(item.rating != null ? {my_rating: Number(item.rating)} : {})
         }));
