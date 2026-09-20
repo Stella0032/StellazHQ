@@ -1039,7 +1039,10 @@ a {
     cursor: pointer;
     font-size: 18px;
     line-height: 1;
-    transition: transform 0.2s ease, background 0.2s ease;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s ease, transform 0.2s ease,
+        background 0.2s ease;
 }
 
 .recommendation-refresh:hover {
@@ -2507,6 +2510,20 @@ html[data-theme="flurple"] .nav-links {
     cursor: pointer;
     font-size: 18px;
     line-height: 1;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s ease, background 0.18s ease,
+        transform 0.18s ease;
+}
+
+.recommendation-poster-wrap:hover .recommendation-watch-later,
+.recommendation-poster-wrap:hover .recommendation-dismiss,
+.recommendation-poster-wrap:hover .recommendation-refresh,
+.recommendation-poster-wrap:focus-within .recommendation-watch-later,
+.recommendation-poster-wrap:focus-within .recommendation-dismiss,
+.recommendation-poster-wrap:focus-within .recommendation-refresh {
+    opacity: 1;
+    pointer-events: auto;
 }
 
 .recommendation-watch-later {
