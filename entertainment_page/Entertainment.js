@@ -3114,7 +3114,6 @@ async function auto_sync_plex_activity() {
             const existing = movie_library.find((movie) => same_library_title(movie, item));
             if (existing) {
                 const patch = {my_rating: Number(item.rating)};
-                if (item.plex_thumb && "plex_thumb" in existing) patch.plex_thumb = item.plex_thumb;
                 if (item.tmdb_id && "tmdb_id" in existing) patch.tmdb_id = Number(item.tmdb_id);
                 const {error} = await supabase.from("movies").update(patch).eq("id", existing.id);
                 if (error) failed_titles.push(item.title);
@@ -3124,7 +3123,6 @@ async function auto_sync_plex_activity() {
                 title: item.title,
                 year: item.year,
                 ...(item.tmdb_id ? {tmdb_id: Number(item.tmdb_id)} : {}),
-                ...(item.plex_thumb ? {plex_thumb: item.plex_thumb} : {}),
                 ...(item.genres?.length ? {genres: item.genres} : {}),
                 ...(item.runtime_minutes ? {runtime_minutes: item.runtime_minutes} : {}),
                 status: "watched",
@@ -3143,7 +3141,6 @@ async function auto_sync_plex_activity() {
             const existing = show_library.find((show) => same_library_title(show, item));
             if (existing) {
                 const patch = {my_rating: Number(item.rating)};
-                if (item.plex_thumb && "plex_thumb" in existing) patch.plex_thumb = item.plex_thumb;
                 if (item.tmdb_id && "tmdb_id" in existing) patch.tmdb_id = Number(item.tmdb_id);
                 const {error} = await supabase.from("tv_shows").update(patch).eq("id", existing.id);
                 if (error) failed_titles.push(item.title);
@@ -3153,7 +3150,6 @@ async function auto_sync_plex_activity() {
                 title: item.title,
                 year: item.year,
                 ...(item.tmdb_id ? {tmdb_id: Number(item.tmdb_id)} : {}),
-                ...(item.plex_thumb ? {plex_thumb: item.plex_thumb} : {}),
                 ...(item.genres?.length ? {genres: item.genres} : {}),
                 ...(item.average_episode_runtime_minutes ?
                     {average_episode_runtime_minutes: item.average_episode_runtime_minutes} : {}),
