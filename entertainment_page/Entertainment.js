@@ -1749,9 +1749,14 @@ async function open_library_detail(type, item) {
     recommendation_dialog_meta.textContent =
         `${item.year || "Year unavailable"}${item.tmdb_rating != null ?
             ` · ⭐ ${Number(item.tmdb_rating).toFixed(1)} TMDB` : ""}`;
-    recommendation_dialog_description.textContent = "Loading description…";
-    recommendation_dialog_facts.innerHTML =
-        '<span>Loading full details…</span>';
+    const saved_plex_metadata = get_saved_plex_metadata(type, item);
+    if (saved_plex_metadata && !item.tmdb_id) {
+        render_saved_library_details(type, item, saved_plex_metadata);
+    } else {
+        recommendation_dialog_description.textContent = "Loading description…";
+        recommendation_dialog_facts.innerHTML =
+            '<span>Loading full details…</span>';
+    }
     recommendation_dialog_reason.textContent =
         item.status === "watch_later"
             ? "Saved to Watch Later"
@@ -1779,6 +1784,9 @@ async function open_library_detail(type, item) {
     recommendation_dialog.showModal();
 
     try {
+        if (saved_plex_metadata && !item.tmdb_id) {
+            return;
+        }
         const metadata_function = httpsCallable(
             functions,
             type === "movie" ? "getMovieMetadata" : "getTVShowMetadata"
@@ -1829,14 +1837,7 @@ async function open_library_detail(type, item) {
     } catch (error) {
         console.error("Unable to load library details from TMDB:", error);
         try {
-            let plex_item = null;
-            try {
-                const cached = JSON.parse(
-                    localStorage.getItem("stellaz_plex_metadata_cache") || "{}"
-                );
-                plex_item = (type === "movie" ? cached.movies : cached.shows)
-                    ?.find((entry) => same_library_title(item, entry)) || null;
-            } catch (_) {}
+            let plex_item = get_saved_plex_metadata(type, item);
             if (!plex_item) {
                 const plex_result = await httpsCallable(functions, "getPlexMetadataFallback")({
                     title: item.title, year: item.year, type
@@ -1846,21 +1847,7 @@ async function open_library_detail(type, item) {
             const poster_url = item.poster_url ||
                 await get_plex_poster_data_url(item.plex_thumb || plex_item.plex_thumb);
             if (poster_url) recommendation_dialog_poster.src = poster_url;
-            recommendation_dialog_description.textContent =
-                plex_item.overview || "No description available.";
-            const plex_facts = [
-                plex_item.release_date ? `Release: ${plex_item.release_date}` : null,
-                plex_item.genres?.length ? `Genres: ${plex_item.genres.join(", ")}` : null,
-                plex_item.runtime_minutes ? `Runtime: ${plex_item.runtime_minutes} min` : null,
-                plex_item.average_episode_runtime_minutes ?
-                    `Episode runtime: ~${plex_item.average_episode_runtime_minutes} min` : null,
-                plex_item.number_of_episodes ? `Episodes: ${plex_item.number_of_episodes}` : null,
-                plex_item.content_rating ? `Content rating: ${plex_item.content_rating}` : null,
-                plex_item.studio ? `Studio: ${plex_item.studio}` : null
-            ].filter(Boolean);
-            recommendation_dialog_facts.innerHTML = plex_facts.length
-                ? plex_facts.map((fact) => `<span>${fact}</span>`).join("")
-                : "<span>No additional details available.</span>";
+            render_saved_library_details(type, item, plex_item);
         } catch (plex_error) {
             console.error("Unable to load library details from Plex:", plex_error);
             recommendation_dialog_description.textContent = "No description available.";
@@ -2968,6 +2955,52 @@ function same_library_title(a, b) {
         (!a.year || !b.year || Number(a.year) === Number(b.year));
 }
 
+function plex_metadata_key(type, item) {
+    return `${type}:${String(item.title || "").trim().toLowerCase()}:${Number(item.year) || ""}`;
+}
+
+function read_plex_metadata_store() {
+    try {
+        return JSON.parse(localStorage.getItem("stellaz_plex_metadata_store") || "{}");
+    } catch (_) {
+        return {};
+    }
+}
+
+function save_plex_metadata_store(data) {
+    const store = read_plex_metadata_store();
+    for (const item of data.movies || []) store[plex_metadata_key("movie", item)] = item;
+    for (const item of data.shows || []) store[plex_metadata_key("show", item)] = item;
+    localStorage.setItem("stellaz_plex_metadata_store", JSON.stringify(store));
+}
+
+function get_saved_plex_metadata(type, item) {
+    return read_plex_metadata_store()[plex_metadata_key(type, item)] || null;
+}
+
+function render_saved_library_details(type, item, data) {
+    if (!data) return false;
+    recommendation_dialog_description.textContent =
+        data.overview || "No description available.";
+    const facts = [
+        data.release_date ? `Release: ${data.release_date}` : null,
+        data.genres?.length ? `Genres: ${data.genres.join(", ")}` : null,
+        data.runtime_minutes ? `Runtime: ${data.runtime_minutes} min` : null,
+        data.average_episode_runtime_minutes ?
+            `Episode runtime: ~${data.average_episode_runtime_minutes} min` : null,
+        (data.number_of_episodes || data.total_episodes) ?
+            `Episodes: ${data.number_of_episodes || data.total_episodes}` : null,
+        data.content_rating ? `Content rating: ${data.content_rating}` : null,
+        data.studio ? `Studio: ${data.studio}` : null,
+        data.original_title && data.original_title !== item.title ?
+            `Original title: ${data.original_title}` : null
+    ].filter(Boolean);
+    recommendation_dialog_facts.innerHTML = facts.length
+        ? facts.map((fact) => `<span>${fact}</span>`).join("")
+        : "<span>No additional details available.</span>";
+    return true;
+}
+
 async function open_plex_import_preview() {
     if (!plex_import_dialog) return;
     plex_import_preview = null;
@@ -3013,6 +3046,7 @@ async function open_plex_import_preview() {
                 shows: data.shows || []
             }));
         } catch (_) {}
+        try { save_plex_metadata_store(data); } catch (_) {}
         if (plex_import_title) plex_import_title.hidden = false;
         plex_import_confirm.hidden = false;
         plex_import_summary.textContent = `Found ${data.movies.length} movies and ${data.shows.length} TV shows on ${data.server}.`;
