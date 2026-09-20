@@ -418,6 +418,48 @@ async function get_valid_mal_access_token(uid) {
     return tokens.access_token;
 }
 
+exports.searchMALAnime = onCall(
+    {secrets: [mal_client_id]},
+    async (request) => {
+        if (!request.auth) {
+            throw new HttpsError("unauthenticated", "You must be logged in.");
+        }
+
+        const query = String(request.data?.query || "").trim();
+        if (query.length < 2) return {results: []};
+
+        const url = new URL("https://api.myanimelist.net/v2/anime");
+        url.searchParams.set("q", query);
+        url.searchParams.set("limit", "8");
+        url.searchParams.set(
+            "fields",
+            "id,title,main_picture,start_date,mean,num_episodes,media_type"
+        );
+
+        const response = await fetch(url, {
+            headers: {"X-MAL-CLIENT-ID": mal_client_id.value()},
+        });
+        if (!response.ok) {
+            logger.error("MAL anime search failed.", {status: response.status});
+            throw new HttpsError("internal", "MyAnimeList anime search failed.");
+        }
+
+        const data = await response.json();
+        return {
+            results: (data.data || []).map(({node}) => ({
+                mal_id: Number(node.id),
+                title: node.title,
+                poster_url: node.main_picture?.large ||
+                    node.main_picture?.medium || null,
+                start_date: node.start_date || null,
+                mal_score: Number(node.mean || 0) || null,
+                total_episodes: Number(node.num_episodes || 0),
+                media_type: node.media_type || null,
+            })),
+        };
+    }
+);
+
 exports.getMALAnimeRecommendations = onCall(
     {secrets: [mal_client_id, mal_client_secret]},
     async (request) => {
