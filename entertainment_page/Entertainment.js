@@ -753,6 +753,10 @@ function get_filtered_movies() {
 
     return filtered_movies.sort((a, b) => {
         switch (movie_sort.value) {
+            case "franchise-asc":
+                return (a.franchise || "zzzz").localeCompare(
+                    b.franchise || "zzzz"
+                ) || a.title.localeCompare(b.title);
             case "year-asc":
                 return a.year - b.year;
             case "title-asc":
@@ -764,7 +768,9 @@ function get_filtered_movies() {
             case "mine-desc":
                 return (b.my_rating ?? -1) - (a.my_rating ?? -1);
             default:
-                return b.year - a.year;
+                return (a.franchise || "zzzz").localeCompare(
+                    b.franchise || "zzzz"
+                ) || a.title.localeCompare(b.title);
         }
     });
 }
@@ -904,7 +910,7 @@ movie_filter_clear.addEventListener("click", () => {
     genre_filter.value = "";
     franchise_filter.value = "";
     movie_status_filter.value = "";
-    movie_sort.value = "year-desc";
+    movie_sort.value = "franchise-asc";
     render_movie_library();
 });
 
@@ -2498,7 +2504,7 @@ anime_sort.addEventListener("change", render_anime_library);
 anime_filter_clear.addEventListener("click", () => {
     anime_search.value = "";
     anime_status_filter.value = "";
-    anime_sort.value = "title-asc";
+    anime_sort.value = "score-desc";
     render_anime_library();
 });
 

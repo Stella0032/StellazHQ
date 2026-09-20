@@ -88,6 +88,7 @@
                     <option value="">All library</option><option value="watched">Watched</option><option value="watch_later">Watch later</option>
                 </select>
                 <select class="movie-filter" id="movie_sort" aria-label="Sort movies">
+                    <option value="franchise-asc" selected>Franchise A–Z</option>
                     <option value="year-desc">Newest first</option>
                     <option value="year-asc">Oldest first</option>
                     <option value="title-asc">Title A–Z</option>
@@ -123,9 +124,9 @@
         <option value="plan_to_watch">Plan to watch</option>
     </select>
     <select class="movie-filter" id="anime_sort" aria-label="Sort anime">
+        <option value="score-desc" selected>Best rated by me</option>
         <option value="title-asc">Title A–Z</option>
         <option value="title-desc">Title Z–A</option>
-        <option value="score-desc">Best rated by me</option>
     </select>
     <button class="movie-filter-clear" id="anime_filter_clear" type="button">Clear</button>
 </div>
