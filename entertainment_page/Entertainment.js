@@ -2061,6 +2061,9 @@ let anime_library = [];
 let active_anime = null;
 const anime_edit_dialog = document.getElementById("anime_edit_dialog");
 const anime_edit_title = document.getElementById("anime_edit_title");
+const anime_detail_meta = document.getElementById("anime_detail_meta");
+const anime_detail_description = document.getElementById("anime_detail_description");
+const anime_detail_facts = document.getElementById("anime_detail_facts");
 const anime_edit_form = document.getElementById("anime_edit_form");
 const anime_edit_status = document.getElementById("anime_edit_status");
 const anime_episode_picker = document.getElementById("anime_episode_picker");
@@ -2204,10 +2207,11 @@ function render_anime_episode_picker() {
     }).join("");
 }
 
-function open_anime_editor(anime_id) {
+async function open_anime_editor(anime_id) {
     active_anime = anime_library.find((item) => item.id === anime_id);
     if (!active_anime) return;
 
+    const opened_anime_id = active_anime.id;
     selected_anime_episode = Number(active_anime.episodes_watched || 0);
     anime_edit_title.textContent = active_anime.title;
     anime_edit_status.value = active_anime.status;
@@ -2216,8 +2220,61 @@ function open_anime_editor(anime_id) {
         : "";
     anime_edit_cover.src = active_anime.poster_url || "";
     anime_edit_cover.hidden = !active_anime.poster_url;
+
+    const media_type = active_anime.media_type
+        ? active_anime.media_type.replaceAll("_", " ").toUpperCase()
+        : "ANIME";
+    anime_detail_meta.textContent =
+        `${media_type}${active_anime.mal_score ?
+            ` · ⭐ ${Number(active_anime.mal_score).toFixed(2)} MAL` : ""}`;
+    anime_detail_description.textContent = "Loading description…";
+    anime_detail_facts.innerHTML = [
+        active_anime.total_episodes ?
+            `Episodes: ${active_anime.total_episodes}` : null,
+        active_anime.average_episode_duration_ms ?
+            `Episode runtime: ~${Math.round(
+                Number(active_anime.average_episode_duration_ms) / 60
+            )} min` : null,
+        active_anime.start_date ? `Started: ${active_anime.start_date}` : null,
+        active_anime.finish_date ? `Finished: ${active_anime.finish_date}` : null
+    ].filter(Boolean).map((fact) => `<span>${fact}</span>`).join("");
+
     render_anime_episode_picker();
     anime_edit_dialog.showModal();
+
+    try {
+        const get_details = httpsCallable(functions, "getMALAnimeDetails");
+        const result = await get_details({anime_id: active_anime.mal_id});
+        if (!active_anime || active_anime.id !== opened_anime_id) return;
+
+        const data = result.data;
+        anime_detail_description.textContent =
+            data.synopsis || "No description available.";
+        const facts = [
+            data.media_type ? `Type: ${data.media_type}` : null,
+            data.num_episodes ? `Episodes: ${data.num_episodes}` : null,
+            data.average_episode_duration ?
+                `Episode runtime: ~${Math.round(
+                    data.average_episode_duration / 60
+                )} min` : null,
+            data.start_date ? `Aired: ${data.start_date}` : null,
+            data.end_date ? `Ended: ${data.end_date}` : null,
+            data.status ? `Status: ${data.status.replaceAll("_", " ")}` : null,
+            data.source ? `Source: ${data.source.replaceAll("_", " ")}` : null,
+            data.rating ? `Rating: ${data.rating.replaceAll("_", " ")}` : null,
+            data.genres?.length ? `Genres: ${data.genres.join(", ")}` : null,
+            data.studios?.length ? `Studios: ${data.studios.join(", ")}` : null,
+            data.mean ? `MAL score: ${Number(data.mean).toFixed(2)}` : null,
+            data.rank ? `Rank: #${data.rank}` : null,
+            data.popularity ? `Popularity: #${data.popularity}` : null
+        ].filter(Boolean);
+        anime_detail_facts.innerHTML =
+            facts.map((fact) => `<span>${fact}</span>`).join("");
+    } catch (error) {
+        console.error("Unable to load anime details:", error);
+        anime_detail_description.textContent =
+            "Additional anime details could not be loaded.";
+    }
 }
 
 anime_grid.addEventListener("click", (event) => {
