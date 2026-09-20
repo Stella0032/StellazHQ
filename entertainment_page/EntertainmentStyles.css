@@ -2949,3 +2949,39 @@ html[data-theme="flurple"] .nav-links {
         padding-bottom: 20px;
     }
 }
+
+
+/* Anime season browser action */
+.anime-seasons-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: auto;
+    min-width: 190px;
+    margin-top: 18px;
+    padding: 11px 18px;
+    border: 1px solid rgba(190, 120, 255, 0.42);
+    border-radius: 12px;
+    color: #f4eaff;
+    background: linear-gradient(135deg,
+        rgba(172, 91, 255, 0.18),
+        rgba(101, 76, 255, 0.12));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 750;
+    letter-spacing: 0.2px;
+    transition: transform .18s ease, border-color .18s ease,
+        background .18s ease;
+}
+.anime-seasons-button:hover {
+    transform: translateY(-1px);
+    border-color: rgba(207, 150, 255, 0.75);
+    background: linear-gradient(135deg,
+        rgba(172, 91, 255, 0.28),
+        rgba(101, 76, 255, 0.19));
+}
+@media (max-width: 700px) {
+    .anime-seasons-button { width: 100%; }
+}
