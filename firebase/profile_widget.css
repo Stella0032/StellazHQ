@@ -320,3 +320,14 @@ html[data-theme="flurple"] .recommendation-genre-filter:focus{
 .avatar-choice{width:100%;aspect-ratio:1;border-width:2px}
 .avatar-choice:hover,.avatar-choice.selected{transform:scale(1.045);border-color:#4bd3ff;box-shadow:0 0 22px rgba(75,211,255,.3)}
 @media(max-width:600px){.profile-avatar-options{grid-template-columns:repeat(3,1fr);gap:12px}}
+
+
+/* Entertainment Anime backgrounds must stay visible over theme ambience.
+   This file loads after EntertainmentStyles.css, so these selectors prevent
+   Muckiverse/Flurpleverse from painting an opaque ambient layer over them. */
+html[data-theme="neon"].anime-category-active .ambient-background,
+html[data-theme="neon"].anime-category-active .space-bg,
+html[data-theme="flurple"].anime-category-active .ambient-background,
+html[data-theme="flurple"].anime-category-active .space-bg {
+    background: transparent;
+}
