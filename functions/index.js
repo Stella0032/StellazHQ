@@ -1173,6 +1173,15 @@ exports.getTVShowMetadata = onCall(
                 `https://image.tmdb.org/t/p/w500${show.poster_path}` :
                 null,
             tmdb_rating: show.vote_average ?? null,
+            tmdb_vote_count: show.vote_count ?? null,
+            overview: show.overview || null,
+            backdrop_url: show.backdrop_path ?
+                `https://image.tmdb.org/t/p/w1280${show.backdrop_path}` :
+                null,
+            release_date: show.first_air_date || null,
+            status: show.status || null,
+            number_of_seasons: show.number_of_seasons ?? null,
+            number_of_episodes: show.number_of_episodes ?? null,
             average_episode_runtime_minutes: (() => {
                 const runtimes = Array.isArray(show.episode_run_time) ?
                     show.episode_run_time.filter(
