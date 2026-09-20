@@ -3098,10 +3098,8 @@ async function ensure_plex_metadata_for_item(type, item) {
 async function auto_sync_plex_activity() {
     try {
         // Use the exact same Plex snapshot as the manual Import Plex dialog.
-        const result = await httpsCallable(functions, "getPlexImportPreview")();
+        const result = await httpsCallable(functions, "getPlexRatedTitles")();
         const data = result.data || {};
-        save_plex_metadata_store(data);
-
         const rated_movies = (data.movies || []).filter((item) =>
             item.rating != null && Number(item.rating) > 0);
         const rated_shows = (data.shows || []).filter((item) =>
@@ -3184,10 +3182,6 @@ async function auto_sync_plex_activity() {
         if (added_titles.length) {
             show_toast(`Added from Plex ratings: ${added_titles.join(", ")}`);
         }
-
-        sync_plex_metadata_for_library().catch((error) =>
-            console.error("Unable to refresh Plex metadata after auto-sync:", error)
-        );
     } catch (error) {
         console.error("Unable to auto-sync Plex ratings:", error);
     }
