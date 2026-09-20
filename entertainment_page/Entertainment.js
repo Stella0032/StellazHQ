@@ -2904,7 +2904,14 @@ function same_library_title(a, b) {
 async function open_plex_import_preview() {
     if (!plex_import_dialog) return;
     plex_import_preview = null;
-    plex_import_summary.textContent = "Reading your Plex library…";
+    plex_import_summary.innerHTML = `
+        <span class="plex-loading-row">
+            <span class="plex-loading-spinner" aria-hidden="true"></span>
+            <span>
+                <strong>Reading your Plex library<span class="plex-loading-dots" aria-hidden="true"></span></strong>
+                <small>This can take up to a minute for larger libraries. Stellaz is still working.</small>
+            </span>
+        </span>`;
     plex_import_stats.innerHTML = "";
     plex_import_confirm.disabled = true;
     plex_import_dialog.showModal();
