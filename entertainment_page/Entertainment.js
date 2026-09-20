@@ -107,69 +107,152 @@ async function load_release_rows(type) {
 const recommendation_grid = document.getElementById("recommendation_grid");
 const recommendation_count = document.querySelector(".recommendation-count");
 const recommendation_title = document.getElementById("recommendation_title");
+const recommendation_genre_filter =
+    document.getElementById("recommendation_genre_filter");
+
+const movie_genres = {
+    28: "Action", 12: "Adventure", 16: "Animation", 35: "Comedy",
+    80: "Crime", 99: "Documentary", 18: "Drama", 10751: "Family",
+    14: "Fantasy", 36: "History", 27: "Horror", 10402: "Music",
+    9648: "Mystery", 10749: "Romance", 878: "Science Fiction",
+    53: "Thriller", 10752: "War", 37: "Western"
+};
+const show_genres = {
+    10759: "Action & Adventure", 16: "Animation", 35: "Comedy",
+    80: "Crime", 99: "Documentary", 18: "Drama", 10751: "Family",
+    10762: "Kids", 9648: "Mystery", 10763: "News", 10764: "Reality",
+    10765: "Sci-Fi & Fantasy", 10766: "Soap", 10767: "Talk",
+    10768: "War & Politics", 37: "Western"
+};
 
 let active_recommendation_type = "movie";
-
 let recommendation_pool = [];
 let visible_recommendations = [];
+let ignored_recommendation_ids = new Set();
 
-function create_recommendation_card(movie) {
+function recommendation_id(item) {
+    return Number(active_recommendation_type === "anime"
+        ? item.mal_id
+        : item.tmdb_id);
+}
+
+function populate_recommendation_genres() {
+    if (active_recommendation_type === "anime") {
+        recommendation_genre_filter.innerHTML =
+            '<option value="">All genres</option>';
+        recommendation_genre_filter.disabled = true;
+        return;
+    }
+
+    recommendation_genre_filter.disabled = false;
+    const genre_map = active_recommendation_type === "show"
+        ? show_genres : movie_genres;
+    const ids = [...new Set(
+        recommendation_pool.flatMap((item) => item.genre_ids || [])
+    )].filter((id) => genre_map[id]).sort((a, b) =>
+        genre_map[a].localeCompare(genre_map[b])
+    );
+
+    recommendation_genre_filter.innerHTML =
+        '<option value="">All genres</option>' +
+        ids.map((id) =>
+            `<option value="${id}">${genre_map[id]}</option>`
+        ).join("");
+}
+
+function apply_recommendation_filter() {
+    const genre_id = Number(recommendation_genre_filter.value || 0);
+    const filtered = recommendation_pool.filter((item) =>
+        !ignored_recommendation_ids.has(recommendation_id(item)) &&
+        (!genre_id || (item.genre_ids || []).includes(genre_id))
+    );
+    visible_recommendations = filtered.slice(0, 7);
+    render_recommendations();
+}
+
+function create_recommendation_card(item) {
     const media_label = active_recommendation_type === "show"
-        ? "show"
-        : active_recommendation_type === "anime"
-            ? "anime"
-            : "movie";
+        ? "show" : active_recommendation_type === "anime" ? "anime" : "movie";
     const reason = active_recommendation_type === "anime"
         ? "Recommended from your MyAnimeList history"
-        : movie.because_of?.length
-            ? `Because you liked ${movie.because_of.join(" and ")}`
+        : item.because_of?.length
+            ? `Because you liked ${item.because_of.join(" and ")}`
             : `Picked from your ${media_label} history`;
-
-    const rating = movie.tmdb_rating !== null &&
-        movie.tmdb_rating !== undefined
-        ? ` · ⭐ ${Number(movie.tmdb_rating).toFixed(1)}`
-        : "";
-    const recommendation_id = active_recommendation_type === "anime"
-        ? movie.mal_id
-        : movie.tmdb_id;
-    const year = movie.year || "";
+    const rating = item.tmdb_rating !== null &&
+        item.tmdb_rating !== undefined
+        ? ` · ⭐ ${Number(item.tmdb_rating).toFixed(1)}` : "";
+    const year = item.year || "";
+    const actions = active_recommendation_type === "anime" ? "" : `
+        <div class="recommendation-actions">
+            <button type="button" class="recommendation-action primary"
+                    data-rec-action="watched">✓ I've seen it</button>
+            <button type="button" class="recommendation-action"
+                    data-rec-action="watch_later">＋ Watch later</button>
+            <button type="button" class="recommendation-action muted"
+                    data-rec-action="not_interested">Not interested</button>
+        </div>`;
 
     return `
-        <article class="recommendation-card"
-                 tabindex="0"
-                 role="button"
-                 data-recommendation-id="${recommendation_id}"
-                 aria-label="View details for ${movie.title}">
+        <article class="recommendation-card" tabindex="0" role="button"
+                 data-recommendation-id="${recommendation_id(item)}"
+                 aria-label="View details for ${item.title}">
             <div class="recommendation-poster-wrap">
-                <img class="recommendation-poster"
-                     src="${movie.poster_url}"
-                     alt="${movie.title} poster"
-                     loading="lazy">
+                <img class="recommendation-poster" src="${item.poster_url}"
+                     alt="${item.title} poster" loading="lazy">
                 <span class="recommendation-expand-icon" aria-hidden="true">＋</span>
-                <button class="recommendation-refresh"
-                        type="button"
+                <button class="recommendation-refresh" type="button"
                         title="Show me something else"
-                        aria-label="Replace ${movie.title} with another suggestion">
-                    ↻
-                </button>
+                        aria-label="Replace ${item.title} with another suggestion">↻</button>
             </div>
-            <h3 title="${movie.title}">${movie.title}</h3>
+            <h3 title="${item.title}">${item.title}</h3>
             <p>${year}${rating}</p>
             <p class="recommendation-reason">${reason}</p>
+            ${actions}
             <div class="recommendation-details">
-                <p class="recommendation-description">${movie.overview || "No description available."}</p>
+                <p class="recommendation-description">${item.overview || "No description available."}</p>
                 <p class="recommendation-match">${reason}</p>
             </div>
-        </article>
-    `;
+        </article>`;
 }
 
 function render_recommendations() {
-    recommendation_count.textContent =
-        `${visible_recommendations.length} PICKS`;
+    recommendation_count.textContent = `${visible_recommendations.length} PICKS`;
+    recommendation_grid.innerHTML = visible_recommendations.length
+        ? visible_recommendations.map(create_recommendation_card).join("")
+        : '<p class="recommendation-loading">No recommendations match this genre right now.</p>';
+}
 
-    recommendation_grid.innerHTML =
-        visible_recommendations.map(create_recommendation_card).join("");
+async function load_recommendation_feedback(type) {
+    ignored_recommendation_ids = new Set();
+    if (type === "anime") return;
+
+    const {data, error} = await supabase
+        .from("recommendation_feedback")
+        .select("tmdb_id")
+        .eq("media_type", type)
+        .eq("feedback", "not_interested");
+
+    if (error) throw error;
+    ignored_recommendation_ids =
+        new Set((data || []).map((item) => Number(item.tmdb_id)));
+}
+
+async function finish_recommendation_load(items) {
+    const library = active_recommendation_type === "movie"
+        ? movie_library
+        : active_recommendation_type === "show"
+            ? show_library
+            : [];
+    recommendation_pool = items.filter((item) =>
+        !library.some((entry) =>
+            entry.title.toLowerCase() === item.title.toLowerCase() &&
+            Number(entry.year) === Number(item.year)
+        )
+    );
+    recommendation_genre_filter.value = "";
+    await load_recommendation_feedback(active_recommendation_type);
+    populate_recommendation_genres();
+    apply_recommendation_filter();
 }
 
 async function load_movie_recommendations(movies) {
@@ -177,31 +260,17 @@ async function load_movie_recommendations(movies) {
     recommendation_title.textContent = "Recommended Movies For You";
     recommendation_grid.innerHTML =
         '<p class="recommendation-loading">Finding movies for you...</p>';
-
     try {
-        const get_movie_recommendations =
+        const get_recommendations =
             httpsCallable(functions, "getMovieRecommendations");
-
-        const result = await get_movie_recommendations({
-            movies: movies.map((movie) => ({
-                title: movie.title,
-                year: movie.year,
-                my_rating: movie.my_rating,
-                tmdb_rating: movie.tmdb_rating
+        const watched = movies.filter((movie) => movie.status === "watched");
+        const result = await get_recommendations({
+            movies: watched.map((movie) => ({
+                title: movie.title, year: movie.year,
+                my_rating: movie.my_rating, tmdb_rating: movie.tmdb_rating
             }))
         });
-
-        recommendation_pool = result.data.recommendations || [];
-        visible_recommendations = recommendation_pool.splice(0, 7);
-
-        if (visible_recommendations.length === 0) {
-            recommendation_count.textContent = "0 PICKS";
-            recommendation_grid.innerHTML =
-                '<p class="recommendation-loading">Rate a few movies to improve your recommendations.</p>';
-            return;
-        }
-
-        render_recommendations();
+        await finish_recommendation_load(result.data.recommendations || []);
     } catch (error) {
         console.error("Unable to load recommendations:", error);
         recommendation_count.textContent = "—";
@@ -210,43 +279,28 @@ async function load_movie_recommendations(movies) {
     }
 }
 
-
 async function load_show_recommendations(shows) {
     active_recommendation_type = "show";
     recommendation_title.textContent = "Recommended TV Shows For You";
     recommendation_grid.innerHTML =
         '<p class="recommendation-loading">Finding shows for you...</p>';
-
-    if (shows.length === 0) {
+    const watched = shows.filter((show) => show.status === "watched");
+    if (!watched.length) {
         recommendation_count.textContent = "0 PICKS";
         recommendation_grid.innerHTML =
             '<p class="recommendation-loading">Add and rate some TV shows to get recommendations.</p>';
         return;
     }
-
     try {
-        const get_show_recommendations =
+        const get_recommendations =
             httpsCallable(functions, "getTVShowRecommendations");
-        const result = await get_show_recommendations({
-            shows: shows.map((show) => ({
-                title: show.title,
-                year: show.year,
-                my_rating: show.my_rating,
-                tmdb_rating: show.tmdb_rating
+        const result = await get_recommendations({
+            shows: watched.map((show) => ({
+                title: show.title, year: show.year,
+                my_rating: show.my_rating, tmdb_rating: show.tmdb_rating
             }))
         });
-
-        recommendation_pool = result.data.recommendations || [];
-        visible_recommendations = recommendation_pool.splice(0, 7);
-
-        if (visible_recommendations.length === 0) {
-            recommendation_count.textContent = "0 PICKS";
-            recommendation_grid.innerHTML =
-                '<p class="recommendation-loading">Rate a few shows to improve your recommendations.</p>';
-            return;
-        }
-
-        render_recommendations();
+        await finish_recommendation_load(result.data.recommendations || []);
     } catch (error) {
         console.error("Unable to load TV recommendations:", error);
         recommendation_count.textContent = "—";
@@ -255,44 +309,29 @@ async function load_show_recommendations(shows) {
     }
 }
 
-
 async function load_anime_recommendations(anime) {
     active_recommendation_type = "anime";
     recommendation_title.textContent = "Recommended Anime For You";
     recommendation_grid.innerHTML =
         '<p class="recommendation-loading">Finding anime for you...</p>';
-
     const rated = [...anime]
         .filter((item) => item.status === "completed" || item.status === "watching")
         .sort((a, b) => Number(b.my_rating || 0) - Number(a.my_rating || 0));
     const seeds = rated.slice(0, 8);
-
-    if (seeds.length === 0) {
+    if (!seeds.length) {
         recommendation_count.textContent = "0 PICKS";
         recommendation_grid.innerHTML =
             '<p class="recommendation-loading">Watch or rate some anime to get recommendations.</p>';
         return;
     }
-
     try {
-        const get_anime_recommendations =
+        const get_recommendations =
             httpsCallable(functions, "getMALAnimeRecommendations");
-        const result = await get_anime_recommendations({
+        const result = await get_recommendations({
             seed_ids: seeds.map((item) => item.mal_id),
             library_ids: anime.map((item) => item.mal_id)
         });
-
-        recommendation_pool = result.data.recommendations || [];
-        visible_recommendations = recommendation_pool.splice(0, 7);
-
-        if (visible_recommendations.length === 0) {
-            recommendation_count.textContent = "0 PICKS";
-            recommendation_grid.innerHTML =
-                '<p class="recommendation-loading">No new anime recommendations found right now.</p>';
-            return;
-        }
-
-        render_recommendations();
+        await finish_recommendation_load(result.data.recommendations || []);
     } catch (error) {
         console.error("Unable to load anime recommendations:", error);
         recommendation_count.textContent = "—";
@@ -301,38 +340,106 @@ async function load_anime_recommendations(anime) {
     }
 }
 
-recommendation_grid.addEventListener("click", (event) => {
-    const refresh_button = event.target.closest(".recommendation-refresh");
-    const card = event.target.closest(".recommendation-card");
+async function save_recommendation_to_library(item, status) {
+    const is_movie = active_recommendation_type === "movie";
+    const table = is_movie ? "movies" : "tv_shows";
+    const metadata_function = httpsCallable(
+        functions, is_movie ? "getMovieMetadata" : "getTVShowMetadata"
+    );
+    const metadata_result = await metadata_function({
+        title: item.title, year: item.year
+    });
+    const metadata = metadata_result.data;
+    const row = is_movie ? {
+        title: item.title, year: item.year, status,
+        poster_url: metadata.poster_url,
+        genres: metadata.genres || [],
+        runtime_minutes: metadata.runtime_minutes,
+        tmdb_rating: metadata.tmdb_rating
+    } : {
+        title: item.title, year: item.year, status,
+        poster_url: metadata.poster_url,
+        genres: metadata.genres || [],
+        average_episode_runtime_minutes:
+            metadata.average_episode_runtime_minutes,
+        tmdb_rating: metadata.tmdb_rating
+    };
 
-    if (!card) {
+    const library = is_movie ? movie_library : show_library;
+    const existing = library.find((entry) =>
+        entry.title.toLowerCase() === item.title.toLowerCase() &&
+        Number(entry.year) === Number(item.year)
+    );
+
+    if (existing) {
+        const next_status = status === "watched" ? "watched" : existing.status;
+        const {error} = await supabase.from(table)
+            .update({...row, status: next_status}).eq("id", existing.id);
+        if (error) throw error;
+    } else {
+        const {error} = await supabase.from(table).insert(row);
+        if (error) throw error;
+    }
+
+    if (is_movie) await load_movie_library();
+    else await load_show_library();
+}
+
+async function mark_not_interested(item) {
+    const {error} = await supabase.from("recommendation_feedback").insert({
+        media_type: active_recommendation_type,
+        tmdb_id: Number(item.tmdb_id),
+        feedback: "not_interested"
+    });
+    if (error) throw error;
+    ignored_recommendation_ids.add(Number(item.tmdb_id));
+    apply_recommendation_filter();
+}
+
+recommendation_genre_filter.addEventListener("change", apply_recommendation_filter);
+
+recommendation_grid.addEventListener("click", async (event) => {
+    const card = event.target.closest(".recommendation-card");
+    if (!card) return;
+
+    const id = Number(card.dataset.recommendationId);
+    const item = recommendation_pool.find((entry) =>
+        recommendation_id(entry) === id
+    );
+    if (!item) return;
+
+    const action = event.target.closest("[data-rec-action]");
+    const refresh_button = event.target.closest(".recommendation-refresh");
+
+    if (action) {
+        event.stopPropagation();
+        action.disabled = true;
+        try {
+            if (action.dataset.recAction === "not_interested") {
+                await mark_not_interested(item);
+                show_toast(`${item.title} won't be recommended again.`);
+            } else {
+                await save_recommendation_to_library(
+                    item, action.dataset.recAction
+                );
+                ignored_recommendation_ids.add(id);
+                apply_recommendation_filter();
+                show_toast(action.dataset.recAction === "watched"
+                    ? `${item.title} added as watched.`
+                    : `${item.title} added to Watch Later.`);
+            }
+        } catch (error) {
+            console.error("Unable to update recommendation:", error);
+            action.disabled = false;
+            alert("Unable to update that recommendation. Please try again.");
+        }
         return;
     }
 
     if (refresh_button) {
         event.stopPropagation();
-
-        const replacement = recommendation_pool.shift();
-
-        if (!replacement) {
-            refresh_button.disabled = true;
-            refresh_button.textContent = "✓";
-            refresh_button.title = "No more suggestions right now";
-            return;
-        }
-
-        const current_id = Number(card.dataset.recommendationId);
-        const index = visible_recommendations.findIndex((item) =>
-            Number(active_recommendation_type === "anime"
-                ? item.mal_id
-                : item.tmdb_id) === current_id
-        );
-
-        if (index !== -1) {
-            visible_recommendations[index] = replacement;
-            card.outerHTML = create_recommendation_card(replacement);
-        }
-
+        ignored_recommendation_ids.add(id);
+        apply_recommendation_filter();
         return;
     }
 
@@ -340,20 +447,13 @@ recommendation_grid.addEventListener("click", (event) => {
 });
 
 recommendation_grid.addEventListener("keydown", (event) => {
-    if (event.key !== "Enter" && event.key !== " ") {
-        return;
-    }
-
+    if (event.key !== "Enter" && event.key !== " ") return;
+    if (event.target.closest("button, select")) return;
     const card = event.target.closest(".recommendation-card");
-
-    if (!card) {
-        return;
-    }
-
+    if (!card) return;
     event.preventDefault();
     card.classList.toggle("expanded");
 });
-
 //#endregion
 
 
@@ -369,6 +469,7 @@ const movie_library_toggle = document.getElementById("movie_library_toggle");
 const movie_search = document.getElementById("movie_search");
 const genre_filter = document.getElementById("genre_filter");
 const franchise_filter = document.getElementById("franchise_filter");
+const movie_status_filter = document.getElementById("movie_status_filter");
 const movie_sort = document.getElementById("movie_sort");
 const movie_filter_clear = document.getElementById("movie_filter_clear");
 
@@ -437,6 +538,7 @@ function create_movie_card(movie, index) {
         <article class="movie-card${extra_class}" data-library-item="movie" data-item-id="${movie.id}">
             <div class="movie-poster-wrap">
                 ${poster}
+                ${movie.status === "watch_later" ? '<span class="watch-later-badge">WATCH LATER</span>' : ""}
                 <button class="library-remove-button" type="button" data-remove-type="movie" data-remove-id="${movie.id}" aria-label="Remove ${movie.title} from your movies" title="Remove from library">×</button>
                 <div class="movie-rating-overlay">
                     <p>Rate this movie</p>
@@ -539,6 +641,7 @@ function get_filtered_movies() {
     const search = movie_search.value.trim().toLowerCase();
     const genre = genre_filter.value;
     const franchise = franchise_filter.value;
+    const status = movie_status_filter.value;
 
     const filtered_movies = movie_library.filter((movie) => {
         const matches_search = !search ||
@@ -547,8 +650,10 @@ function get_filtered_movies() {
             (movie.genres || []).includes(genre);
         const matches_franchise = !franchise ||
             movie.franchise === franchise;
+        const matches_status = !status || movie.status === status;
 
-        return matches_search && matches_genre && matches_franchise;
+        return matches_search && matches_genre && matches_franchise &&
+            matches_status;
     });
 
     return filtered_movies.sort((a, b) => {
@@ -586,7 +691,8 @@ function render_movie_library() {
 
     const filters_active = movie_search.value.trim() ||
         genre_filter.value ||
-        franchise_filter.value;
+        franchise_filter.value ||
+        movie_status_filter.value;
 
     movie_library_count.textContent = filters_active
         ? `${movies.length} OF ${movie_library.length} MOVIES`
@@ -656,9 +762,12 @@ async function load_movie_library() {
             throw error;
         }
 
-        movie_count.textContent = movies.length;
+        const watched_movies = movies.filter((movie) =>
+            movie.status === "watched"
+        );
+        movie_count.textContent = watched_movies.length;
 
-        const total_runtime_minutes = movies.reduce(
+        const total_runtime_minutes = watched_movies.reduce(
             (total, movie) => total + (movie.runtime_minutes || 0),
             0
         );
@@ -690,7 +799,7 @@ async function load_movie_library() {
         movie_grid.innerHTML = '<p class="library-loading">Unable to load your movies.</p>';
     }
 }
-[movie_search, genre_filter, franchise_filter, movie_sort].forEach((control) => {
+[movie_search, genre_filter, franchise_filter, movie_status_filter, movie_sort].forEach((control) => {
     control.addEventListener("input", render_movie_library);
     control.addEventListener("change", render_movie_library);
 });
@@ -699,6 +808,7 @@ movie_filter_clear.addEventListener("click", () => {
     movie_search.value = "";
     genre_filter.value = "";
     franchise_filter.value = "";
+    movie_status_filter.value = "";
     movie_sort.value = "year-desc";
     render_movie_library();
 });
@@ -731,6 +841,7 @@ const show_grid = document.getElementById("show_grid");
 const show_library_toggle = document.getElementById("show_library_toggle");
 const show_search = document.getElementById("show_search");
 const show_genre_filter = document.getElementById("show_genre_filter");
+const show_status_filter = document.getElementById("show_status_filter");
 const show_sort = document.getElementById("show_sort");
 const show_filter_clear = document.getElementById("show_filter_clear");
 const show_details_dialog = document.getElementById("show_details_dialog");
@@ -784,6 +895,7 @@ function create_show_card(show, index) {
         <article class="movie-card${extra_class}" data-library-item="show" data-item-id="${show.id}">
             <div class="movie-poster-wrap">
                 ${poster}
+                ${show.status === "watch_later" ? '<span class="watch-later-badge">WATCH LATER</span>' : ""}
                 <button class="library-remove-button" type="button" data-remove-type="show" data-remove-id="${show.id}" aria-label="Remove ${show.title} from your TV shows" title="Remove from library">×</button>
                 <div class="movie-rating-overlay">
                     <p>Rate this show</p>
@@ -802,10 +914,12 @@ function create_show_card(show, index) {
 function get_filtered_shows() {
     const search = show_search.value.trim().toLowerCase();
     const genre = show_genre_filter.value;
+    const status = show_status_filter.value;
 
     return show_library.filter((show) => {
         return (!search || show.title.toLowerCase().includes(search)) &&
-            (!genre || (show.genres || []).includes(genre));
+            (!genre || (show.genres || []).includes(genre)) &&
+            (!status || show.status === status);
     }).sort((a, b) => {
         switch (show_sort.value) {
             case "year-asc": return a.year - b.year;
@@ -833,7 +947,8 @@ function render_show_library() {
     }
 
     show_grid.innerHTML = shows.map(create_show_card).join("");
-    const filters_active = show_search.value.trim() || show_genre_filter.value;
+    const filters_active = show_search.value.trim() ||
+        show_genre_filter.value || show_status_filter.value;
     show_library_count.textContent = filters_active
         ? `${shows.length} OF ${show_library.length} SHOWS`
         : `${show_library.length} SHOWS`;
@@ -896,7 +1011,10 @@ async function load_show_library() {
 
         if (error) throw error;
 
-        show_count.textContent = shows.length;
+        const watched_shows = shows.filter((show) =>
+            show.status === "watched"
+        );
+        show_count.textContent = watched_shows.length;
         show_library_count.textContent = `${shows.length} SHOWS`;
 
         if (shows.length === 0) {
@@ -1318,7 +1436,7 @@ show_details_dialog.addEventListener("click", (event) => {
     }
 });
 
-[show_search, show_genre_filter, show_sort].forEach((control) => {
+[show_search, show_genre_filter, show_status_filter, show_sort].forEach((control) => {
     control.addEventListener("input", render_show_library);
     control.addEventListener("change", render_show_library);
 });
@@ -1326,6 +1444,7 @@ show_details_dialog.addEventListener("click", (event) => {
 show_filter_clear.addEventListener("click", () => {
     show_search.value = "";
     show_genre_filter.value = "";
+    show_status_filter.value = "";
     show_sort.value = "year-desc";
     render_show_library();
 });
@@ -1349,6 +1468,7 @@ const library_dialog_title = document.getElementById("library_dialog_title");
 const library_dialog_close = document.getElementById("library_dialog_close");
 const library_add_title = document.getElementById("library_add_title");
 const library_add_year = document.getElementById("library_add_year");
+const library_add_status = document.getElementById("library_add_status");
 const library_title_results = document.getElementById("library_title_results");
 const library_add_submit = document.getElementById("library_add_submit");
 const library_remove_dialog = document.getElementById("library_remove_dialog");
@@ -1376,6 +1496,7 @@ function open_add_dialog(type) {
         type === "movie" ? "Add movie" : "Add TV show";
     library_add_title.value = "";
     library_add_year.value = "";
+    library_add_status.value = "watched";
     library_title_results.innerHTML = "";
     library_title_results.hidden = true;
     library_add_dialog.showModal();
@@ -1461,6 +1582,7 @@ library_add_form.addEventListener("submit", async (event) => {
     const year = Number(library_add_year.value);
     const is_movie = manual_library_type === "movie";
     const table = is_movie ? "movies" : "tv_shows";
+    const status = library_add_status.value;
 
     if (!title || !Number.isInteger(year)) return;
 
@@ -1471,7 +1593,7 @@ library_add_form.addEventListener("submit", async (event) => {
         const {error} = await supabase.from(table).insert({
             title,
             year,
-            status: "watched"
+            status
         });
 
         if (error) {

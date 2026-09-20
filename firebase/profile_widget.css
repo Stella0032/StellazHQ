@@ -281,3 +281,24 @@ html[data-theme="flurple"] .stellaz-ai-form button{
 html[data-theme="stellaz"] body{
     background:transparent;
 }
+
+
+/* Recommendation controls follow the selected entertainment theme. */
+html[data-theme="neon"] .recommendation-action.primary,
+html[data-theme="neon"] .recommendation-action:hover{
+    border-color:rgba(72,255,111,.52);
+    color:#eaffee;
+    background:rgba(43,255,88,.10);
+}
+html[data-theme="flurple"] .recommendation-action.primary,
+html[data-theme="flurple"] .recommendation-action:hover{
+    border-color:rgba(244,199,94,.52);
+    color:#fff7df;
+    background:rgba(180,92,255,.11);
+}
+html[data-theme="neon"] .recommendation-genre-filter:focus{
+    border-color:rgba(72,255,111,.58);
+}
+html[data-theme="flurple"] .recommendation-genre-filter:focus{
+    border-color:rgba(244,199,94,.58);
+}
