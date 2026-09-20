@@ -3150,3 +3150,37 @@ html[data-theme="flurple"].anime-category-active .mal-connect-card {
         transition: none;
     }
 }
+
+
+/* Anime backdrop fix: artwork sits behind the entire Entertainment page. */
+html.anime-category-active body {
+    background: transparent;
+}
+
+html.anime-category-active .ambient-background {
+    background: transparent;
+}
+
+html.anime-category-active .ambient-background::before {
+    opacity: .28;
+}
+
+html.anime-category-active .ambient-background::after {
+    opacity: .35;
+}
+
+/* Keep the Anime library as a true frosted-glass layer over the page art. */
+html.anime-category-active .anime-library-panel {
+    background: rgba(9, 11, 28, .24);
+    border: 1px solid rgba(255, 255, 255, .18);
+    backdrop-filter: blur(12px) saturate(120%);
+    -webkit-backdrop-filter: blur(12px) saturate(120%);
+}
+
+html[data-theme="neon"].anime-category-active .anime-library-panel {
+    background: rgba(3, 13, 9, .22);
+}
+
+html[data-theme="flurple"].anime-category-active .anime-library-panel {
+    background: rgba(29, 12, 44, .22);
+}
