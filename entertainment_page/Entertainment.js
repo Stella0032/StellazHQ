@@ -238,7 +238,17 @@ async function load_recommendation_feedback(type) {
 }
 
 async function finish_recommendation_load(items) {
-    recommendation_pool = items;
+    const library = active_recommendation_type === "movie"
+        ? movie_library
+        : active_recommendation_type === "show"
+            ? show_library
+            : [];
+    recommendation_pool = items.filter((item) =>
+        !library.some((entry) =>
+            entry.title.toLowerCase() === item.title.toLowerCase() &&
+            Number(entry.year) === Number(item.year)
+        )
+    );
     recommendation_genre_filter.value = "";
     await load_recommendation_feedback(active_recommendation_type);
     populate_recommendation_genres();
@@ -376,11 +386,11 @@ async function save_recommendation_to_library(item, status) {
 }
 
 async function mark_not_interested(item) {
-    const {error} = await supabase.from("recommendation_feedback").upsert({
+    const {error} = await supabase.from("recommendation_feedback").insert({
         media_type: active_recommendation_type,
         tmdb_id: Number(item.tmdb_id),
         feedback: "not_interested"
-    }, {onConflict: "user_id,media_type,tmdb_id"});
+    });
     if (error) throw error;
     ignored_recommendation_ids.add(Number(item.tmdb_id));
     apply_recommendation_filter();
