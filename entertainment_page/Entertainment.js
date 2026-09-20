@@ -2241,6 +2241,79 @@ const anime_edit_save = document.getElementById("anime_edit_save");
 const anime_view_seasons = document.getElementById("anime_view_seasons");
 const mal_connect_card = document.getElementById("mal_connect_card");
 const mal_sync_header_button = document.getElementById("mal_sync_header_button");
+const anime_add_button = document.getElementById("anime_add_button");
+const anime_add_dialog = document.getElementById("anime_add_dialog");
+const anime_add_close = document.getElementById("anime_add_close");
+const anime_add_search_form = document.getElementById("anime_add_search_form");
+const anime_add_search = document.getElementById("anime_add_search");
+const anime_add_results = document.getElementById("anime_add_results");
+let anime_add_candidates = [];
+
+
+
+anime_add_button.addEventListener("click", () => {
+    anime_add_search.value = "";
+    anime_add_results.innerHTML = "";
+    anime_add_candidates = [];
+    anime_add_dialog.showModal();
+    anime_add_search.focus();
+});
+
+anime_add_close.addEventListener("click", () => anime_add_dialog.close());
+
+anime_add_search_form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    anime_add_results.innerHTML =
+        '<p class="recommendation-loading">Searching MyAnimeList...</p>';
+    try {
+        const search = httpsCallable(functions, "searchMALAnime");
+        const result = await search({query: anime_add_search.value.trim()});
+        anime_add_candidates = result.data.results || [];
+        anime_add_results.innerHTML = anime_add_candidates.length
+            ? anime_add_candidates.map((item) => `
+                <button class="anime-add-result" type="button"
+                        data-mal-add-id="${item.mal_id}">
+                    ${item.poster_url ? `<img src="${item.poster_url}" alt="">` : ""}
+                    <span><strong>${item.title}</strong><small>${
+                        item.start_date ? item.start_date.slice(0, 4) : ""
+                    }${item.mal_score ? ` · ⭐ ${item.mal_score.toFixed(2)}` : ""}</small></span>
+                    <b>＋ Watched</b>
+                </button>`).join("")
+            : '<p class="recommendation-loading">No anime found.</p>';
+    } catch (error) {
+        console.error("Unable to search MAL:", error);
+        anime_add_results.innerHTML =
+            '<p class="recommendation-loading">Unable to search MyAnimeList.</p>';
+    }
+});
+
+anime_add_results.addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-mal-add-id]");
+    if (!button) return;
+    const item = anime_add_candidates.find(
+        (entry) => entry.mal_id === Number(button.dataset.malAddId)
+    );
+    if (!item) return;
+
+    button.disabled = true;
+    try {
+        const update_mal = httpsCallable(functions, "updateMALAnimeStatus");
+        await update_mal({
+            anime_id: item.mal_id,
+            status: "completed",
+            episodes_watched: item.total_episodes || 0,
+            total_episodes: item.total_episodes || 0,
+            score: null
+        });
+        anime_add_dialog.close();
+        await sync_mal_anime();
+        show_toast(`${item.title} added to MyAnimeList as watched.`);
+    } catch (error) {
+        console.error("Unable to add anime to MAL:", error);
+        button.disabled = false;
+        alert("Unable to add this anime to MyAnimeList.");
+    }
+});
 
 function random_url_safe_string(length) {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
@@ -2599,7 +2672,7 @@ anime_edit_form.addEventListener("submit", async (event) => {
 
     try {
         const update_mal = httpsCallable(functions, "updateMALAnimeStatus");
-        await update_mal({
+        const update_result = await update_mal({
             anime_id: active_anime.mal_id,
             status: anime_edit_status.value,
             episodes_watched: selected_anime_episode,
@@ -2608,6 +2681,10 @@ anime_edit_form.addEventListener("submit", async (event) => {
                 ? null
                 : Number(anime_edit_score.value)
         });
+        const saved = update_result.data || {};
+        if (saved.status && saved.status !== anime_edit_status.value) {
+            throw new Error("MyAnimeList returned a different saved status.");
+        }
         anime_edit_dialog.close();
         await sync_mal_anime();
         show_toast("Updated on MyAnimeList.");
