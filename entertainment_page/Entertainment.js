@@ -2953,9 +2953,93 @@ async function open_plex_import_preview() {
 }
 plex_import_button?.addEventListener("click", open_plex_import_preview);
 plex_import_close?.addEventListener("click", () => plex_import_dialog.close());
-plex_import_confirm?.addEventListener("click", () => {
+plex_import_confirm?.addEventListener("click", async () => {
     if (!plex_import_preview) return;
-    show_toast("Preview verified. Database import comes next.");
+
+    const original_text = plex_import_confirm.textContent;
+    plex_import_confirm.disabled = true;
+    plex_import_confirm.textContent = "Importing…";
+
+    try {
+        const movie_rows = plex_import_preview.new_movies.map((item) => ({
+            title: item.title,
+            year: item.year,
+            status: item.watched ? "watched" : "watch_later",
+            ...(item.rating != null ? {my_rating: Number(item.rating)} : {})
+        }));
+        const show_rows = plex_import_preview.new_shows.map((item) => ({
+            title: item.title,
+            year: item.year,
+            status: Number(item.watched_episodes || 0) > 0 ? "watched" : "watch_later",
+            ...(item.rating != null ? {my_rating: Number(item.rating)} : {})
+        }));
+
+        if (movie_rows.length) {
+            const {error} = await supabase.from("movies").insert(movie_rows);
+            if (error) throw error;
+        }
+        if (show_rows.length) {
+            const {error} = await supabase.from("tv_shows").insert(show_rows);
+            if (error) throw error;
+        }
+
+        for (const item of plex_import_preview.movie_rating_updates) {
+            const existing = movie_library.find((movie) =>
+                same_library_title(movie, item));
+            if (!existing) continue;
+            const {error} = await supabase.from("movies")
+                .update({my_rating: Number(item.rating)})
+                .eq("id", existing.id);
+            if (error) throw error;
+        }
+        for (const item of plex_import_preview.show_rating_updates) {
+            const existing = show_library.find((show) =>
+                same_library_title(show, item));
+            if (!existing) continue;
+            const {error} = await supabase.from("tv_shows")
+                .update({my_rating: Number(item.rating)})
+                .eq("id", existing.id);
+            if (error) throw error;
+        }
+
+        const imported_shows = new Map();
+        await load_movie_library();
+        await load_show_library();
+        for (const item of plex_import_preview.new_shows) {
+            const show = show_library.find((entry) => same_library_title(entry, item));
+            if (show) imported_shows.set(item.title.trim().toLowerCase(), show);
+        }
+
+        const episode_rows = (plex_import_preview.episodes || []).flatMap((episode) => {
+            const show = imported_shows.get(String(episode.show_title || "").trim().toLowerCase());
+            if (!show || episode.season <= 0 || episode.episode <= 0) return [];
+            return [{
+                tv_show_id: show.id,
+                season_number: Number(episode.season),
+                episode_number: Number(episode.episode),
+                watched: true
+            }];
+        });
+        if (episode_rows.length) {
+            const {error} = await supabase.from("tv_episode_progress")
+                .upsert(episode_rows, {
+                    onConflict: "user_id,tv_show_id,season_number,episode_number"
+                });
+            if (error) throw error;
+        }
+
+        await load_show_library();
+        const added = movie_rows.length + show_rows.length;
+        const updated = plex_import_preview.movie_rating_updates.length +
+            plex_import_preview.show_rating_updates.length;
+        plex_import_dialog.close();
+        show_toast(`Plex import complete: ${added} titles added, ${updated} ratings updated.`);
+    } catch (error) {
+        console.error("Unable to import Plex data:", error);
+        alert(error.message || "Unable to import Plex data.");
+        plex_import_confirm.disabled = false;
+        plex_import_confirm.textContent = original_text;
+    }
 });
 
 async function finish_plex_connection() {
