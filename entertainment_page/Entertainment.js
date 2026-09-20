@@ -2090,9 +2090,7 @@ library_add_form.addEventListener("submit", async (event) => {
         library_add_dialog.close();
 
         if (is_movie) {
-            await load_plex_connection_status();
-        await finish_plex_connection();
-        await load_movie_library();
+            await load_movie_library();
             show_entertainment_category("Movies");
         } else {
             await load_show_library();
@@ -2933,6 +2931,8 @@ onAuthStateChanged(auth, async (user) => {
         console.log(result.data.message);
         console.log("Firebase UID:", user.uid);
 
+        await finish_plex_connection();
+        await load_plex_connection_status();
         await load_movie_library();
         await load_show_library();
         await load_mal_connection_status();
