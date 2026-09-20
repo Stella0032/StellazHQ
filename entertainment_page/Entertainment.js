@@ -636,7 +636,7 @@ function create_movie_card(movie, index) {
         <article class="movie-card${extra_class}" data-library-item="movie" data-item-id="${movie.id}">
             <div class="movie-poster-wrap">
                 ${poster}
-                ${movie.status === "watch_later" ? '<span class="watch-later-badge">WATCH LATER</span>' : ""}
+                ${movie.status === "watch_later" ? '<span class="watch-later-badge">WATCH LATER</span><button class="watch-later-complete" type="button" data-mark-watched-type="movie" data-mark-watched-id="' + movie.id + '" title="Mark as watched" aria-label="Mark ' + movie.title + ' as watched">✓</button>' : ""}
                 <button class="library-remove-button" type="button" data-remove-type="movie" data-remove-id="${movie.id}" aria-label="Remove ${movie.title} from your movies" title="Remove from library">×</button>
                 <div class="movie-rating-overlay">
                     <p>Rate this movie</p>
@@ -993,7 +993,7 @@ function create_show_card(show, index) {
         <article class="movie-card${extra_class}" data-library-item="show" data-item-id="${show.id}">
             <div class="movie-poster-wrap">
                 ${poster}
-                ${show.status === "watch_later" ? '<span class="watch-later-badge">WATCH LATER</span>' : ""}
+                ${show.status === "watch_later" ? '<span class="watch-later-badge">WATCH LATER</span><button class="watch-later-complete" type="button" data-mark-watched-type="show" data-mark-watched-id="' + show.id + '" title="Mark as watched" aria-label="Mark ' + show.title + ' as watched">✓</button>' : ""}
                 <button class="library-remove-button" type="button" data-remove-type="show" data-remove-id="${show.id}" aria-label="Remove ${show.title} from your TV shows" title="Remove from library">×</button>
                 <div class="movie-rating-overlay">
                     <p>Rate this show</p>
@@ -1336,7 +1336,8 @@ async function open_season_episodes(season_number) {
 
 show_grid.addEventListener("click", (event) => {
     if (event.target.closest(".rating-star") ||
-        event.target.closest(".library-remove-button")) {
+        event.target.closest(".library-remove-button") ||
+        event.target.closest(".watch-later-complete")) {
         return;
     }
 
@@ -1730,6 +1731,54 @@ function request_remove(type, id) {
     library_remove_title.textContent = `Remove ${item.title}?`;
     library_remove_dialog.showModal();
 }
+
+async function mark_library_item_watched(type, id, button) {
+    button.disabled = true;
+    const table = type === "movie" ? "movies" : "tv_shows";
+
+    try {
+        const {error} = await supabase.from(table)
+            .update({status: "watched"})
+            .eq("id", id);
+        if (error) throw error;
+
+        if (type === "movie") {
+            await load_movie_library();
+        } else {
+            await load_show_library();
+        }
+
+        show_toast(type === "movie"
+            ? "Movie moved to Watched."
+            : "TV show moved to Watched.");
+    } catch (error) {
+        console.error("Unable to mark title watched:", error);
+        button.disabled = false;
+        alert("Unable to mark that title as watched. Please try again.");
+    }
+}
+
+movie_grid.addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-mark-watched-type=\"movie\"]");
+    if (!button) return;
+    event.stopPropagation();
+    await mark_library_item_watched(
+        "movie",
+        Number(button.dataset.markWatchedId),
+        button
+    );
+});
+
+show_grid.addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-mark-watched-type=\"show\"]");
+    if (!button) return;
+    event.stopPropagation();
+    await mark_library_item_watched(
+        "show",
+        Number(button.dataset.markWatchedId),
+        button
+    );
+});
 
 movie_grid.addEventListener("click", (event) => {
     const button = event.target.closest(".library-remove-button");
