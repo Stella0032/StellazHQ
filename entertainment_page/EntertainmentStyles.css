@@ -2988,30 +2988,33 @@ html[data-theme="flurple"] .nav-links {
 
 
 /* Muckiverse: dedicated Anime category background */
-html[data-theme="neon"].anime-category-active .ambient-background {
+html[data-theme="neon"].anime-category-active .anime-library-panel {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
     background:
         linear-gradient(90deg,
-            rgba(5, 10, 9, 0.88) 0%,
-            rgba(5, 10, 9, 0.62) 42%,
-            rgba(5, 10, 9, 0.38) 100%),
+            rgba(4, 10, 8, 0.78) 0%,
+            rgba(4, 10, 8, 0.58) 46%,
+            rgba(4, 10, 8, 0.32) 100%),
         linear-gradient(180deg,
-            rgba(5, 10, 9, 0.18) 0%,
-            rgba(5, 10, 9, 0.62) 72%,
-            #070d0b 100%),
-        url("../images/muckiverse-anime-background.png") center 22% / cover no-repeat;
+            rgba(4, 10, 8, 0.20) 0%,
+            rgba(4, 10, 8, 0.62) 100%),
+        url("../images/muckiverse-anime-background.png") center 28% / cover no-repeat;
+    backdrop-filter: none;
 }
 
-html[data-theme="neon"].anime-category-active .ambient-background::before {
-    background:
-        linear-gradient(180deg,
-            rgba(103, 226, 173, 0.05),
-            transparent 38%),
-        linear-gradient(90deg,
-            rgba(4, 9, 8, 0.16),
-            transparent 45%);
-    opacity: 1;
+html[data-theme="neon"].anime-category-active .anime-library-panel::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: linear-gradient(180deg,
+        rgba(103, 226, 173, 0.035),
+        rgba(2, 8, 6, 0.20));
 }
 
-html[data-theme="neon"].anime-category-active .ambient-background::after {
-    background: rgba(103, 226, 173, 0.07);
+html[data-theme="neon"].anime-category-active .anime-library-panel .movie-grid {
+    position: relative;
 }
