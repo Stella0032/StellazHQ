@@ -2228,6 +2228,12 @@ function render_anime_library() {
 let anime_background_timer = null;
 let anime_background_posters = [];
 let current_anime_background = "";
+let anime_background_layer = 0;
+
+function preload_anime_background(url) {
+    const image = new Image();
+    image.src = url;
+}
 
 function rotate_anime_library_background() {
     if (!anime_background_posters.length) {
@@ -2242,9 +2248,15 @@ function rotate_anime_library_background() {
     current_anime_background =
         pool[Math.floor(Math.random() * pool.length)];
 
+    preload_anime_background(current_anime_background);
+    anime_background_layer = anime_background_layer === 1 ? 2 : 1;
     document.documentElement.style.setProperty(
-        "--anime-library-backdrop",
+        `--anime-library-backdrop-${anime_background_layer}`,
         `url("${current_anime_background}")`
+    );
+    document.documentElement.style.setProperty(
+        "--anime-library-backdrop-layer",
+        String(anime_background_layer)
     );
 }
 
@@ -2263,7 +2275,7 @@ function start_anime_library_backgrounds() {
     if (anime_background_posters.length > 1) {
         anime_background_timer = setInterval(
             rotate_anime_library_background,
-            7000
+            15000
         );
     }
 }

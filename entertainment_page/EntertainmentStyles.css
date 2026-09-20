@@ -2987,48 +2987,51 @@ html[data-theme="flurple"] .nav-links {
 }
 
 
-/* Anime library: rotating backdrop from the user's top-rated anime. */
+/* Anime library: rotating top-rated poster backdrop with crossfade. */
 html.anime-category-active .anime-library-panel {
-    position: relative;
-    overflow: hidden;
-    isolation: isolate;
-    background:
-        linear-gradient(90deg,
-            rgba(7, 8, 22, 0.88) 0%,
-            rgba(7, 8, 22, 0.70) 46%,
-            rgba(7, 8, 22, 0.52) 100%),
-        linear-gradient(180deg,
-            rgba(7, 8, 22, 0.25) 0%,
-            rgba(7, 8, 22, 0.78) 100%),
-        var(--anime-library-backdrop, none) center 28% / cover no-repeat;
-    backdrop-filter: none;
-    transition: background-image 0.7s ease;
+    position: relative; overflow: hidden; isolation: isolate;
+    background: rgba(7, 8, 22, .94); backdrop-filter: none;
 }
-
-html[data-theme="neon"].anime-category-active .anime-library-panel {
-    background:
-        linear-gradient(90deg,
-            rgba(4, 10, 8, 0.86) 0%,
-            rgba(4, 10, 8, 0.67) 46%,
-            rgba(4, 10, 8, 0.48) 100%),
-        linear-gradient(180deg,
-            rgba(4, 10, 8, 0.22) 0%,
-            rgba(4, 10, 8, 0.72) 100%),
-        var(--anime-library-backdrop, none) center 28% / cover no-repeat;
+html.anime-category-active .anime-library-panel::before,
+html.anime-category-active .anime-library-panel::after {
+    content: ""; position: absolute; inset: 0; z-index: -2; pointer-events: none;
+    background-position: center 28%; background-size: cover; background-repeat: no-repeat;
+    transition: opacity 1.5s ease-in-out;
 }
-
-html[data-theme="flurple"].anime-category-active .anime-library-panel {
-    background:
-        linear-gradient(90deg,
-            rgba(25, 10, 38, 0.87) 0%,
-            rgba(25, 10, 38, 0.68) 46%,
-            rgba(25, 10, 38, 0.48) 100%),
-        linear-gradient(180deg,
-            rgba(25, 10, 38, 0.22) 0%,
-            rgba(25, 10, 38, 0.74) 100%),
-        var(--anime-library-backdrop, none) center 28% / cover no-repeat;
+html.anime-category-active .anime-library-panel::before {
+    background-image: linear-gradient(90deg,rgba(7,8,22,.88),rgba(7,8,22,.52)),
+        linear-gradient(180deg,rgba(7,8,22,.25),rgba(7,8,22,.78)),
+        var(--anime-library-backdrop-1,none);
+    opacity: calc(2 - var(--anime-library-backdrop-layer,1));
 }
-
-html.anime-category-active .anime-library-panel .movie-grid {
-    position: relative;
+html.anime-category-active .anime-library-panel::after {
+    background-image: linear-gradient(90deg,rgba(7,8,22,.88),rgba(7,8,22,.52)),
+        linear-gradient(180deg,rgba(7,8,22,.25),rgba(7,8,22,.78)),
+        var(--anime-library-backdrop-2,none);
+    opacity: calc(var(--anime-library-backdrop-layer,1) - 1);
+}
+html[data-theme="neon"].anime-category-active .anime-library-panel::before {
+    background-image: linear-gradient(90deg,rgba(4,10,8,.86),rgba(4,10,8,.48)),
+        linear-gradient(180deg,rgba(4,10,8,.22),rgba(4,10,8,.72)),
+        var(--anime-library-backdrop-1,none);
+}
+html[data-theme="neon"].anime-category-active .anime-library-panel::after {
+    background-image: linear-gradient(90deg,rgba(4,10,8,.86),rgba(4,10,8,.48)),
+        linear-gradient(180deg,rgba(4,10,8,.22),rgba(4,10,8,.72)),
+        var(--anime-library-backdrop-2,none);
+}
+html[data-theme="flurple"].anime-category-active .anime-library-panel::before {
+    background-image: linear-gradient(90deg,rgba(25,10,38,.87),rgba(25,10,38,.48)),
+        linear-gradient(180deg,rgba(25,10,38,.22),rgba(25,10,38,.74)),
+        var(--anime-library-backdrop-1,none);
+}
+html[data-theme="flurple"].anime-category-active .anime-library-panel::after {
+    background-image: linear-gradient(90deg,rgba(25,10,38,.87),rgba(25,10,38,.48)),
+        linear-gradient(180deg,rgba(25,10,38,.22),rgba(25,10,38,.74)),
+        var(--anime-library-backdrop-2,none);
+}
+html.anime-category-active .anime-library-panel .movie-grid { position: relative; }
+@media (prefers-reduced-motion: reduce) {
+    html.anime-category-active .anime-library-panel::before,
+    html.anime-category-active .anime-library-panel::after { transition: none; }
 }
