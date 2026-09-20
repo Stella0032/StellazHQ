@@ -3121,6 +3121,7 @@ async function auto_sync_plex_activity() {
                 continue;
             }
             const row = {
+                user_id: auth.currentUser.uid,
                 title: item.title,
                 year: item.year,
                 ...(item.tmdb_id ? {tmdb_id: Number(item.tmdb_id)} : {}),
@@ -3150,6 +3151,7 @@ async function auto_sync_plex_activity() {
                 continue;
             }
             const row = {
+                user_id: auth.currentUser.uid,
                 title: item.title,
                 year: item.year,
                 ...(item.tmdb_id ? {tmdb_id: Number(item.tmdb_id)} : {}),
