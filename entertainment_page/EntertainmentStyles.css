@@ -2840,3 +2840,66 @@ html[data-theme="flurple"] .nav-links {
         gap: 5px;
     }
 }
+
+
+/*? -------------------------------- */
+/*^ ----- Rich Anime Details ------- */
+/*? -------------------------------- */
+/*#region*/
+.anime-detail-dialog {
+    width: min(1100px, calc(100% - 32px));
+}
+
+.anime-detail-shell {
+    align-items: start;
+}
+
+.anime-detail-form {
+    margin-top: 22px;
+    padding-top: 18px;
+    border-top: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.anime-detail-controls {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(170px, 1fr));
+    gap: 12px;
+}
+
+.anime-detail-controls label {
+    display: grid;
+    gap: 7px;
+    color: #cbd0df;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.anime-detail-controls .movie-filter {
+    width: 100%;
+}
+
+.anime-detail-form .anime-edit-episodes {
+    margin-top: 18px;
+}
+
+.anime-detail-save {
+    width: auto;
+    min-width: 190px;
+    margin-top: 18px;
+}
+
+.anime-detail-dialog .anime-episode-picker {
+    max-height: 155px;
+    overflow-y: auto;
+}
+
+@media (max-width: 700px) {
+    .anime-detail-controls {
+        grid-template-columns: 1fr;
+    }
+
+    .anime-detail-save {
+        width: 100%;
+    }
+}
+/*#endregion*/
