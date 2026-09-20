@@ -2140,8 +2140,12 @@ exports.getPlexImportPreview = onCall(async (request) => {
 
     for (const section of sections) {
         if (section.type !== "movie" && section.type !== "show") continue;
+        // Ask Plex to include the signed-in user's state explicitly.
+        // Without includeUserState, section listings can omit userRating even
+        // though the rating is visible in Plex's UI/profile.
         const all = await plex_json(
-            base_url + "/library/sections/" + encodeURIComponent(section.key) + "/all",
+            base_url + "/library/sections/" + encodeURIComponent(section.key) +
+                "/all?includeUserState=1&sort=userRating%3Adesc",
             server_token
         );
         const items = all.MediaContainer?.Metadata || [];
