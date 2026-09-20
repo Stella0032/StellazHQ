@@ -280,6 +280,13 @@
                 Year
                 <input id="library_add_year" type="number" min="1888" max="2100" required placeholder="Filled automatically">
             </label>
+            <label>
+                Add as
+                <select class="movie-filter library-status-select" id="library_add_status">
+                    <option value="watched">Watched</option>
+                    <option value="watch_later">Watch later</option>
+                </select>
+            </label>
             <p class="library-dialog-note">Stellaz will automatically fetch the poster, genres and TMDB rating.</p>
             <button class="library-dialog-submit" id="library_add_submit" type="submit">Add to library</button>
         </form>
