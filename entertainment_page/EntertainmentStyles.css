@@ -2685,3 +2685,46 @@ html[data-theme="flurple"] .nav-links {
     }
 }
 /*#endregion*/
+
+
+/* TV library uses the same compact toolbar rhythm as Movies. */
+.show-filters {
+    grid-template-columns:
+        minmax(150px, 1fr)
+        minmax(110px, 0.7fr)
+        minmax(145px, 0.9fr)
+        minmax(190px, 1.2fr)
+        86px;
+}
+
+.watch-later-complete {
+    position: absolute;
+    z-index: 4;
+    right: 8px;
+    bottom: 8px;
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(103, 226, 173, 0.45);
+    border-radius: 50%;
+    color: #eafff3;
+    background: rgba(8, 9, 22, 0.86);
+    backdrop-filter: blur(8px);
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 800;
+    opacity: 0;
+    transition: opacity 0.18s ease, background 0.18s ease,
+        transform 0.18s ease;
+}
+
+.movie-poster-wrap:hover .watch-later-complete,
+.movie-poster-wrap:focus-within .watch-later-complete {
+    opacity: 1;
+}
+
+.watch-later-complete:hover {
+    transform: translateY(-1px);
+    background: rgba(45, 170, 105, 0.88);
+}
