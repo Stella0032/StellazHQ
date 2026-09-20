@@ -3217,11 +3217,29 @@ html.anime-category-active body::after {
             var(--anime-library-backdrop-2-right, none);
     }
 
+    /* Theme rules above normally replace background-image with a tinted
+       single backdrop. Re-apply the dual side images on widescreen so every
+       theme uses the same Anime layout. */
+    html[data-theme="neon"].anime-category-active body::before,
+    html[data-theme="flurple"].anime-category-active body::before {
+        background-image:
+            var(--anime-library-backdrop-1-left, none),
+            var(--anime-library-backdrop-1-right, none);
+    }
+
+    html[data-theme="neon"].anime-category-active body::after,
+    html[data-theme="flurple"].anime-category-active body::after {
+        background-image:
+            var(--anime-library-backdrop-2-left, none),
+            var(--anime-library-backdrop-2-right, none);
+    }
+
     html[data-theme="neon"].anime-category-active body::before,
     html[data-theme="neon"].anime-category-active body::after,
     html[data-theme="flurple"].anime-category-active body::before,
     html[data-theme="flurple"].anime-category-active body::after {
         background-size: auto 100%, auto 100%;
         background-position: left center, right center;
+        background-repeat: no-repeat, no-repeat;
     }
 }
