@@ -2090,7 +2090,9 @@ library_add_form.addEventListener("submit", async (event) => {
         library_add_dialog.close();
 
         if (is_movie) {
-            await load_movie_library();
+            await load_plex_connection_status();
+        await finish_plex_connection();
+        await load_movie_library();
             show_entertainment_category("Movies");
         } else {
             await load_show_library();
@@ -2858,6 +2860,63 @@ mal_connect_button.addEventListener("click", async () => {
 //* ----- Authentication ---------
 //? ------------------------------
 //#region
+
+//? ------------------------------
+//* ----- Plex Connection --------
+//? ------------------------------
+//#region
+const plex_connect_title = document.getElementById("plex_connect_title");
+const plex_connect_description = document.getElementById("plex_connect_description");
+const plex_connect_button = document.getElementById("plex_connect_button");
+
+async function load_plex_connection_status() {
+    if (!plex_connect_button) return;
+    try {
+        const result = await httpsCallable(functions, "getPlexConnectionStatus")();
+        if (result.data.connected) {
+            plex_connect_title.textContent = "Plex Connected ✓";
+            plex_connect_description.textContent =
+                "Connected as " + result.data.username + ". Rating import comes next.";
+            plex_connect_button.textContent = "Plex Connected";
+            plex_connect_button.disabled = true;
+        }
+    } catch (error) { console.error("Unable to check Plex connection:", error); }
+}
+
+async function finish_plex_connection() {
+    if (sessionStorage.getItem("plex_connecting") !== "true") return;
+    sessionStorage.removeItem("plex_connecting");
+    try {
+        const result = await httpsCallable(functions, "finishPlexConnection")();
+        if (!result.data.connected) throw new Error("Plex authorization was not completed.");
+        await load_plex_connection_status();
+        show_toast("Plex connected.");
+    } catch (error) {
+        console.error("Unable to finish Plex connection:", error);
+        alert("Unable to connect Plex. Please try again.");
+    }
+}
+
+if (plex_connect_button) {
+    plex_connect_button.addEventListener("click", async () => {
+        plex_connect_button.disabled = true;
+        plex_connect_button.textContent = "Connecting...";
+        try {
+            const result = await httpsCallable(functions, "beginPlexConnection")({
+                forward_url: window.location.href
+            });
+            sessionStorage.setItem("plex_connecting", "true");
+            window.location.href = result.data.authorization_url;
+        } catch (error) {
+            console.error("Unable to start Plex connection:", error);
+            plex_connect_button.disabled = false;
+            plex_connect_button.textContent = "Connect Plex";
+            alert("Unable to start Plex connection.");
+        }
+    });
+}
+//#endregion
+
 onAuthStateChanged(auth, async (user) => {
     if (!user) {
         window.location.href = "../index.html";
