@@ -756,7 +756,8 @@ function get_filtered_movies() {
             case "franchise-asc":
                 return (a.franchise || "zzzz").localeCompare(
                     b.franchise || "zzzz"
-                ) || a.title.localeCompare(b.title);
+                ) || (Number(b.year) || 0) - (Number(a.year) || 0) ||
+                    a.title.localeCompare(b.title);
             case "year-asc":
                 return a.year - b.year;
             case "title-asc":
@@ -770,7 +771,8 @@ function get_filtered_movies() {
             default:
                 return (a.franchise || "zzzz").localeCompare(
                     b.franchise || "zzzz"
-                ) || a.title.localeCompare(b.title);
+                ) || (Number(b.year) || 0) - (Number(a.year) || 0) ||
+                    a.title.localeCompare(b.title);
         }
     });
 }
