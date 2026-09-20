@@ -3405,3 +3405,8 @@ html.anime-category-active body::after {
 .profile-area .connection-badges {
     margin-left: 0;
 }
+
+/* A connected Plex account uses the navbar badge instead of the setup card. */
+.plex-connect-card[hidden] {
+    display: none;
+}
