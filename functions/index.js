@@ -1953,6 +1953,68 @@ function plex_guids(item) {
     return (item.Guid || []).map((entry) => entry.id).filter(Boolean);
 }
 
+exports.getPlexMetadataFallback = onCall(async (request) => {
+    if (!request.auth) throw new HttpsError("unauthenticated", "You must be logged in.");
+    const title = String(request.data?.title || "").trim();
+    const year = Number(request.data?.year) || null;
+    const media_type = request.data?.type === "movie" ? "movie" : "show";
+    if (!title) throw new HttpsError("invalid-argument", "Title is required.");
+
+    const connection = await db.collection("plex_connections").doc(request.auth.uid).get();
+    if (!connection.exists || !connection.data().access_token) {
+        throw new HttpsError("failed-precondition", "Connect Plex first.");
+    }
+    const account_token = connection.data().access_token;
+    const resources = await plex_json(
+        "https://clients.plex.tv/api/v2/resources?includeHttps=1&includeRelay=1",
+        account_token
+    );
+    const servers = (resources || []).filter((resource) =>
+        String(resource.provides || "").split(",").includes("server")
+    );
+    const normalize = (value) => String(value || "").trim().toLowerCase();
+    for (const server of servers) {
+        const token = server.accessToken || account_token;
+        for (const connection_item of (server.connections || [])) {
+            if (!connection_item.uri) continue;
+            const base = connection_item.uri.replace(/\/$/, "");
+            try {
+                const sections_data = await plex_json(base + "/library/sections", token);
+                const sections = sections_data.MediaContainer?.Directory || [];
+                for (const section of sections) {
+                    if (section.type !== media_type) continue;
+                    const data = await plex_json(
+                        base + "/library/sections/" + encodeURIComponent(section.key) + "/all",
+                        token
+                    );
+                    const match = (data.MediaContainer?.Metadata || []).find((item) =>
+                        normalize(item.title) === normalize(title) &&
+                        (!year || !plex_year(item) || Number(plex_year(item)) === year)
+                    );
+                    if (!match) continue;
+                    return {
+                        title: match.title,
+                        year: plex_year(match),
+                        overview: match.summary || null,
+                        genres: (match.Genre || []).map((genre) => genre.tag).filter(Boolean),
+                        content_rating: match.contentRating || null,
+                        studio: match.studio || null,
+                        original_title: match.originalTitle || null,
+                        release_date: match.originallyAvailableAt || null,
+                        runtime_minutes: media_type === "movie" && match.duration ?
+                            Math.round(Number(match.duration) / 60000) : null,
+                        average_episode_runtime_minutes: media_type === "show" && match.duration ?
+                            Math.round(Number(match.duration) / 60000) : null,
+                        number_of_episodes: media_type === "show" ? Number(match.leafCount || 0) : null,
+                        plex_thumb: match.thumb || null
+                    };
+                }
+            } catch (_) {}
+        }
+    }
+    throw new HttpsError("not-found", "That title was not found in Plex.");
+});
+
 exports.getPlexPoster = onCall(async (request) => {
     if (!request.auth) throw new HttpsError("unauthenticated", "You must be logged in.");
     const thumb = String(request.data?.thumb || "");
