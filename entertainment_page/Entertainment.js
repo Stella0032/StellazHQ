@@ -2220,6 +2220,12 @@ async function open_anime_editor(anime_id) {
         : "";
     anime_edit_cover.src = active_anime.poster_url || "";
     anime_edit_cover.hidden = !active_anime.poster_url;
+    anime_edit_dialog.style.setProperty(
+        "--anime-backdrop",
+        active_anime.poster_url
+            ? `url("${active_anime.poster_url}")`
+            : "none"
+    );
 
     const media_type = active_anime.media_type
         ? active_anime.media_type.replaceAll("_", " ").toUpperCase()
