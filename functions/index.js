@@ -2085,6 +2085,98 @@ exports.getPlexPoster = onCall(async (request) => {
     throw new HttpsError("not-found", "Plex poster could not be loaded.");
 });
 
+exports.getPlexRatedTitles = onCall(async (request) => {
+    if (!request.auth) throw new HttpsError("unauthenticated", "You must be logged in.");
+
+    const connection = await db.collection("plex_connections")
+        .doc(request.auth.uid).get();
+    if (!connection.exists || !connection.data().access_token) {
+        throw new HttpsError("failed-precondition", "Connect Plex first.");
+    }
+
+    const account_token = connection.data().access_token;
+    const resources = await plex_json(
+        "https://clients.plex.tv/api/v2/resources?includeHttps=1&includeRelay=1",
+        account_token
+    );
+    const servers = (resources || []).filter((resource) =>
+        resource.provides === "server" ||
+        String(resource.provides || "").split(",").includes("server")
+    );
+
+    let server = null;
+    let base_url = null;
+    for (const candidate of servers) {
+        const connections = [...(candidate.connections || [])].sort((a, b) => {
+            const score = (item) => (item.protocol === "https" ? 4 : 0) +
+                (!item.relay ? 2 : 0) + (!item.local ? 1 : 0);
+            return score(b) - score(a);
+        });
+        for (const candidate_connection of connections) {
+            if (!candidate_connection.uri) continue;
+            try {
+                await plex_json(candidate_connection.uri + "/",
+                    candidate.accessToken || account_token);
+                server = candidate;
+                base_url = candidate_connection.uri.replace(/\/$/, "");
+                break;
+            } catch (_) {}
+        }
+        if (server) break;
+    }
+    if (!server || !base_url) {
+        throw new HttpsError("unavailable", "Stellaz could not reach your Plex Media Server.");
+    }
+
+    const server_token = server.accessToken || account_token;
+    const sections_data = await plex_json(base_url + "/library/sections", server_token);
+    const sections = sections_data.MediaContainer?.Directory || [];
+    const movies = [];
+    const shows = [];
+
+    for (const section of sections) {
+        if (section.type !== "movie" && section.type !== "show") continue;
+        const plex_type = section.type === "movie" ? 1 : 2;
+        const section_url =
+            base_url + "/library/sections/" + encodeURIComponent(section.key) + "/all";
+        const rated = await plex_json(
+            section_url +
+                "?type=" + plex_type +
+                "&includeGuids=1&includeUserState=1" +
+                "&sort=lastRatedAt%3Adesc&userRating%3E%3E=0",
+            server_token
+        );
+
+        for (const item of (rated.MediaContainer?.Metadata || [])) {
+            const rating = item.userRating == null ? null : Number(item.userRating);
+            if (!(rating > 0)) continue;
+            const row = {
+                title: item.title,
+                year: plex_year(item),
+                rating,
+                guids: plex_guids(item),
+                tmdb_id: (() => {
+                    const guid = plex_guids(item).find((id) => id.startsWith("tmdb://"));
+                    return guid ? Number(guid.slice(7)) || null : null;
+                })(),
+                plex_thumb: item.thumb || null,
+                genres: (item.Genre || []).map((genre) => genre.tag).filter(Boolean),
+            };
+            if (section.type === "movie") {
+                row.runtime_minutes =
+                    item.duration ? Math.round(Number(item.duration) / 60000) : null;
+                movies.push(row);
+            } else {
+                row.average_episode_runtime_minutes =
+                    item.duration ? Math.round(Number(item.duration) / 60000) : null;
+                shows.push(row);
+            }
+        }
+    }
+
+    return {movies, shows};
+});
+
 exports.getPlexImportPreview = onCall(async (request) => {
     if (!request.auth) throw new HttpsError("unauthenticated", "You must be logged in.");
 
