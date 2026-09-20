@@ -177,7 +177,7 @@ a {
 /*#region*/
 .entertainment-dashboard {
     width: min(1450px, calc(100% - 80px));
-    margin: 12px auto 45px;
+    margin: 24px auto 45px;
 }
 
 .hero {
