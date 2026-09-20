@@ -127,6 +127,7 @@ a {
     display: flex;
     justify-content: center;
     gap: clamp(12px, 2vw, 30px);
+    transform: translateX(-28px);
 }
 
 .nav-links a {
