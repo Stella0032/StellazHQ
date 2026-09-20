@@ -635,15 +635,12 @@ function create_movie_card(movie, index) {
     return `
         <article class="movie-card${extra_class}" data-library-item="movie" data-item-id="${movie.id}">
             <div class="movie-poster-wrap">
-                ${poster}
+                <button class="library-detail-open" type="button" data-library-detail-type="movie" data-library-detail-id="${movie.id}" aria-label="View details for ${movie.title}">${poster}</button>
                 ${movie.status === "watch_later" ? '<span class="watch-later-badge">WATCH LATER</span><button class="watch-later-complete" type="button" data-mark-watched-type="movie" data-mark-watched-id="' + movie.id + '" title="Mark as watched" aria-label="Mark ' + movie.title + ' as watched">✓</button>' : ""}
                 <button class="library-remove-button" type="button" data-remove-type="movie" data-remove-id="${movie.id}" aria-label="Remove ${movie.title} from your movies" title="Remove from library">×</button>
-                <div class="movie-rating-overlay">
-                    <p>Rate this movie</p>
-                    <div class="rating-stars">${rating_buttons}</div>
-                </div>
+
             </div>
-            <h3 title="${movie.title}">${movie.title}</h3>
+            <button class="library-title-button" type="button" data-library-detail-type="movie" data-library-detail-id="${movie.id}" title="${movie.title}">${movie.title}</button>
             <p class="movie-meta">
                 ${movie.year}${tomato_rating}${audience_rating}${tmdb_rating}${personal_rating}
             </p>
@@ -992,17 +989,15 @@ function create_show_card(show, index) {
     return `
         <article class="movie-card${extra_class}" data-library-item="show" data-item-id="${show.id}">
             <div class="movie-poster-wrap">
-                ${poster}
+                <button class="library-detail-open" type="button" data-library-detail-type="show" data-library-detail-id="${show.id}" aria-label="View details for ${show.title}">${poster}</button>
                 ${show.status === "watch_later" ? '<span class="watch-later-badge">WATCH LATER</span><button class="watch-later-complete" type="button" data-mark-watched-type="show" data-mark-watched-id="' + show.id + '" title="Mark as watched" aria-label="Mark ' + show.title + ' as watched">✓</button>' : ""}
                 <button class="library-remove-button" type="button" data-remove-type="show" data-remove-id="${show.id}" aria-label="Remove ${show.title} from your TV shows" title="Remove from library">×</button>
-                <div class="movie-rating-overlay">
-                    <p>Rate this show</p>
-                    <div class="rating-stars">${rating_buttons}</div>
-                </div>
+
             </div>
-            <button class="show-title-button" type="button"
-                    data-show-open="${show.id}"
-                    aria-label="Open seasons for ${show.title}">
+            <button class="show-title-button library-title-button" type="button"
+                    data-library-detail-type="show"
+                    data-library-detail-id="${show.id}"
+                    aria-label="View details for ${show.title}">
                 ${show.title}
             </button>
             <p class="movie-meta">${show.year}${tmdb_rating}${personal_rating}</p>
@@ -1551,6 +1546,219 @@ show_filter_clear.addEventListener("click", () => {
 show_library_toggle.addEventListener("click", () => {
     const expanded = show_grid.classList.toggle("expanded");
     show_library_toggle.textContent = expanded ? "Show less" : "Show all shows";
+});
+//#endregion
+
+
+//? ----------------------------------
+//* ----- Library Detail Overlay -----
+//? ----------------------------------
+//#region
+let active_library_detail = null;
+
+function render_library_detail_rating(item, type) {
+    const value = item.my_rating !== null ? Number(item.my_rating) : null;
+
+    return Array.from({length: 10}, (_, index) => {
+        const rating = index + 1;
+        const selected = value !== null && rating <= value;
+
+        return `
+            <button class="rating-star ${selected ? "selected" : ""}"
+                    type="button"
+                    data-library-dialog-rating="${type}"
+                    data-library-dialog-id="${item.id}"
+                    data-rating="${rating}"
+                    aria-label="Rate ${item.title} ${rating} out of 10">
+                ★<span>${rating}</span>
+            </button>`;
+    }).join("");
+}
+
+async function open_library_detail(type, item) {
+    active_library_detail = {type, item};
+    active_recommendation_detail = null;
+
+    recommendation_dialog_poster.src = item.poster_url || "";
+    recommendation_dialog_poster.alt = `${item.title} poster`;
+    recommendation_dialog_type.textContent =
+        type === "movie" ? "YOUR MOVIE LIBRARY" : "YOUR TV LIBRARY";
+    recommendation_dialog_title.textContent = item.title;
+    recommendation_dialog_meta.textContent =
+        `${item.year || "Year unavailable"}${item.tmdb_rating != null ?
+            ` · ⭐ ${Number(item.tmdb_rating).toFixed(1)} TMDB` : ""}`;
+    recommendation_dialog_description.textContent = "Loading description…";
+    recommendation_dialog_facts.innerHTML =
+        '<span>Loading full details…</span>';
+    recommendation_dialog_reason.textContent =
+        item.status === "watch_later"
+            ? "Saved to Watch Later"
+            : "In your watched library";
+    recommendation_dialog_actions.innerHTML = `
+        <div class="library-dialog-rating">
+            <p>Your rating</p>
+            <div class="rating-stars">
+                ${render_library_detail_rating(item, type)}
+            </div>
+        </div>
+        ${item.status === "watch_later" ? `
+            <button class="recommendation-action primary" type="button"
+                    data-library-dialog-watched="${type}"
+                    data-library-dialog-id="${item.id}">
+                ✓ Mark watched
+            </button>` : ""}
+        ${type === "show" ? `
+            <button class="recommendation-action" type="button"
+                    data-library-dialog-seasons="${item.id}">
+                View seasons & episodes
+            </button>` : ""}
+    `;
+
+    recommendation_dialog.showModal();
+
+    try {
+        const metadata_function = httpsCallable(
+            functions,
+            type === "movie" ? "getMovieMetadata" : "getTVShowMetadata"
+        );
+        const result = await metadata_function({
+            title: item.title,
+            year: item.year
+        });
+        const data = result.data;
+
+        if (!active_library_detail ||
+            active_library_detail.item.id !== item.id ||
+            active_library_detail.type !== type) {
+            return;
+        }
+
+        recommendation_dialog_description.textContent =
+            data.overview || "No description available.";
+
+        const facts = [
+            data.release_date ? `Release: ${data.release_date}` : null,
+            data.genres?.length ? `Genres: ${data.genres.join(", ")}` : null,
+            data.runtime_minutes ?
+                `Runtime: ${data.runtime_minutes} min` : null,
+            data.average_episode_runtime_minutes ?
+                `Episode runtime: ~${data.average_episode_runtime_minutes} min` :
+                null,
+            data.number_of_seasons ?
+                `Seasons: ${data.number_of_seasons}` : null,
+            data.number_of_episodes ?
+                `Episodes: ${data.number_of_episodes}` : null,
+            data.status ? `Status: ${data.status}` : null,
+            data.original_title && data.original_title !== data.title ?
+                `Original title: ${data.original_title}` : null
+        ].filter(Boolean);
+
+        recommendation_dialog_facts.innerHTML = facts.length
+            ? facts.map((fact) => `<span>${fact}</span>`).join("")
+            : "<span>No additional details available.</span>";
+
+        if (data.backdrop_url) {
+            recommendation_dialog.style.setProperty(
+                "--recommendation-backdrop",
+                `url("${data.backdrop_url}")`
+            );
+        }
+    } catch (error) {
+        console.error("Unable to load library details:", error);
+        recommendation_dialog_description.textContent =
+            "Additional details could not be loaded.";
+        recommendation_dialog_facts.innerHTML = "";
+    }
+}
+
+movie_grid.addEventListener("click", (event) => {
+    const open_button = event.target.closest(
+        '[data-library-detail-type="movie"]'
+    );
+    if (!open_button) return;
+
+    const movie = movie_library.find(
+        (item) => item.id === Number(open_button.dataset.libraryDetailId)
+    );
+    if (movie) open_library_detail("movie", movie);
+});
+
+show_grid.addEventListener("click", (event) => {
+    const open_button = event.target.closest(
+        '[data-library-detail-type="show"]'
+    );
+    if (!open_button) return;
+
+    const show = show_library.find(
+        (item) => item.id === Number(open_button.dataset.libraryDetailId)
+    );
+    if (show) open_library_detail("show", show);
+});
+
+recommendation_dialog_actions.addEventListener("click", async (event) => {
+    if (!active_library_detail) return;
+
+    const rating_button = event.target.closest("[data-library-dialog-rating]");
+    if (rating_button) {
+        const type = rating_button.dataset.libraryDialogRating;
+        const id = Number(rating_button.dataset.libraryDialogId);
+        const rating = Number(rating_button.dataset.rating);
+        const table = type === "movie" ? "movies" : "tv_shows";
+
+        try {
+            const {error} = await supabase
+                .from(table)
+                .update({my_rating: rating})
+                .eq("id", id);
+            if (error) throw error;
+
+            const library = type === "movie" ? movie_library : show_library;
+            const item = library.find((entry) => entry.id === id);
+            if (item) item.my_rating = rating;
+
+            recommendation_dialog_actions
+                .querySelectorAll("[data-library-dialog-rating]")
+                .forEach((button) => {
+                    button.classList.toggle(
+                        "selected",
+                        Number(button.dataset.rating) <= rating
+                    );
+                });
+
+            if (type === "movie") render_movie_library();
+            else render_show_library();
+        } catch (error) {
+            console.error("Unable to save library rating:", error);
+            alert("Unable to save your rating. Please try again.");
+        }
+        return;
+    }
+
+    const watched_button = event.target.closest(
+        "[data-library-dialog-watched]"
+    );
+    if (watched_button) {
+        await mark_library_item_watched(
+            watched_button.dataset.libraryDialogWatched,
+            Number(watched_button.dataset.libraryDialogId),
+            watched_button
+        );
+        recommendation_dialog.close();
+        return;
+    }
+
+    const seasons_button = event.target.closest(
+        "[data-library-dialog-seasons]"
+    );
+    if (seasons_button && active_library_detail.type === "show") {
+        const show = active_library_detail.item;
+        recommendation_dialog.close();
+        open_show_seasons(show);
+    }
+});
+
+recommendation_dialog.addEventListener("close", () => {
+    active_library_detail = null;
 });
 //#endregion
 
