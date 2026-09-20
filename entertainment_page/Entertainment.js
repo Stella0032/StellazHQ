@@ -944,6 +944,7 @@ const show_details_title = document.getElementById("show_details_title");
 const show_details_eyebrow = document.getElementById("show_details_eyebrow");
 const show_details_close = document.getElementById("show_details_close");
 const season_back_button = document.getElementById("season_back_button");
+const anime_detail_back_button = document.getElementById("anime_detail_back_button");
 const season_grid = document.getElementById("season_grid");
 const episode_list = document.getElementById("episode_list");
 
@@ -1185,6 +1186,7 @@ async function open_show_seasons(show, media_label = "TV SHOW") {
     episode_list.hidden = true;
     season_grid.hidden = false;
     season_back_button.hidden = true;
+    anime_detail_back_button.hidden = media_label !== "ANIME";
     show_details_dialog.showModal();
 
     try {
@@ -1272,6 +1274,7 @@ async function open_season_episodes(season_number) {
     season_grid.hidden = true;
     episode_list.hidden = false;
     season_back_button.hidden = false;
+    anime_detail_back_button.hidden = true;
     episode_list.innerHTML =
         '<p class="library-loading">Loading episodes...</p>';
 
@@ -1522,11 +1525,17 @@ episode_list.addEventListener("click", async (event) => {
     }
 });
 
+anime_detail_back_button.addEventListener("click", () => {
+    show_details_dialog.close();
+    anime_edit_dialog.showModal();
+});
+
 season_back_button.addEventListener("click", () => {
     show_details_title.textContent = active_show_title;
     episode_list.hidden = true;
     season_grid.hidden = false;
     season_back_button.hidden = true;
+    anime_detail_back_button.hidden = show_details_eyebrow.textContent !== "ANIME";
 });
 
 show_details_close.addEventListener("click", () => {
