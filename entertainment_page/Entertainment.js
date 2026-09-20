@@ -2875,6 +2875,7 @@ async function load_plex_connection_status() {
         const result = await httpsCallable(functions, "getPlexConnectionStatus")();
         if (result.data.connected) {
             document.getElementById("plex_connection_badge")?.removeAttribute("hidden");
+            document.getElementById("plex_import_button")?.removeAttribute("hidden");
             const plex_card = document.getElementById("plex_connect_card");
             if (plex_card) plex_card.hidden = true;
             plex_connect_title.textContent = "Plex Connected ✓";
@@ -2885,6 +2886,56 @@ async function load_plex_connection_status() {
         }
     } catch (error) { console.error("Unable to check Plex connection:", error); }
 }
+
+
+const plex_import_button = document.getElementById("plex_import_button");
+const plex_import_dialog = document.getElementById("plex_import_dialog");
+const plex_import_close = document.getElementById("plex_import_close");
+const plex_import_summary = document.getElementById("plex_import_summary");
+const plex_import_stats = document.getElementById("plex_import_stats");
+const plex_import_confirm = document.getElementById("plex_import_confirm");
+let plex_import_preview = null;
+
+function same_library_title(a, b) {
+    return String(a.title || "").trim().toLowerCase() === String(b.title || "").trim().toLowerCase() &&
+        (!a.year || !b.year || Number(a.year) === Number(b.year));
+}
+
+async function open_plex_import_preview() {
+    if (!plex_import_dialog) return;
+    plex_import_preview = null;
+    plex_import_summary.textContent = "Reading your Plex library…";
+    plex_import_stats.innerHTML = "";
+    plex_import_confirm.disabled = true;
+    plex_import_dialog.showModal();
+    try {
+        const result = await httpsCallable(functions, "getPlexImportPreview")();
+        const data = result.data;
+        const new_movies = (data.movies || []).filter((item) =>
+            !movie_library.some((existing) => same_library_title(existing, item)));
+        const new_shows = (data.shows || []).filter((item) =>
+            !show_library.some((existing) => same_library_title(existing, item)));
+        plex_import_preview = {...data, new_movies, new_shows};
+        const ratings = [...(data.movies || []), ...(data.shows || [])]
+            .filter((item) => item.rating != null).length;
+        plex_import_summary.textContent = `Found ${data.movies.length} movies and ${data.shows.length} TV shows on ${data.server}.`;
+        plex_import_stats.innerHTML = `
+            <div><strong>${new_movies.length}</strong><span>new movies</span></div>
+            <div><strong>${new_shows.length}</strong><span>new TV shows</span></div>
+            <div><strong>${ratings}</strong><span>ratings found</span></div>
+            <div><strong>${Number(data.watched_episode_count || 0)}</strong><span>watched episodes</span></div>`;
+        plex_import_confirm.disabled = new_movies.length + new_shows.length === 0;
+    } catch (error) {
+        console.error("Unable to preview Plex import:", error);
+        plex_import_summary.textContent = error.message || "Unable to read your Plex library.";
+    }
+}
+plex_import_button?.addEventListener("click", open_plex_import_preview);
+plex_import_close?.addEventListener("click", () => plex_import_dialog.close());
+plex_import_confirm?.addEventListener("click", () => {
+    if (!plex_import_preview) return;
+    show_toast("Preview verified. Database import comes next.");
+});
 
 async function finish_plex_connection() {
     if (sessionStorage.getItem("plex_connecting") !== "true") return;
