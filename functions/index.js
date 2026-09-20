@@ -2013,21 +2013,30 @@ exports.getPlexImportPreview = onCall(async (request) => {
         const items = all.MediaContainer?.Metadata || [];
         if (section.type === "movie") {
             for (const item of items) {
+                const watched = Number(item.viewCount || 0) > 0;
+                const rating = item.userRating == null ? null : Number(item.userRating);
+                // A Plex library can contain thousands of unwatched server titles.
+                // Import candidates are personal activity only: watched or rated.
+                if (!watched && rating == null) continue;
                 movies.push({
                     title: item.title,
                     year: plex_year(item),
-                    rating: item.userRating == null ? null : Number(item.userRating),
-                    watched: Number(item.viewCount || 0) > 0,
+                    rating,
+                    watched,
                     guids: plex_guids(item),
                 });
             }
         } else {
             for (const item of items) {
+                const watched_episodes = Number(item.viewedLeafCount || 0);
+                const rating = item.userRating == null ? null : Number(item.userRating);
+                // Keep shows only when this Plex user watched an episode or rated the show.
+                if (watched_episodes <= 0 && rating == null) continue;
                 shows.push({
                     title: item.title,
                     year: plex_year(item),
-                    rating: item.userRating == null ? null : Number(item.userRating),
-                    watched_episodes: Number(item.viewedLeafCount || 0),
+                    rating,
+                    watched_episodes,
                     total_episodes: Number(item.leafCount || 0),
                     guids: plex_guids(item),
                 });
