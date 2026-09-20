@@ -3393,3 +3393,15 @@ html.anime-category-active body::after {
     .connection-badges { margin-left:auto; gap:5px; }
     .connection-badge { width:28px; height:28px; }
 }
+
+/* Keep the profile in its original right-hand navbar column.
+   Connected-service badges live inside that same column, immediately left of it. */
+.profile-area {
+    display: flex;
+    align-items: center;
+    justify-self: end;
+    gap: 8px;
+}
+.profile-area .connection-badges {
+    margin-left: 0;
+}
