@@ -1752,6 +1752,12 @@ async function open_library_detail(type, item) {
     let saved_plex_metadata = get_saved_plex_metadata(type, item);
     if (saved_plex_metadata && !item.tmdb_id) {
         render_saved_library_details(type, item, saved_plex_metadata);
+        get_plex_poster_data_url(item.plex_thumb || saved_plex_metadata.plex_thumb)
+            .then((poster_url) => {
+                if (poster_url && active_library_detail?.item.id === item.id) {
+                    recommendation_dialog_poster.src = poster_url;
+                }
+            });
     } else {
         recommendation_dialog_description.textContent = "Loading description…";
         recommendation_dialog_facts.innerHTML =
