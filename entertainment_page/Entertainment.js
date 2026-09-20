@@ -1827,29 +1827,36 @@ async function open_library_detail(type, item) {
             );
         }
     } catch (error) {
-        console.error("Unable to load library details:", error);
-        const plex_item = plex_import_preview
-            ? (type === "movie" ? plex_import_preview.movies : plex_import_preview.shows)
-                ?.find((entry) => same_library_title(item, entry))
-            : null;
-        const poster_url = item.poster_url ||
-            await get_plex_poster_data_url(item.plex_thumb || plex_item?.plex_thumb);
-        if (poster_url) recommendation_dialog_poster.src = poster_url;
-        recommendation_dialog_description.textContent =
-            plex_item?.overview || "No description available.";
-        const plex_facts = [
-            plex_item?.release_date ? `Release: ${plex_item.release_date}` : null,
-            plex_item?.genres?.length ? `Genres: ${plex_item.genres.join(", ")}` : null,
-            plex_item?.runtime_minutes ? `Runtime: ${plex_item.runtime_minutes} min` : null,
-            plex_item?.average_episode_runtime_minutes ?
-                `Episode runtime: ~${plex_item.average_episode_runtime_minutes} min` : null,
-            plex_item?.total_episodes ? `Episodes: ${plex_item.total_episodes}` : null,
-            plex_item?.content_rating ? `Content rating: ${plex_item.content_rating}` : null,
-            plex_item?.studio ? `Studio: ${plex_item.studio}` : null
-        ].filter(Boolean);
-        recommendation_dialog_facts.innerHTML = plex_facts.length
-            ? plex_facts.map((fact) => `<span>${fact}</span>`).join("")
-            : "<span>No additional details available.</span>";
+        console.error("Unable to load library details from TMDB:", error);
+        try {
+            const plex_result = await httpsCallable(functions, "getPlexMetadataFallback")({
+                title: item.title, year: item.year, type
+            });
+            const plex_item = plex_result.data || {};
+            const poster_url = item.poster_url ||
+                await get_plex_poster_data_url(item.plex_thumb || plex_item.plex_thumb);
+            if (poster_url) recommendation_dialog_poster.src = poster_url;
+            recommendation_dialog_description.textContent =
+                plex_item.overview || "No description available.";
+            const plex_facts = [
+                plex_item.release_date ? `Release: ${plex_item.release_date}` : null,
+                plex_item.genres?.length ? `Genres: ${plex_item.genres.join(", ")}` : null,
+                plex_item.runtime_minutes ? `Runtime: ${plex_item.runtime_minutes} min` : null,
+                plex_item.average_episode_runtime_minutes ?
+                    `Episode runtime: ~${plex_item.average_episode_runtime_minutes} min` : null,
+                plex_item.number_of_episodes ? `Episodes: ${plex_item.number_of_episodes}` : null,
+                plex_item.content_rating ? `Content rating: ${plex_item.content_rating}` : null,
+                plex_item.studio ? `Studio: ${plex_item.studio}` : null
+            ].filter(Boolean);
+            recommendation_dialog_facts.innerHTML = plex_facts.length
+                ? plex_facts.map((fact) => `<span>${fact}</span>`).join("")
+                : "<span>No additional details available.</span>";
+        } catch (plex_error) {
+            console.error("Unable to load library details from Plex:", plex_error);
+            recommendation_dialog_description.textContent = "No description available.";
+            recommendation_dialog_facts.innerHTML =
+                "<span>No additional details available.</span>";
+        }
     }
 }
 
