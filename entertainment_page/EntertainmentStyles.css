@@ -361,6 +361,58 @@ a {
     letter-spacing: 3px;
 }
 
+.recommendation-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.recommendation-genre-filter {
+    min-width: 150px;
+}
+
+.recommendation-actions {
+    margin-top: 10px;
+    display: grid;
+    gap: 6px;
+}
+
+.recommendation-action {
+    width: 100%;
+    padding: 7px 8px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 9px;
+    color: #dce3f4;
+    background: rgba(255, 255, 255, 0.055);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 650;
+    transition: transform 0.18s ease, border-color 0.18s ease,
+        background 0.18s ease;
+}
+
+.recommendation-action:hover {
+    transform: translateY(-1px);
+    border-color: rgba(123, 220, 255, 0.55);
+    background: rgba(123, 220, 255, 0.1);
+}
+
+.recommendation-action.primary {
+    border-color: rgba(123, 220, 255, 0.35);
+    color: #e9faff;
+}
+
+.recommendation-action.muted {
+    color: #9ca3b8;
+    background: transparent;
+}
+
+.recommendation-action:disabled {
+    cursor: wait;
+    opacity: 0.55;
+}
+
 .recommendation-tabs {
     margin-top: 22px;
     display: flex;
