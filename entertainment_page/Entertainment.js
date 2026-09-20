@@ -1466,6 +1466,7 @@ const library_dialog_title = document.getElementById("library_dialog_title");
 const library_dialog_close = document.getElementById("library_dialog_close");
 const library_add_title = document.getElementById("library_add_title");
 const library_add_year = document.getElementById("library_add_year");
+const library_add_status = document.getElementById("library_add_status");
 const library_title_results = document.getElementById("library_title_results");
 const library_add_submit = document.getElementById("library_add_submit");
 const library_remove_dialog = document.getElementById("library_remove_dialog");
@@ -1493,6 +1494,7 @@ function open_add_dialog(type) {
         type === "movie" ? "Add movie" : "Add TV show";
     library_add_title.value = "";
     library_add_year.value = "";
+    library_add_status.value = "watched";
     library_title_results.innerHTML = "";
     library_title_results.hidden = true;
     library_add_dialog.showModal();
@@ -1578,6 +1580,7 @@ library_add_form.addEventListener("submit", async (event) => {
     const year = Number(library_add_year.value);
     const is_movie = manual_library_type === "movie";
     const table = is_movie ? "movies" : "tv_shows";
+    const status = library_add_status.value;
 
     if (!title || !Number.isInteger(year)) return;
 
@@ -1588,7 +1591,7 @@ library_add_form.addEventListener("submit", async (event) => {
         const {error} = await supabase.from(table).insert({
             title,
             year,
-            status: "watched"
+            status
         });
 
         if (error) {
