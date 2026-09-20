@@ -3094,6 +3094,99 @@ async function ensure_plex_metadata_for_item(type, item) {
     return saved;
 }
 
+async function auto_sync_plex_activity() {
+    try {
+        const result = await httpsCallable(functions, "getPlexImportPreview")();
+        const data = result.data || {};
+        save_plex_metadata_store(data);
+
+        const new_movies = (data.movies || []).filter((item) =>
+            !movie_library.some((existing) => same_library_title(existing, item)));
+        const new_shows = (data.shows || []).filter((item) =>
+            !show_library.some((existing) => same_library_title(existing, item)));
+
+        const movie_rows = new_movies.map((item) => ({
+            title: item.title,
+            year: item.year,
+            ...(item.tmdb_id ? {tmdb_id: Number(item.tmdb_id)} : {}),
+            ...(item.plex_thumb ? {plex_thumb: item.plex_thumb} : {}),
+            ...(item.genres?.length ? {genres: item.genres} : {}),
+            ...(item.runtime_minutes ? {runtime_minutes: item.runtime_minutes} : {}),
+            status: item.watched ? "watched" : "watch_later",
+            ...(item.rating != null ? {my_rating: Number(item.rating)} : {})
+        }));
+        const show_rows = new_shows.map((item) => ({
+            title: item.title,
+            year: item.year,
+            ...(item.tmdb_id ? {tmdb_id: Number(item.tmdb_id)} : {}),
+            ...(item.plex_thumb ? {plex_thumb: item.plex_thumb} : {}),
+            ...(item.genres?.length ? {genres: item.genres} : {}),
+            ...(item.average_episode_runtime_minutes ?
+                {average_episode_runtime_minutes: item.average_episode_runtime_minutes} : {}),
+            status: Number(item.watched_episodes || 0) > 0 ? "watched" : "watch_later",
+            ...(item.rating != null ? {my_rating: Number(item.rating)} : {})
+        }));
+
+        if (movie_rows.length) {
+            const {error} = await supabase.from("movies").insert(movie_rows);
+            if (error) throw error;
+        }
+        if (show_rows.length) {
+            const {error} = await supabase.from("tv_shows").insert(show_rows);
+            if (error) throw error;
+        }
+
+        for (const item of data.movies || []) {
+            const existing = movie_library.find((movie) => same_library_title(movie, item));
+            if (!existing) continue;
+            const patch = {};
+            if (item.rating != null && Number(existing.my_rating) !== Number(item.rating)) {
+                patch.my_rating = Number(item.rating);
+            }
+            if (item.watched && existing.status !== "watched") patch.status = "watched";
+            if (item.plex_thumb) patch.plex_thumb = item.plex_thumb;
+            if (item.tmdb_id) patch.tmdb_id = Number(item.tmdb_id);
+            if (Object.keys(patch).length) {
+                const {error} = await supabase.from("movies").update(patch).eq("id", existing.id);
+                if (error) throw error;
+            }
+        }
+
+        for (const item of data.shows || []) {
+            const existing = show_library.find((show) => same_library_title(show, item));
+            if (!existing) continue;
+            const patch = {};
+            if (item.rating != null && Number(existing.my_rating) !== Number(item.rating)) {
+                patch.my_rating = Number(item.rating);
+            }
+            if (Number(item.watched_episodes || 0) > 0 && existing.status !== "watched") {
+                patch.status = "watched";
+            }
+            if (item.plex_thumb) patch.plex_thumb = item.plex_thumb;
+            if (item.tmdb_id) patch.tmdb_id = Number(item.tmdb_id);
+            if (Object.keys(patch).length) {
+                const {error} = await supabase.from("tv_shows").update(patch).eq("id", existing.id);
+                if (error) throw error;
+            }
+        }
+
+        if (movie_rows.length || show_rows.length ||
+            (data.movies || []).some((item) => item.rating != null) ||
+            (data.shows || []).some((item) => item.rating != null)) {
+            await load_movie_library();
+            await load_show_library();
+        }
+
+        // Keep the existing background metadata/poster cache in sync too.
+        sync_plex_metadata_for_library().catch((error) =>
+            console.error("Unable to refresh Plex metadata after auto-sync:", error)
+        );
+    } catch (error) {
+        // Plex sync should never prevent the Stellaz library itself from opening.
+        console.error("Unable to auto-sync Plex activity:", error);
+    }
+}
+
 async function open_plex_import_preview() {
     if (!plex_import_dialog) return;
     plex_import_preview = null;
@@ -3356,6 +3449,7 @@ onAuthStateChanged(auth, async (user) => {
         await load_plex_connection_status();
         await load_movie_library();
         await load_show_library();
+        await auto_sync_plex_activity();
         await load_mal_connection_status();
         await load_anime_library();
         await finish_mal_connection();
