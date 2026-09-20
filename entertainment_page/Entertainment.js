@@ -2922,16 +2922,27 @@ async function open_plex_import_preview() {
             !movie_library.some((existing) => same_library_title(existing, item)));
         const new_shows = (data.shows || []).filter((item) =>
             !show_library.some((existing) => same_library_title(existing, item)));
-        plex_import_preview = {...data, new_movies, new_shows};
-        const ratings = [...(data.movies || []), ...(data.shows || [])]
-            .filter((item) => item.rating != null).length;
+        const movie_rating_updates = (data.movies || []).filter((item) =>
+            item.rating != null && movie_library.some((existing) =>
+                same_library_title(existing, item) &&
+                Number(existing.my_rating) !== Number(item.rating)));
+        const show_rating_updates = (data.shows || []).filter((item) =>
+            item.rating != null && show_library.some((existing) =>
+                same_library_title(existing, item) &&
+                Number(existing.my_rating) !== Number(item.rating)));
+        const rating_updates = movie_rating_updates.length + show_rating_updates.length;
+        plex_import_preview = {
+            ...data, new_movies, new_shows,
+            movie_rating_updates, show_rating_updates
+        };
         plex_import_summary.textContent = `Found ${data.movies.length} movies and ${data.shows.length} TV shows on ${data.server}.`;
         plex_import_stats.innerHTML = `
             <div><strong>${new_movies.length}</strong><span>new movies</span></div>
             <div><strong>${new_shows.length}</strong><span>new TV shows</span></div>
-            <div><strong>${ratings}</strong><span>ratings found</span></div>
+            <div><strong>${rating_updates}</strong><span>ratings to update</span></div>
             <div><strong>${Number(data.watched_episode_count || 0)}</strong><span>watched episodes</span></div>`;
-        plex_import_confirm.disabled = new_movies.length + new_shows.length === 0;
+        plex_import_confirm.disabled =
+            new_movies.length + new_shows.length + rating_updates === 0;
     } catch (error) {
         console.error("Unable to preview Plex import:", error);
         plex_import_summary.textContent = error.message || "Unable to read your Plex library.";
