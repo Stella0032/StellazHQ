@@ -1182,7 +1182,8 @@ async function enrich_missing_show_metadata(shows) {
         try {
             const result = await get_tv_show_metadata({
                 title: show.title,
-                year: show.year
+                year: show.year,
+                tmdb_id: show.tmdb_id || null
             });
             const metadata = result.data;
             const {error} = await supabase.from("tv_shows").update({
@@ -2970,12 +2971,14 @@ plex_import_confirm?.addEventListener("click", async () => {
         const movie_rows = plex_import_preview.new_movies.map((item) => ({
             title: item.title,
             year: item.year,
+            ...(item.tmdb_id ? {tmdb_id: Number(item.tmdb_id)} : {}),
             status: item.watched ? "watched" : "watch_later",
             ...(item.rating != null ? {my_rating: Number(item.rating)} : {})
         }));
         const show_rows = plex_import_preview.new_shows.map((item) => ({
             title: item.title,
             year: item.year,
+            ...(item.tmdb_id ? {tmdb_id: Number(item.tmdb_id)} : {}),
             status: Number(item.watched_episodes || 0) > 0 ? "watched" : "watch_later",
             ...(item.rating != null ? {my_rating: Number(item.rating)} : {})
         }));

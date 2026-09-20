@@ -1266,9 +1266,10 @@ exports.getTVShowMetadata = onCall(
 
         const title = request.data?.title;
         const year = request.data?.year;
+        const requested_tmdb_id = Number(request.data?.tmdb_id) || null;
 
-        if (!title || typeof title !== "string") {
-            throw new HttpsError("invalid-argument", "TV show title is required.");
+        if ((!title || typeof title !== "string") && !requested_tmdb_id) {
+            throw new HttpsError("invalid-argument", "TV show title or TMDB ID is required.");
         }
 
         const search_url = new URL("https://api.themoviedb.org/3/search/tv");
@@ -1285,21 +1286,22 @@ exports.getTVShowMetadata = onCall(
             accept: "application/json",
         };
 
-        const search_response = await fetch(search_url, {headers});
-
-        if (!search_response.ok) {
-            throw new HttpsError("internal", "TMDB TV search failed.");
-        }
-
-        const search_data = await search_response.json();
-        const match = search_data.results?.[0];
-
-        if (!match) {
-            throw new HttpsError("not-found", "No matching TV show was found on TMDB.");
+        let tmdb_id = requested_tmdb_id;
+        if (!tmdb_id) {
+            const search_response = await fetch(search_url, {headers});
+            if (!search_response.ok) {
+                throw new HttpsError("internal", "TMDB TV search failed.");
+            }
+            const search_data = await search_response.json();
+            const match = search_data.results?.[0];
+            if (!match) {
+                throw new HttpsError("not-found", "No matching TV show was found on TMDB.");
+            }
+            tmdb_id = match.id;
         }
 
         const details_url =
-            `https://api.themoviedb.org/3/tv/${match.id}?language=en-US`;
+            `https://api.themoviedb.org/3/tv/${tmdb_id}?language=en-US`;
         const details_response = await fetch(details_url, {headers});
 
         if (!details_response.ok) {
@@ -2024,6 +2026,11 @@ exports.getPlexImportPreview = onCall(async (request) => {
                     rating,
                     watched,
                     guids: plex_guids(item),
+                    tmdb_id: (() => {
+                        const guid = plex_guids(item).find((id) => id.startsWith("tmdb://"));
+                        return guid ? Number(guid.slice(7)) || null : null;
+                    })(),
+                    plex_thumb: item.thumb || null,
                 });
             }
         } else {
@@ -2039,6 +2046,11 @@ exports.getPlexImportPreview = onCall(async (request) => {
                     watched_episodes,
                     total_episodes: Number(item.leafCount || 0),
                     guids: plex_guids(item),
+                    tmdb_id: (() => {
+                        const guid = plex_guids(item).find((id) => id.startsWith("tmdb://"));
+                        return guid ? Number(guid.slice(7)) || null : null;
+                    })(),
+                    plex_thumb: item.thumb || null,
                 });
             }
             const episode_data = await plex_json(
