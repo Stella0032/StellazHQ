@@ -2908,8 +2908,8 @@ async function open_plex_import_preview() {
         <span class="plex-loading-row">
             <span class="plex-loading-spinner" aria-hidden="true"></span>
             <span>
-                <strong>Reading your Plex library<span class="plex-loading-dots" aria-hidden="true"></span></strong>
-                <small>This can take up to a minute for larger libraries. Stellaz is still working.</small>
+                <strong>Reading your Plex library.</strong>
+                <small>This can take up to a minute for larger libraries.</small>
             </span>
         </span>`;
     plex_import_stats.innerHTML = "";
@@ -2931,6 +2931,8 @@ async function open_plex_import_preview() {
                 same_library_title(existing, item) &&
                 Number(existing.my_rating) !== Number(item.rating)));
         const rating_updates = movie_rating_updates.length + show_rating_updates.length;
+        const ratings_on_new_titles = [...new_movies, ...new_shows]
+            .filter((item) => item.rating != null).length;
         plex_import_preview = {
             ...data, new_movies, new_shows,
             movie_rating_updates, show_rating_updates
@@ -2940,6 +2942,7 @@ async function open_plex_import_preview() {
             <div><strong>${new_movies.length}</strong><span>new movies</span></div>
             <div><strong>${new_shows.length}</strong><span>new TV shows</span></div>
             <div><strong>${rating_updates}</strong><span>ratings to update</span></div>
+            <div><strong>${ratings_on_new_titles}</strong><span>ratings on new titles</span></div>
             <div><strong>${Number(data.watched_episode_count || 0)}</strong><span>watched episodes</span></div>`;
         plex_import_confirm.disabled =
             new_movies.length + new_shows.length + rating_updates === 0;
