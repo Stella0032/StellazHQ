@@ -2140,15 +2140,40 @@ exports.getPlexImportPreview = onCall(async (request) => {
 
     for (const section of sections) {
         if (section.type !== "movie" && section.type !== "show") continue;
-        // Ask Plex to include the signed-in user's state explicitly.
-        // Without includeUserState, section listings can omit userRating even
-        // though the rating is visible in Plex's UI/profile.
+        // Keep the normal library listing for watched-state/manual import,
+        // but fetch ratings with Plex's rating filter as a separate query.
+        // Plex's own clients and rating-sync tools use this filtered form;
+        // it reliably materializes userRating/lastRatedAt in the response.
+        const section_url =
+            base_url + "/library/sections/" + encodeURIComponent(section.key) + "/all";
         const all = await plex_json(
-            base_url + "/library/sections/" + encodeURIComponent(section.key) +
-                "/all?includeUserState=1&sort=userRating%3Adesc",
+            section_url + "?includeGuids=1&includeUserState=1",
             server_token
         );
-        const items = all.MediaContainer?.Metadata || [];
+        const plex_type = section.type === "movie" ? 1 : 2;
+        const rated = await plex_json(
+            section_url +
+                "?type=" + plex_type +
+                "&includeGuids=1&includeUserState=1" +
+                "&sort=lastRatedAt%3Adesc&userRating%3E%3E=0",
+            server_token
+        );
+        const rated_items = rated.MediaContainer?.Metadata || [];
+        const ratings_by_key = new Map(
+            rated_items
+                .filter((item) => item.ratingKey != null && item.userRating != null)
+                .map((item) => [String(item.ratingKey), Number(item.userRating)])
+        );
+        const ratings_by_guid = new Map(
+            rated_items
+                .filter((item) => item.guid && item.userRating != null)
+                .map((item) => [String(item.guid), Number(item.userRating)])
+        );
+        const items = (all.MediaContainer?.Metadata || []).map((item) => {
+            const rating = ratings_by_key.get(String(item.ratingKey)) ??
+                ratings_by_guid.get(String(item.guid || ""));
+            return rating == null ? item : {...item, userRating: rating};
+        });
         if (section.type === "movie") {
             for (const item of items) {
                 const watched = Number(item.viewCount || 0) > 0;
