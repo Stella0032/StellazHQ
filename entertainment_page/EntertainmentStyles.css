@@ -2903,3 +2903,49 @@ html[data-theme="flurple"] .nav-links {
     }
 }
 /*#endregion*/
+
+
+/* Anime detail polish: cinematic cover backdrop + fully visible actions. */
+.anime-detail-dialog {
+    max-height: calc(100dvh - 32px);
+    overflow-y: auto;
+}
+
+.anime-detail-shell {
+    min-height: 100%;
+    background:
+        linear-gradient(
+            90deg,
+            rgba(10, 11, 29, 0.98) 0%,
+            rgba(10, 11, 29, 0.90) 38%,
+            rgba(10, 11, 29, 0.82) 100%
+        ),
+        var(--anime-backdrop, none) center / cover no-repeat;
+}
+
+.anime-detail-dialog .recommendation-dialog-poster {
+    position: sticky;
+    top: 30px;
+}
+
+.anime-detail-form {
+    padding-bottom: 28px;
+}
+
+.anime-detail-save {
+    margin-bottom: 4px;
+}
+
+@media (max-width: 700px) {
+    .anime-detail-dialog {
+        max-height: calc(100dvh - 16px);
+    }
+
+    .anime-detail-dialog .recommendation-dialog-poster {
+        position: static;
+    }
+
+    .anime-detail-form {
+        padding-bottom: 20px;
+    }
+}
