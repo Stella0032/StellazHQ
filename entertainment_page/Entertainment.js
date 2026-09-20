@@ -1785,7 +1785,8 @@ async function open_library_detail(type, item) {
         );
         const result = await metadata_function({
             title: item.title,
-            year: item.year
+            year: item.year,
+            ...(type === "show" && item.tmdb_id ? {tmdb_id: item.tmdb_id} : {})
         });
         const data = result.data;
 
@@ -1827,9 +1828,28 @@ async function open_library_detail(type, item) {
         }
     } catch (error) {
         console.error("Unable to load library details:", error);
+        const plex_item = plex_import_preview
+            ? (type === "movie" ? plex_import_preview.movies : plex_import_preview.shows)
+                ?.find((entry) => same_library_title(item, entry))
+            : null;
+        const poster_url = item.poster_url ||
+            await get_plex_poster_data_url(item.plex_thumb || plex_item?.plex_thumb);
+        if (poster_url) recommendation_dialog_poster.src = poster_url;
         recommendation_dialog_description.textContent =
-            "Additional details could not be loaded.";
-        recommendation_dialog_facts.innerHTML = "";
+            plex_item?.overview || "No description available.";
+        const plex_facts = [
+            plex_item?.release_date ? `Release: ${plex_item.release_date}` : null,
+            plex_item?.genres?.length ? `Genres: ${plex_item.genres.join(", ")}` : null,
+            plex_item?.runtime_minutes ? `Runtime: ${plex_item.runtime_minutes} min` : null,
+            plex_item?.average_episode_runtime_minutes ?
+                `Episode runtime: ~${plex_item.average_episode_runtime_minutes} min` : null,
+            plex_item?.total_episodes ? `Episodes: ${plex_item.total_episodes}` : null,
+            plex_item?.content_rating ? `Content rating: ${plex_item.content_rating}` : null,
+            plex_item?.studio ? `Studio: ${plex_item.studio}` : null
+        ].filter(Boolean);
+        recommendation_dialog_facts.innerHTML = plex_facts.length
+            ? plex_facts.map((fact) => `<span>${fact}</span>`).join("")
+            : "<span>No additional details available.</span>";
     }
 }
 
@@ -3002,6 +3022,8 @@ plex_import_confirm?.addEventListener("click", async () => {
             year: item.year,
             ...(item.tmdb_id ? {tmdb_id: Number(item.tmdb_id)} : {}),
             ...(item.plex_thumb ? {plex_thumb: item.plex_thumb} : {}),
+            ...(item.genres?.length ? {genres: item.genres} : {}),
+            ...(item.runtime_minutes ? {runtime_minutes: item.runtime_minutes} : {}),
             status: item.watched ? "watched" : "watch_later",
             ...(item.rating != null ? {my_rating: Number(item.rating)} : {})
         }));
@@ -3010,6 +3032,8 @@ plex_import_confirm?.addEventListener("click", async () => {
             year: item.year,
             ...(item.tmdb_id ? {tmdb_id: Number(item.tmdb_id)} : {}),
             ...(item.plex_thumb ? {plex_thumb: item.plex_thumb} : {}),
+            ...(item.genres?.length ? {genres: item.genres} : {}),
+            ...(item.average_episode_runtime_minutes ? {average_episode_runtime_minutes: item.average_episode_runtime_minutes} : {}),
             status: Number(item.watched_episodes || 0) > 0 ? "watched" : "watch_later",
             ...(item.rating != null ? {my_rating: Number(item.rating)} : {})
         }));
@@ -3021,6 +3045,37 @@ plex_import_confirm?.addEventListener("click", async () => {
         if (show_rows.length) {
             const {error} = await supabase.from("tv_shows").insert(show_rows);
             if (error) throw error;
+        }
+
+        for (const item of plex_import_preview.movies || []) {
+            const existing = movie_library.find((movie) => same_library_title(movie, item));
+            if (!existing) continue;
+            const patch = {};
+            if (item.plex_thumb) patch.plex_thumb = item.plex_thumb;
+            if (item.tmdb_id) patch.tmdb_id = Number(item.tmdb_id);
+            if (item.genres?.length && !existing.genres?.length) patch.genres = item.genres;
+            if (item.runtime_minutes && !existing.runtime_minutes) patch.runtime_minutes = item.runtime_minutes;
+            if (Object.keys(patch).length) {
+                const {error} = await supabase.from("movies").update(patch).eq("id", existing.id);
+                if (error) throw error;
+                Object.assign(existing, patch);
+            }
+        }
+        for (const item of plex_import_preview.shows || []) {
+            const existing = show_library.find((show) => same_library_title(show, item));
+            if (!existing) continue;
+            const patch = {};
+            if (item.plex_thumb) patch.plex_thumb = item.plex_thumb;
+            if (item.tmdb_id) patch.tmdb_id = Number(item.tmdb_id);
+            if (item.genres?.length && !existing.genres?.length) patch.genres = item.genres;
+            if (item.average_episode_runtime_minutes && !existing.average_episode_runtime_minutes) {
+                patch.average_episode_runtime_minutes = item.average_episode_runtime_minutes;
+            }
+            if (Object.keys(patch).length) {
+                const {error} = await supabase.from("tv_shows").update(patch).eq("id", existing.id);
+                if (error) throw error;
+                Object.assign(existing, patch);
+            }
         }
 
         for (const item of plex_import_preview.movie_rating_updates) {

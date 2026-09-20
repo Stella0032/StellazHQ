@@ -2070,6 +2070,14 @@ exports.getPlexImportPreview = onCall(async (request) => {
                         return guid ? Number(guid.slice(7)) || null : null;
                     })(),
                     plex_thumb: item.thumb || null,
+                    plex_art: item.art || null,
+                    overview: item.summary || null,
+                    genres: (item.Genre || []).map((genre) => genre.tag).filter(Boolean),
+                    content_rating: item.contentRating || null,
+                    studio: item.studio || null,
+                    original_title: item.originalTitle || null,
+                    release_date: item.originallyAvailableAt || null,
+                    runtime_minutes: item.duration ? Math.round(Number(item.duration) / 60000) : null,
                 });
             }
         } else {
@@ -2090,6 +2098,14 @@ exports.getPlexImportPreview = onCall(async (request) => {
                         return guid ? Number(guid.slice(7)) || null : null;
                     })(),
                     plex_thumb: item.thumb || null,
+                    plex_art: item.art || null,
+                    overview: item.summary || null,
+                    genres: (item.Genre || []).map((genre) => genre.tag).filter(Boolean),
+                    content_rating: item.contentRating || null,
+                    studio: item.studio || null,
+                    original_title: item.originalTitle || null,
+                    release_date: item.originallyAvailableAt || null,
+                    average_episode_runtime_minutes: item.duration ? Math.round(Number(item.duration) / 60000) : null,
                 });
             }
             const episode_data = await plex_json(
