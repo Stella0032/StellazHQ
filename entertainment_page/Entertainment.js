@@ -3454,18 +3454,23 @@ onAuthStateChanged(auth, async (user) => {
 
         await finish_plex_connection();
         await load_plex_connection_status();
+        // Plex auto-import depends only on the Stellaz movie/show libraries.
+        // Start it as soon as those are ready. Anime/MAL/background failures
+        // must never prevent rated Plex titles from being imported.
         await Promise.all([
             load_movie_library(),
-            load_show_library(),
+            load_show_library()
+        ]);
+        auto_sync_plex_activity().catch((error) =>
+            console.error("Unable to auto-sync Plex ratings:", error)
+        );
+
+        // Anime/MAL startup is independent from Plex.
+        await Promise.allSettled([
             load_mal_connection_status(),
             load_anime_library()
         ]);
         await finish_mal_connection();
-
-        // Do not make MAL/anime startup wait for a remote Plex server scan.
-        auto_sync_plex_activity().catch((error) =>
-            console.error("Unable to auto-sync Plex ratings:", error)
-        );
 
         // Movies are the default visible category on first load.
         // Load its recommendations and release rows immediately instead
