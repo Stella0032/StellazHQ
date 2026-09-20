@@ -3249,7 +3249,7 @@ html.anime-category-active body::after {
 /* Widescreen Anime layout: use side art only when the viewport is truly
    ultrawide. A normal desktop can easily be wider than 1200px, so width
    alone is not enough to decide which layout to use. */
-@media (min-width: 1200px) and (min-aspect-ratio: 2/1) {
+@media (min-width: 1800px) and (min-aspect-ratio: 21/9) {
     html.anime-category-active body::before,
     html.anime-category-active body::after {
         background-size: auto 100%, auto 100%;
@@ -3331,7 +3331,7 @@ html.anime-category-active body::after {
 
 /* Normal desktop Anime view: keep the page clean and move the rotating
    top-anime artwork into the small Anime category card. */
-@media not all and (min-width: 1200px) and (min-aspect-ratio: 2/1) {
+@media not all and (min-width: 1800px) and (min-aspect-ratio: 21/9) {
     html.anime-category-active body::before,
     html.anime-category-active body::after {
         background-image: none !important;
