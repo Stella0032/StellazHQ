@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Entertainment | Stellaz HQ</title>
-    <link rel="stylesheet" href="EntertainmentStyles.css?v=15">
+    <link rel="stylesheet" href="EntertainmentStyles.css?v=16">
     <link rel="stylesheet" href="../firebase/profile_widget.css?v=2">
 </head>
 <body>
@@ -110,7 +110,7 @@
         </section>
 
         <section class="movie-library-panel anime-library-panel category-panel-hidden" id="anime_library">
-<div class="movie-library-header"><div><p class="eyebrow">YOUR COLLECTION</p><h2>Your Anime</h2></div><div class="library-header-actions"><button class="library-add-button" id="mal_sync_header_button" type="button" hidden>Sync MyAnimeList</button><span class="movie-library-count" id="mal_connection_label">NOT CONNECTED</span></div></div>
+<div class="movie-library-header"><div><p class="eyebrow">YOUR COLLECTION</p><h2>Your Anime</h2></div><div class="library-header-actions"><button class="library-add-button" id="anime_add_button" type="button">＋ Add anime</button><button class="library-add-button" id="mal_sync_header_button" type="button" hidden>Sync MyAnimeList</button><span class="movie-library-count" id="mal_connection_label">NOT CONNECTED</span></div></div>
 <div class="mal-connect-card" id="mal_connect_card"><div><h3 id="mal_connect_title">Connect MyAnimeList</h3><p id="mal_connect_description">Connect your MyAnimeList account so Stellaz can sync your anime library.</p></div><button class="library-add-button" id="mal_connect_button" type="button">Connect MyAnimeList</button></div>
 <div class="anime-sync-summary" id="anime_sync_summary" hidden></div>
 <div class="movie-filters" id="anime_filters" aria-label="Anime filters" hidden>
@@ -208,6 +208,22 @@
             </div>
         </section>
     </main>
+
+    <dialog class="recommendation-dialog anime-add-dialog" id="anime_add_dialog">
+        <div class="recommendation-dialog-shell anime-add-shell">
+            <button class="library-dialog-close recommendation-dialog-close" id="anime_add_close" type="button" aria-label="Close">×</button>
+            <div class="recommendation-dialog-content">
+                <p class="eyebrow">MYANIMELIST</p>
+                <h2>Add watched anime</h2>
+                <p class="recommendation-dialog-description">Search MyAnimeList and add an anime directly as completed.</p>
+                <form class="anime-add-search-form" id="anime_add_search_form">
+                    <input class="movie-search" id="anime_add_search" type="search" placeholder="Search MyAnimeList..." aria-label="Search MyAnimeList" required minlength="2">
+                    <button class="library-add-button" type="submit">Search</button>
+                </form>
+                <div class="anime-add-results" id="anime_add_results"></div>
+            </div>
+        </div>
+    </dialog>
 
     <dialog class="recommendation-dialog anime-detail-dialog" id="anime_edit_dialog">
         <div class="recommendation-dialog-shell anime-detail-shell">
@@ -354,7 +370,7 @@
     </section>
 
     <div class="toast" id="toast" role="status"></div>
-    <script type="module" src="Entertainment.js?v=41"></script>
+    <script type="module" src="Entertainment.js?v=42"></script>
     <script type="module" src="../firebase/profile_widget.js"></script>
 </body>
 </html>
