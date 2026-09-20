@@ -2904,6 +2904,9 @@ function same_library_title(a, b) {
 async function open_plex_import_preview() {
     if (!plex_import_dialog) return;
     plex_import_preview = null;
+    const plex_import_title = document.getElementById("plex_import_title");
+    if (plex_import_title) plex_import_title.hidden = true;
+    plex_import_confirm.hidden = true;
     plex_import_summary.innerHTML = `
         <span class="plex-loading-row">
             <span class="plex-loading-spinner" aria-hidden="true"></span>
@@ -2937,6 +2940,8 @@ async function open_plex_import_preview() {
             ...data, new_movies, new_shows,
             movie_rating_updates, show_rating_updates
         };
+        if (plex_import_title) plex_import_title.hidden = false;
+        plex_import_confirm.hidden = false;
         plex_import_summary.textContent = `Found ${data.movies.length} movies and ${data.shows.length} TV shows on ${data.server}.`;
         plex_import_stats.innerHTML = `
             <div><strong>${new_movies.length}</strong><span>new movies</span></div>
@@ -2948,6 +2953,7 @@ async function open_plex_import_preview() {
             new_movies.length + new_shows.length + rating_updates === 0;
     } catch (error) {
         console.error("Unable to preview Plex import:", error);
+        if (plex_import_title) plex_import_title.hidden = false;
         plex_import_summary.textContent = error.message || "Unable to read your Plex library.";
     }
 }
