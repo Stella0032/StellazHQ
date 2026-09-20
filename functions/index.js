@@ -570,6 +570,57 @@ exports.updateMALAnimeStatus = onCall(
     }
 );
 
+exports.getMALAnimeDetails = onCall(
+    {secrets: [mal_client_id, mal_client_secret]},
+    async (request) => {
+        if (!request.auth) {
+            throw new HttpsError("unauthenticated", "You must be logged in.");
+        }
+
+        const anime_id = Number(request.data?.anime_id);
+        if (!Number.isInteger(anime_id) || anime_id <= 0) {
+            throw new HttpsError("invalid-argument", "Anime ID is required.");
+        }
+
+        const access_token =
+            await get_valid_mal_access_token(request.auth.uid);
+        const url = new URL(
+            `https://api.myanimelist.net/v2/anime/${anime_id}`
+        );
+        url.searchParams.set("fields", [
+            "id", "title", "main_picture", "alternative_titles",
+            "start_date", "end_date", "synopsis", "mean", "rank",
+            "popularity", "num_list_users", "num_scoring_users",
+            "nsfw", "genres", "media_type", "status", "num_episodes",
+            "start_season", "broadcast", "source",
+            "average_episode_duration", "rating", "studios",
+        ].join(","));
+
+        const response = await fetch(url, {
+            headers: {Authorization: `Bearer ${access_token}`},
+        });
+
+        if (!response.ok) {
+            logger.error("MAL anime details request failed.", {
+                anime_id,
+                status: response.status,
+            });
+            throw new HttpsError(
+                "internal",
+                "MyAnimeList could not load this anime."
+            );
+        }
+
+        const data = await response.json();
+        return {
+            ...data,
+            genres: (data.genres || []).map((genre) => genre.name),
+            studios: (data.studios || []).map((studio) => studio.name),
+        };
+    }
+);
+
+
 exports.syncMALAnimeList = onCall(
     {secrets: [mal_client_id, mal_client_secret], timeoutSeconds: 120},
     async (request) => {

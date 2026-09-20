@@ -205,47 +205,47 @@
         </section>
     </main>
 
-    <dialog class="show-details-dialog anime-edit-dialog" id="anime_edit_dialog">
-    <div class="show-details-shell anime-edit-shell">
-        <div class="show-details-header">
-            <div><p class="eyebrow">MYANIMELIST</p><h2 id="anime_edit_title">Edit Anime</h2></div>
-            <button class="library-dialog-close" id="anime_edit_close" type="button" aria-label="Close">×</button>
-        </div>
-        <form id="anime_edit_form" class="anime-edit-form">
-            <div class="anime-edit-layout">
-                <div class="anime-edit-controls">
-                    <label>Status
-                        <select class="movie-filter" id="anime_edit_status">
-                            <option value="watching">Currently watching</option>
-                            <option value="completed">Completed</option>
-                            <option value="on_hold">On hold</option>
-                            <option value="dropped">Dropped</option>
-                            <option value="plan_to_watch">Plan to watch</option>
-                        </select>
-                    </label>
-                    <label>Your MAL rating
-                        <select class="movie-filter" id="anime_edit_score">
-                    <option value="">Not rated</option>
-                    <option value="10">10 / 10</option><option value="9">9 / 10</option>
-                    <option value="8">8 / 10</option><option value="7">7 / 10</option>
-                    <option value="6">6 / 10</option><option value="5">5 / 10</option>
-                    <option value="4">4 / 10</option><option value="3">3 / 10</option>
-                    <option value="2">2 / 10</option><option value="1">1 / 10</option>
-                </select>
-                    </label>
-                    <button class="library-add-button" id="anime_edit_save" type="submit">Save to MyAnimeList</button>
-                </div>
-                <div class="anime-edit-episodes">
-                    <p class="anime-edit-section-label">Episodes watched</p>
-                    <div class="anime-episode-picker" id="anime_episode_picker"></div>
-                </div>
-                <div class="anime-edit-cover-wrap">
-                    <img class="anime-edit-cover" id="anime_edit_cover" alt="">
-                </div>
+    <dialog class="recommendation-dialog anime-detail-dialog" id="anime_edit_dialog">
+        <div class="recommendation-dialog-shell anime-detail-shell">
+            <button class="library-dialog-close recommendation-dialog-close" id="anime_edit_close" type="button" aria-label="Close">×</button>
+            <img class="recommendation-dialog-poster" id="anime_edit_cover" alt="">
+            <div class="recommendation-dialog-content">
+                <p class="eyebrow">MYANIMELIST</p>
+                <h2 id="anime_edit_title">Anime</h2>
+                <p class="recommendation-dialog-meta" id="anime_detail_meta"></p>
+                <p class="recommendation-dialog-description" id="anime_detail_description"></p>
+                <div class="recommendation-dialog-facts" id="anime_detail_facts"></div>
+                <form id="anime_edit_form" class="anime-detail-form">
+                    <div class="anime-detail-controls">
+                        <label>Status
+                            <select class="movie-filter" id="anime_edit_status">
+                                <option value="watching">Currently watching</option>
+                                <option value="completed">Completed</option>
+                                <option value="on_hold">On hold</option>
+                                <option value="dropped">Dropped</option>
+                                <option value="plan_to_watch">Plan to watch</option>
+                            </select>
+                        </label>
+                        <label>Your MAL rating
+                            <select class="movie-filter" id="anime_edit_score">
+                                <option value="">Not rated</option>
+                                <option value="10">10 / 10</option><option value="9">9 / 10</option>
+                                <option value="8">8 / 10</option><option value="7">7 / 10</option>
+                                <option value="6">6 / 10</option><option value="5">5 / 10</option>
+                                <option value="4">4 / 10</option><option value="3">3 / 10</option>
+                                <option value="2">2 / 10</option><option value="1">1 / 10</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div class="anime-edit-episodes">
+                        <p class="anime-edit-section-label">Episodes watched</p>
+                        <div class="anime-episode-picker" id="anime_episode_picker"></div>
+                    </div>
+                    <button class="library-add-button anime-detail-save" id="anime_edit_save" type="submit">Save to MyAnimeList</button>
+                </form>
             </div>
-        </form>
-    </div>
-</dialog>
+        </div>
+    </dialog>
 
 <dialog class="show-details-dialog" id="show_details_dialog">
         <div class="show-details-shell">
@@ -348,7 +348,7 @@
     </section>
 
     <div class="toast" id="toast" role="status"></div>
-    <script type="module" src="Entertainment.js?v=32"></script>
+    <script type="module" src="Entertainment.js?v=33"></script>
     <script type="module" src="../firebase/profile_widget.js"></script>
 </body>
 </html>
