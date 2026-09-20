@@ -85,6 +85,9 @@
                 <select class="movie-filter" id="franchise_filter" aria-label="Filter by franchise">
                     <option value="">All franchises</option>
                 </select>
+                <select class="movie-filter" id="movie_status_filter" aria-label="Filter movies by library status">
+                    <option value="">All library</option><option value="watched">Watched</option><option value="watch_later">Watch later</option>
+                </select>
                 <select class="movie-filter" id="movie_sort" aria-label="Sort movies">
                     <option value="year-desc">Newest first</option>
                     <option value="year-asc">Oldest first</option>
@@ -143,6 +146,9 @@
             <div class="movie-filters" aria-label="TV show filters">
                 <input class="movie-search" id="show_search" type="search" placeholder="Search shows..." aria-label="Search TV shows">
                 <select class="movie-filter" id="show_genre_filter" aria-label="Filter shows by genre"><option value="">All genres</option></select>
+                <select class="movie-filter" id="show_status_filter" aria-label="Filter shows by library status">
+                    <option value="">All library</option><option value="watched">Watched</option><option value="watch_later">Watch later</option>
+                </select>
                 <select class="movie-filter" id="show_sort" aria-label="Sort TV shows">
                     <option value="year-desc">Newest first</option>
                     <option value="year-asc">Oldest first</option>
@@ -165,7 +171,10 @@
                     <p class="eyebrow">PERSONAL PICKS</p>
                     <h2 id="recommendation_title">Recommended Movies For You</h2>
                 </div>
-                <span class="recommendation-count">6 PICKS</span>
+                <div class="recommendation-header-actions">
+                    <select class="movie-filter recommendation-genre-filter" id="recommendation_genre_filter" aria-label="Filter recommendations by genre"><option value="">All genres</option></select>
+                    <span class="recommendation-count">7 PICKS</span>
+                </div>
             </div>
 
             <div class="recommendation-grid" id="recommendation_grid"></div>
@@ -316,7 +325,7 @@
     </section>
 
     <div class="toast" id="toast" role="status"></div>
-    <script type="module" src="Entertainment.js?v=29"></script>
+    <script type="module" src="Entertainment.js?v=30"></script>
     <script type="module" src="../firebase/profile_widget.js"></script>
 </body>
 </html>
