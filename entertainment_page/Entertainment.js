@@ -2464,6 +2464,10 @@ function rotate_anime_library_background() {
         `url("${right}")`
     );
     document.documentElement.style.setProperty(
+        `--anime-card-backdrop-${anime_background_layer}`,
+        `url("${left}")`
+    );
+    document.documentElement.style.setProperty(
         "--anime-library-backdrop-layer",
         String(anime_background_layer)
     );
