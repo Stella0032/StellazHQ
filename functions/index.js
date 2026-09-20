@@ -1924,4 +1924,136 @@ exports.getPlexConnectionStatus = onCall(async (request) => {
     if (!connection.exists) return {connected: false};
     return {connected: true, username: connection.data().username || "Plex"};
 });
+
+
+async function plex_json(url, token) {
+    const response = await fetch(url, {
+        headers: {
+            "Accept": "application/json",
+            "X-Plex-Token": token,
+            "X-Plex-Product": "Stellaz HQ",
+            "X-Plex-Client-Identifier": plex_client_identifier,
+        },
+    });
+    if (!response.ok) {
+        throw new Error("Plex request failed (" + response.status + ").");
+    }
+    return response.json();
+}
+
+function plex_year(item) {
+    if (Number(item.year)) return Number(item.year);
+    const date = item.originallyAvailableAt || "";
+    return /^\\d{4}/.test(date) ? Number(date.slice(0, 4)) : null;
+}
+
+function plex_guids(item) {
+    return (item.Guid || []).map((entry) => entry.id).filter(Boolean);
+}
+
+exports.getPlexImportPreview = onCall(async (request) => {
+    if (!request.auth) throw new HttpsError("unauthenticated", "You must be logged in.");
+
+    const connection = await db.collection("plex_connections")
+        .doc(request.auth.uid).get();
+    if (!connection.exists || !connection.data().access_token) {
+        throw new HttpsError("failed-precondition", "Connect Plex first.");
+    }
+
+    const account_token = connection.data().access_token;
+    const resources = await plex_json(
+        "https://clients.plex.tv/api/v2/resources?includeHttps=1&includeRelay=1",
+        account_token
+    );
+    const servers = (resources || []).filter((resource) =>
+        resource.provides === "server" ||
+        String(resource.provides || "").split(",").includes("server")
+    );
+    if (!servers.length) {
+        throw new HttpsError("not-found", "No Plex Media Server was found on this account.");
+    }
+
+    let server = null;
+    let base_url = null;
+    for (const candidate of servers) {
+        const connections = [...(candidate.connections || [])].sort((a, b) => {
+            const score = (item) => (item.protocol === "https" ? 4 : 0) +
+                (!item.relay ? 2 : 0) + (!item.local ? 1 : 0);
+            return score(b) - score(a);
+        });
+        for (const candidate_connection of connections) {
+            if (!candidate_connection.uri) continue;
+            try {
+                await plex_json(candidate_connection.uri + "/", candidate.accessToken || account_token);
+                server = candidate;
+                base_url = candidate_connection.uri.replace(/\/$/, "");
+                break;
+            } catch (_) {}
+        }
+        if (server) break;
+    }
+    if (!server || !base_url) {
+        throw new HttpsError("unavailable",
+            "Stellaz could not reach your Plex Media Server. Make sure Remote Access is available.");
+    }
+
+    const server_token = server.accessToken || account_token;
+    const sections_data = await plex_json(base_url + "/library/sections", server_token);
+    const sections = sections_data.MediaContainer?.Directory || [];
+    const movies = [];
+    const shows = [];
+    const episodes = [];
+
+    for (const section of sections) {
+        if (section.type !== "movie" && section.type !== "show") continue;
+        const all = await plex_json(
+            base_url + "/library/sections/" + encodeURIComponent(section.key) + "/all",
+            server_token
+        );
+        const items = all.MediaContainer?.Metadata || [];
+        if (section.type === "movie") {
+            for (const item of items) {
+                movies.push({
+                    title: item.title,
+                    year: plex_year(item),
+                    rating: item.userRating == null ? null : Number(item.userRating),
+                    watched: Number(item.viewCount || 0) > 0,
+                    guids: plex_guids(item),
+                });
+            }
+        } else {
+            for (const item of items) {
+                shows.push({
+                    title: item.title,
+                    year: plex_year(item),
+                    rating: item.userRating == null ? null : Number(item.userRating),
+                    watched_episodes: Number(item.viewedLeafCount || 0),
+                    total_episodes: Number(item.leafCount || 0),
+                    guids: plex_guids(item),
+                });
+            }
+            const episode_data = await plex_json(
+                base_url + "/library/sections/" + encodeURIComponent(section.key) + "/all?type=4",
+                server_token
+            );
+            for (const item of (episode_data.MediaContainer?.Metadata || [])) {
+                if (Number(item.viewCount || 0) <= 0) continue;
+                episodes.push({
+                    show_title: item.grandparentTitle || "",
+                    season: Number(item.parentIndex || 0),
+                    episode: Number(item.index || 0),
+                });
+            }
+        }
+    }
+
+    return {
+        server: server.name || "Plex Media Server",
+        movies,
+        shows,
+        watched_episode_count: episodes.length,
+        episodes,
+    };
+});
+
 //#endregion

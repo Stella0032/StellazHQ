@@ -87,6 +87,7 @@
                     <h2>Your Movies</h2>
                 </div>
                 <div class="library-header-actions">
+                    <button class="library-add-button plex-import-button" id="plex_import_button" type="button" hidden>Import Plex</button>
                     <button class="library-add-button" id="movie_add_button" type="button">＋ Add movie</button>
                     <span class="movie-library-count" id="movie_library_count">LOADING</span>
                 </div>
@@ -383,8 +384,18 @@
         <p class="stellaz-ai-note">For now, Stellaz AI can add watched movies.</p>
     </section>
 
+    <dialog class="plex-import-dialog" id="plex_import_dialog">
+        <button class="dialog-close" id="plex_import_close" type="button" aria-label="Close">×</button>
+        <p class="eyebrow">PLEX IMPORT</p>
+        <h2>Your Plex library</h2>
+        <p class="plex-import-summary" id="plex_import_summary">Checking Plex…</p>
+        <div class="plex-import-stats" id="plex_import_stats"></div>
+        <p class="plex-import-note">Only titles that are not already in Stellaz will be imported. Existing Stellaz titles will not be changed.</p>
+        <button class="library-add-button" id="plex_import_confirm" type="button" disabled>Import new titles</button>
+    </dialog>
+
     <div class="toast" id="toast" role="status"></div>
-    <script type="module" src="Entertainment.js?v=48"></script>
+    <script type="module" src="Entertainment.js?v=49"></script>
     <script type="module" src="../firebase/profile_widget.js"></script>
 </body>
 </html>
