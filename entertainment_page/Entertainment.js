@@ -2333,7 +2333,14 @@ function preload_anime_background(url) {
 
 function rotate_anime_library_background() {
     if (!anime_background_posters.length) {
-        document.documentElement.style.removeProperty("--anime-library-backdrop");
+        [
+            "--anime-library-backdrop-1-left",
+            "--anime-library-backdrop-1-right",
+            "--anime-library-backdrop-2-left",
+            "--anime-library-backdrop-2-right"
+        ].forEach((property) =>
+            document.documentElement.style.removeProperty(property)
+        );
         return;
     }
 
@@ -2341,14 +2348,26 @@ function rotate_anime_library_background() {
         (poster) => poster !== current_anime_background
     );
     const pool = alternatives.length ? alternatives : anime_background_posters;
-    current_anime_background =
-        pool[Math.floor(Math.random() * pool.length)];
+    const left = pool[Math.floor(Math.random() * pool.length)];
+    const right_pool = anime_background_posters.filter(
+        (poster) => poster !== left
+    );
+    const right = right_pool.length
+        ? right_pool[Math.floor(Math.random() * right_pool.length)]
+        : left;
 
-    preload_anime_background(current_anime_background);
+    current_anime_background = left;
+    preload_anime_background(left);
+    preload_anime_background(right);
     anime_background_layer = anime_background_layer === 1 ? 2 : 1;
+
     document.documentElement.style.setProperty(
-        `--anime-library-backdrop-${anime_background_layer}`,
-        `url("${current_anime_background}")`
+        `--anime-library-backdrop-${anime_background_layer}-left`,
+        `url("${left}")`
+    );
+    document.documentElement.style.setProperty(
+        `--anime-library-backdrop-${anime_background_layer}-right`,
+        `url("${right}")`
     );
     document.documentElement.style.setProperty(
         "--anime-library-backdrop-layer",
