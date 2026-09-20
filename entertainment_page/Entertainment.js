@@ -36,6 +36,13 @@ const new_release_grid = document.getElementById("new_release_grid");
 const upcoming_release_grid =
     document.getElementById("upcoming_release_grid");
 
+let release_rows_type = "movie";
+let release_items = [];
+
+function release_item_id(item) {
+    return Number(item.tmdb_id || item.id);
+}
+
 function create_release_card(item) {
     const date = item.release_date
         ? new Date(`${item.release_date}T00:00:00`).toLocaleDateString(
@@ -46,22 +53,39 @@ function create_release_card(item) {
     const rating = item.rating
         ? ` · ⭐ ${Number(item.rating).toFixed(1)}`
         : "";
+    const controls = release_rows_type === "anime" ? "" : `
+        <button class="recommendation-dismiss" type="button"
+                data-release-action="not_interested" title="Not interested"
+                aria-label="Not interested in ${item.title}">×</button>
+        <button class="recommendation-watch-later" type="button"
+                data-release-action="watch_later" title="Add to Watch Later"
+                aria-label="Add ${item.title} to Watch Later">＋</button>`;
 
     return `
-        <article class="recommendation-card release-card">
+        <article class="recommendation-card release-card"
+                 data-release-id="${release_item_id(item)}">
             <div class="recommendation-poster-wrap">
-                <img class="recommendation-poster"
-                     src="${item.poster_url}"
-                     alt="${item.title} poster"
-                     loading="lazy">
+                <button class="recommendation-open" type="button"
+                        data-release-open aria-label="View details for ${item.title}">
+                    <img class="recommendation-poster"
+                         src="${item.poster_url}"
+                         alt="${item.title} poster"
+                         loading="lazy">
+                </button>
+                ${controls}
+                <button class="recommendation-refresh" type="button"
+                        data-release-next title="Show me something else"
+                        aria-label="Hide ${item.title} and show the next release">↻</button>
             </div>
-            <h3 title="${item.title}">${item.title}</h3>
+            <button class="recommendation-title-button" type="button"
+                    data-release-open title="${item.title}">${item.title}</button>
             <p>${date}${rating}</p>
         </article>
     `;
 }
 
 async function load_release_rows(type) {
+    release_rows_type = type;
     const labels = type === "show"
         ? ["Newly Released TV Shows", "Upcoming TV Releases"]
         : type === "anime"
@@ -81,6 +105,7 @@ async function load_release_rows(type) {
         const result = await get_releases({type});
         const newly_released = result.data.newly_released || [];
         const upcoming = result.data.upcoming || [];
+        release_items = [...newly_released, ...upcoming];
 
         new_release_grid.innerHTML = newly_released.length
             ? newly_released.map(create_release_card).join("")
@@ -97,6 +122,69 @@ async function load_release_rows(type) {
             '<p class="recommendation-loading">Unable to load upcoming releases.</p>';
     }
 }
+
+
+function find_release_item(card) {
+    return release_items.find((item) =>
+        release_item_id(item) === Number(card.dataset.releaseId)
+    );
+}
+
+async function open_release_details(item) {
+    const previous_type = active_recommendation_type;
+    active_recommendation_type = release_rows_type;
+    await open_recommendation_details({
+        ...item,
+        tmdb_rating: item.tmdb_rating ?? item.rating,
+        year: item.year || (item.release_date
+            ? Number(item.release_date.slice(0, 4)) : null)
+    });
+    active_recommendation_type = release_rows_type || previous_type;
+}
+
+async function run_release_action(item, action, button) {
+    const normalized = {
+        ...item,
+        tmdb_rating: item.tmdb_rating ?? item.rating,
+        year: item.year || (item.release_date
+            ? Number(item.release_date.slice(0, 4)) : null)
+    };
+    const previous_type = active_recommendation_type;
+    active_recommendation_type = release_rows_type;
+    await run_recommendation_action(normalized, action, button);
+    active_recommendation_type = previous_type;
+    if (action === "not_interested") {
+        document.querySelectorAll(
+            `[data-release-id="${release_item_id(item)}"]`
+        ).forEach((card) => card.remove());
+    }
+}
+
+async function handle_release_click(event) {
+    const card = event.target.closest(".release-card");
+    if (!card) return;
+    const item = find_release_item(card);
+    if (!item) return;
+
+    const action = event.target.closest("[data-release-action]");
+    if (action) {
+        await run_release_action(item, action.dataset.releaseAction, action);
+        return;
+    }
+
+    if (event.target.closest("[data-release-next]")) {
+        card.remove();
+        return;
+    }
+
+    if (event.target.closest("[data-release-open]")) {
+        await open_release_details(item);
+    }
+}
+
+new_release_grid.addEventListener("click", handle_release_click);
+upcoming_release_grid.addEventListener("click", handle_release_click);
+
 //#endregion
 
 
