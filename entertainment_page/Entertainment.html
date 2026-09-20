@@ -143,8 +143,7 @@
                     <span class="movie-library-count" id="show_library_count">LOADING</span>
                 </div>
             </div>
-            <div class="movie-filters" aria-label="TV show filters">
-                <input class="movie-search" id="show_search" type="search" placeholder="Search shows..." aria-label="Search TV shows">
+            <div class="movie-filters show-filters" aria-label="TV show filters">
                 <select class="movie-filter" id="show_genre_filter" aria-label="Filter shows by genre"><option value="">All genres</option></select>
                 <select class="movie-filter" id="show_status_filter" aria-label="Filter shows by library status">
                     <option value="">All library</option><option value="watched">Watched</option><option value="watch_later">Watch later</option>
@@ -157,6 +156,7 @@
                     <option value="tmdb-desc">Best rated by TMDB</option>
                     <option value="mine-desc">Best rated by me</option>
                 </select>
+                <input class="movie-search" id="show_search" type="search" placeholder="Search shows..." aria-label="Search TV shows">
                 <button class="movie-filter-clear" id="show_filter_clear" type="button">Clear</button>
             </div>
             <div class="movie-grid" id="show_grid">
@@ -348,7 +348,7 @@
     </section>
 
     <div class="toast" id="toast" role="status"></div>
-    <script type="module" src="Entertainment.js?v=30"></script>
+    <script type="module" src="Entertainment.js?v=31"></script>
     <script type="module" src="../firebase/profile_widget.js"></script>
 </body>
 </html>
