@@ -2370,5 +2370,5 @@ html[data-theme="neon"] .stellaz-ai-form button {
 /* Alternate theme labels make the left side wider, so visually rebalance nav. */
 html[data-theme="neon"] .nav-links,
 html[data-theme="flurple"] .nav-links {
-    transform: translateX(-28px);
+    transform: translateX(-55px);
 }
