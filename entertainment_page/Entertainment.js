@@ -3045,6 +3045,32 @@ async function sync_plex_metadata_for_library(force = false) {
             if (!plex) continue;
             show.plex_thumb = plex.plex_thumb || show.plex_thumb;
         }
+
+        // Cache missing Plex posters in Supabase before the user opens a card.
+        // Once saved in poster_url they behave exactly like the existing TMDB
+        // posters: library cards and overlays can use them immediately.
+        const cache_missing_posters = async (library, table, plex_by_key, type) => {
+            const missing = library.filter((item) => !item.poster_url);
+            for (const item of missing) {
+                const plex = plex_by_key.get(plex_metadata_key(type, item));
+                const thumb = item.plex_thumb || plex?.plex_thumb;
+                if (!thumb) continue;
+                const poster_url = await get_plex_poster_data_url(thumb);
+                if (!poster_url) continue;
+                const {error} = await supabase.from(table)
+                    .update({poster_url}).eq("id", item.id);
+                if (error) {
+                    console.error("Unable to cache Plex poster:", item.title, error);
+                    continue;
+                }
+                item.poster_url = poster_url;
+            }
+        };
+
+        await cache_missing_posters(movie_library, "movies", movie_by_key, "movie");
+        await cache_missing_posters(show_library, "tv_shows", show_by_key, "show");
+        render_movie_library();
+        render_show_library();
         return data;
     })();
 
