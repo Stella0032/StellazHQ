@@ -2578,6 +2578,11 @@ function show_entertainment_category(category) {
     const showing_shows = category === "TV Shows";
     const showing_anime = category === "Anime";
 
+    document.documentElement.classList.toggle(
+        "anime-category-active",
+        showing_anime
+    );
+
     movie_library_panel.classList.toggle("category-panel-hidden", !showing_movies);
     show_library_panel.classList.toggle("category-panel-hidden", !showing_shows);
     anime_library_panel.classList.toggle("category-panel-hidden", !showing_anime);
