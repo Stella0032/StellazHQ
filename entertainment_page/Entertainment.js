@@ -1829,10 +1829,20 @@ async function open_library_detail(type, item) {
     } catch (error) {
         console.error("Unable to load library details from TMDB:", error);
         try {
-            const plex_result = await httpsCallable(functions, "getPlexMetadataFallback")({
-                title: item.title, year: item.year, type
-            });
-            const plex_item = plex_result.data || {};
+            let plex_item = null;
+            try {
+                const cached = JSON.parse(
+                    localStorage.getItem("stellaz_plex_metadata_cache") || "{}"
+                );
+                plex_item = (type === "movie" ? cached.movies : cached.shows)
+                    ?.find((entry) => same_library_title(item, entry)) || null;
+            } catch (_) {}
+            if (!plex_item) {
+                const plex_result = await httpsCallable(functions, "getPlexMetadataFallback")({
+                    title: item.title, year: item.year, type
+                });
+                plex_item = plex_result.data || {};
+            }
             const poster_url = item.poster_url ||
                 await get_plex_poster_data_url(item.plex_thumb || plex_item.plex_thumb);
             if (poster_url) recommendation_dialog_poster.src = poster_url;
@@ -2997,6 +3007,12 @@ async function open_plex_import_preview() {
             ...data, new_movies, new_shows,
             movie_rating_updates, show_rating_updates
         };
+        try {
+            localStorage.setItem("stellaz_plex_metadata_cache", JSON.stringify({
+                movies: data.movies || [],
+                shows: data.shows || []
+            }));
+        } catch (_) {}
         if (plex_import_title) plex_import_title.hidden = false;
         plex_import_confirm.hidden = false;
         plex_import_summary.textContent = `Found ${data.movies.length} movies and ${data.shows.length} TV shows on ${data.server}.`;
