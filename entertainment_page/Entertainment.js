@@ -2945,9 +2945,10 @@ async function load_plex_connection_status() {
             document.getElementById("plex_connection_badge")?.removeAttribute("hidden");
             document.getElementById("plex_import_button")?.removeAttribute("hidden");
             document.querySelector(".plex-import-button-tv")?.removeAttribute("hidden");
-            sync_plex_metadata_for_library().catch((error) =>
-                console.error("Unable to sync Plex library metadata:", error)
-            );
+            // Startup performs the activity import after the Stellaz movie/show
+            // libraries have loaded. Starting the same Plex scan here creates a
+            // race where the activity sync can reuse a metadata-only request
+            // before the local libraries are ready.
             const plex_card = document.getElementById("plex_connect_card");
             if (plex_card) plex_card.hidden = true;
             plex_connect_title.textContent = "Plex Connected ✓";
@@ -3447,8 +3448,12 @@ onAuthStateChanged(auth, async (user) => {
 
         await finish_plex_connection();
         await load_plex_connection_status();
-        await load_movie_library();
-        await load_show_library();
+        await Promise.all([
+            load_movie_library(),
+            load_show_library()
+        ]);
+        // Plex activity sync must run only after both local libraries are
+        // populated so new watched/rated titles can be detected correctly.
         await auto_sync_plex_activity();
         await load_mal_connection_status();
         await load_anime_library();
