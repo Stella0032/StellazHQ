@@ -1749,7 +1749,7 @@ async function open_library_detail(type, item) {
     recommendation_dialog_meta.textContent =
         `${item.year || "Year unavailable"}${item.tmdb_rating != null ?
             ` · ⭐ ${Number(item.tmdb_rating).toFixed(1)} TMDB` : ""}`;
-    const saved_plex_metadata = get_saved_plex_metadata(type, item);
+    let saved_plex_metadata = get_saved_plex_metadata(type, item);
     if (saved_plex_metadata && !item.tmdb_id) {
         render_saved_library_details(type, item, saved_plex_metadata);
     } else {
@@ -1782,6 +1782,14 @@ async function open_library_detail(type, item) {
     `;
 
     recommendation_dialog.showModal();
+
+    if (!item.tmdb_id && !saved_plex_metadata) {
+        saved_plex_metadata = await ensure_plex_metadata_for_item(type, item);
+        if (saved_plex_metadata) {
+            render_saved_library_details(type, item, saved_plex_metadata);
+            return;
+        }
+    }
 
     try {
         if (saved_plex_metadata && !item.tmdb_id) {
@@ -2930,6 +2938,9 @@ async function load_plex_connection_status() {
         if (result.data.connected) {
             document.getElementById("plex_connection_badge")?.removeAttribute("hidden");
             document.getElementById("plex_import_button")?.removeAttribute("hidden");
+            sync_plex_metadata_for_library().catch((error) =>
+                console.error("Unable to sync Plex library metadata:", error)
+            );
             const plex_card = document.getElementById("plex_connect_card");
             if (plex_card) plex_card.hidden = true;
             plex_connect_title.textContent = "Plex Connected ✓";
@@ -2999,6 +3010,55 @@ function render_saved_library_details(type, item, data) {
         ? facts.map((fact) => `<span>${fact}</span>`).join("")
         : "<span>No additional details available.</span>";
     return true;
+}
+
+let plex_library_metadata_sync = null;
+
+async function sync_plex_metadata_for_library(force = false) {
+    if (plex_library_metadata_sync && !force) return plex_library_metadata_sync;
+
+    plex_library_metadata_sync = (async () => {
+        const result = await httpsCallable(functions, "getPlexImportPreview")();
+        const data = result.data || {};
+        save_plex_metadata_store(data);
+
+        const movie_by_key = new Map(
+            (data.movies || []).map((item) => [plex_metadata_key("movie", item), item])
+        );
+        const show_by_key = new Map(
+            (data.shows || []).map((item) => [plex_metadata_key("show", item), item])
+        );
+
+        for (const movie of movie_library) {
+            const plex = movie_by_key.get(plex_metadata_key("movie", movie));
+            if (!plex) continue;
+            movie.plex_thumb = plex.plex_thumb || movie.plex_thumb;
+        }
+        for (const show of show_library) {
+            const plex = show_by_key.get(plex_metadata_key("show", show));
+            if (!plex) continue;
+            show.plex_thumb = plex.plex_thumb || show.plex_thumb;
+        }
+        return data;
+    })();
+
+    try {
+        return await plex_library_metadata_sync;
+    } finally {
+        plex_library_metadata_sync = null;
+    }
+}
+
+async function ensure_plex_metadata_for_item(type, item) {
+    let saved = get_saved_plex_metadata(type, item);
+    if (saved) return saved;
+    try {
+        await sync_plex_metadata_for_library();
+        saved = get_saved_plex_metadata(type, item);
+    } catch (error) {
+        console.error("Unable to refresh Plex metadata:", error);
+    }
+    return saved;
 }
 
 async function open_plex_import_preview() {
