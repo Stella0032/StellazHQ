@@ -98,13 +98,14 @@
                 <input class="movie-search" id="movie_search" type="search" placeholder="Search movies..." aria-label="Search movies">
                 <button class="movie-filter-clear" id="movie_filter_clear" type="button">Clear</button>
             </div>
+<button class="movie-library-toggle" id="movie_library_toggle" type="button" hidden>
+                Show all movies
+            </button>
+
 
             <div class="movie-grid" id="movie_grid">
                 <p class="library-loading">Loading your movies...</p>
             </div>
-            <button class="movie-library-toggle" id="movie_library_toggle" type="button" hidden>
-                Show all movies
-            </button>
         </section>
 
         <section class="movie-library-panel anime-library-panel category-panel-hidden" id="anime_library">
@@ -128,8 +129,9 @@
     </select>
     <button class="movie-filter-clear" id="anime_filter_clear" type="button">Clear</button>
 </div>
-<div class="movie-grid anime-grid" id="anime_grid"></div>
 <button class="movie-library-toggle" id="anime_library_toggle" type="button" hidden>Show all anime</button>
+
+<div class="movie-grid anime-grid" id="anime_grid"></div>
 </section>
 
 <section class="movie-library-panel show-library-panel category-panel-hidden" id="show_library">
@@ -159,10 +161,11 @@
                 <input class="movie-search" id="show_search" type="search" placeholder="Search shows..." aria-label="Search TV shows">
                 <button class="movie-filter-clear" id="show_filter_clear" type="button">Clear</button>
             </div>
+<button class="movie-library-toggle" id="show_library_toggle" type="button" hidden>Show all shows</button>
+
             <div class="movie-grid" id="show_grid">
                 <p class="library-loading">Loading your TV shows...</p>
             </div>
-            <button class="movie-library-toggle" id="show_library_toggle" type="button" hidden>Show all shows</button>
         </section>
 
         <section class="recommendations-panel" id="recommendations_panel">
