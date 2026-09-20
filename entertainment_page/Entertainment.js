@@ -2268,14 +2268,27 @@ function rotate_anime_library_background() {
     );
 }
 
-function start_anime_library_backgrounds() {
+async function start_anime_library_backgrounds() {
     clearInterval(anime_background_timer);
 
-    anime_background_posters = anime_library
+    const top_anime = anime_library
         .filter((item) => item.poster_url && Number(item.my_rating || 0) > 0)
         .sort((a, b) => Number(b.my_rating || 0) - Number(a.my_rating || 0))
-        .slice(0, 10)
-        .map((item) => item.poster_url);
+        .slice(0, 10);
+
+    const get_anime_backdrop = httpsCallable(functions, "getAnimeBackdrop");
+    const resolved_backgrounds = await Promise.all(top_anime.map(async (item) => {
+        try {
+            const result = await get_anime_backdrop({title: item.title});
+            return result.data?.backdrop_url || item.poster_url;
+        } catch (error) {
+            console.warn("Unable to load HD anime backdrop:", item.title, error);
+            return item.poster_url;
+        }
+    }));
+
+    anime_background_posters = resolved_backgrounds.filter(Boolean);
+    anime_background_posters.forEach(preload_anime_background);
 
     current_anime_background = "";
     rotate_anime_library_background();
@@ -2307,7 +2320,7 @@ async function load_anime_library() {
         : "—";
 
     render_anime_library();
-    start_anime_library_backgrounds();
+    await start_anime_library_backgrounds();
 
     const has_synced_anime = anime_library.length > 0;
     anime_sync_summary.hidden = !has_synced_anime;
