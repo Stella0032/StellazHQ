@@ -170,48 +170,57 @@ function apply_recommendation_filter() {
     render_recommendations();
 }
 
+const recommendation_dialog = document.getElementById("recommendation_dialog");
+const recommendation_dialog_close = document.getElementById("recommendation_dialog_close");
+const recommendation_dialog_poster = document.getElementById("recommendation_dialog_poster");
+const recommendation_dialog_type = document.getElementById("recommendation_dialog_type");
+const recommendation_dialog_title = document.getElementById("recommendation_dialog_title");
+const recommendation_dialog_meta = document.getElementById("recommendation_dialog_meta");
+const recommendation_dialog_description = document.getElementById("recommendation_dialog_description");
+const recommendation_dialog_facts = document.getElementById("recommendation_dialog_facts");
+const recommendation_dialog_reason = document.getElementById("recommendation_dialog_reason");
+const recommendation_dialog_actions = document.getElementById("recommendation_dialog_actions");
+let active_recommendation_detail = null;
+
+function recommendation_reason(item) {
+    if (active_recommendation_type === "anime") {
+        return "Recommended from your MyAnimeList history";
+    }
+    return item.because_of?.length
+        ? `Because you liked ${item.because_of.join(" and ")}`
+        : `Picked from your ${active_recommendation_type} history`;
+}
+
 function create_recommendation_card(item) {
-    const media_label = active_recommendation_type === "show"
-        ? "show" : active_recommendation_type === "anime" ? "anime" : "movie";
-    const reason = active_recommendation_type === "anime"
-        ? "Recommended from your MyAnimeList history"
-        : item.because_of?.length
-            ? `Because you liked ${item.because_of.join(" and ")}`
-            : `Picked from your ${media_label} history`;
     const rating = item.tmdb_rating !== null &&
         item.tmdb_rating !== undefined
         ? ` · ⭐ ${Number(item.tmdb_rating).toFixed(1)}` : "";
-    const year = item.year || "";
-    const actions = active_recommendation_type === "anime" ? "" : `
-        <div class="recommendation-actions">
-            <button type="button" class="recommendation-action primary"
-                    data-rec-action="watched">✓ I've seen it</button>
-            <button type="button" class="recommendation-action"
-                    data-rec-action="watch_later">＋ Watch later</button>
-            <button type="button" class="recommendation-action muted"
-                    data-rec-action="not_interested">Not interested</button>
-        </div>`;
+    const controls = active_recommendation_type === "anime" ? "" : `
+        <button class="recommendation-dismiss" type="button"
+                data-rec-action="not_interested" title="Not interested"
+                aria-label="Not interested in ${item.title}">×</button>
+        <button class="recommendation-watch-later" type="button"
+                data-rec-action="watch_later" title="Add to Watch Later"
+                aria-label="Add ${item.title} to Watch Later">＋</button>`;
 
     return `
-        <article class="recommendation-card" tabindex="0" role="button"
-                 data-recommendation-id="${recommendation_id(item)}"
-                 aria-label="View details for ${item.title}">
+        <article class="recommendation-card"
+                 data-recommendation-id="${recommendation_id(item)}">
             <div class="recommendation-poster-wrap">
-                <img class="recommendation-poster" src="${item.poster_url}"
-                     alt="${item.title} poster" loading="lazy">
-                <span class="recommendation-expand-icon" aria-hidden="true">＋</span>
+                <button class="recommendation-open" type="button"
+                        data-rec-open aria-label="View details for ${item.title}">
+                    <img class="recommendation-poster" src="${item.poster_url}"
+                         alt="${item.title} poster" loading="lazy">
+                </button>
+                ${controls}
                 <button class="recommendation-refresh" type="button"
                         title="Show me something else"
                         aria-label="Replace ${item.title} with another suggestion">↻</button>
             </div>
-            <h3 title="${item.title}">${item.title}</h3>
-            <p>${year}${rating}</p>
-            <p class="recommendation-reason">${reason}</p>
-            ${actions}
-            <div class="recommendation-details">
-                <p class="recommendation-description">${item.overview || "No description available."}</p>
-                <p class="recommendation-match">${reason}</p>
-            </div>
+            <button class="recommendation-title-button" type="button"
+                    data-rec-open title="${item.title}">${item.title}</button>
+            <p>${item.year || ""}${rating}</p>
+            <p class="recommendation-reason">${recommendation_reason(item)}</p>
         </article>`;
 }
 
@@ -340,6 +349,7 @@ async function load_anime_recommendations(anime) {
     }
 }
 
+
 async function save_recommendation_to_library(item, status) {
     const is_movie = active_recommendation_type === "movie";
     const table = is_movie ? "movies" : "tv_shows";
@@ -396,63 +406,151 @@ async function mark_not_interested(item) {
     apply_recommendation_filter();
 }
 
+
+async function open_recommendation_details(item) {
+    active_recommendation_detail = item;
+    recommendation_dialog_poster.src = item.poster_url || "";
+    recommendation_dialog_poster.alt = `${item.title} poster`;
+    recommendation_dialog_type.textContent =
+        active_recommendation_type === "show" ? "TV SHOW RECOMMENDATION" :
+            active_recommendation_type === "anime" ? "ANIME RECOMMENDATION" :
+                "MOVIE RECOMMENDATION";
+    recommendation_dialog_title.textContent = item.title;
+    recommendation_dialog_meta.textContent =
+        `${item.year || "Year unavailable"}${item.tmdb_rating != null ?
+            ` · ⭐ ${Number(item.tmdb_rating).toFixed(1)} TMDB` : ""}`;
+    recommendation_dialog_description.textContent =
+        item.overview || "No description available.";
+    recommendation_dialog_reason.textContent = recommendation_reason(item);
+    recommendation_dialog_facts.innerHTML =
+        '<span>Loading full details…</span>';
+    recommendation_dialog_actions.innerHTML =
+        active_recommendation_type === "anime" ? "" : `
+            <button type="button" class="recommendation-action primary"
+                    data-dialog-action="watched">✓ I've seen it</button>
+            <button type="button" class="recommendation-action"
+                    data-dialog-action="watch_later">＋ Watch later</button>
+            <button type="button" class="recommendation-action muted"
+                    data-dialog-action="not_interested">Not interested</button>`;
+    recommendation_dialog.showModal();
+
+    if (active_recommendation_type === "anime") {
+        recommendation_dialog_facts.innerHTML =
+            '<span>More anime details are provided through MyAnimeList.</span>';
+        return;
+    }
+
+    try {
+        const metadata_function = httpsCallable(
+            functions,
+            active_recommendation_type === "movie"
+                ? "getMovieMetadata" : "getTVShowMetadata"
+        );
+        const result = await metadata_function({
+            title: item.title, year: item.year
+        });
+        const data = result.data;
+        const facts = [
+            data.release_date ? `Release: ${data.release_date}` : null,
+            data.genres?.length ? `Genres: ${data.genres.join(", ")}` : null,
+            data.runtime_minutes ? `Runtime: ${data.runtime_minutes} min` : null,
+            data.average_episode_runtime_minutes
+                ? `Episode runtime: ~${data.average_episode_runtime_minutes} min` : null,
+            data.number_of_seasons ? `Seasons: ${data.number_of_seasons}` : null,
+            data.number_of_episodes ? `Episodes: ${data.number_of_episodes}` : null,
+            data.status ? `Status: ${data.status}` : null,
+            data.original_title && data.original_title !== data.title
+                ? `Original title: ${data.original_title}` : null,
+            data.tmdb_vote_count != null
+                ? `TMDB votes: ${Number(data.tmdb_vote_count).toLocaleString()}` : null
+        ].filter(Boolean);
+        recommendation_dialog_description.textContent =
+            data.overview || item.overview || "No description available.";
+        recommendation_dialog_facts.innerHTML = facts.length
+            ? facts.map((fact) => `<span>${fact}</span>`).join("")
+            : "<span>No additional details available.</span>";
+        if (data.backdrop_url) {
+            recommendation_dialog.style.setProperty(
+                "--recommendation-backdrop", `url("${data.backdrop_url}")`
+            );
+        } else {
+            recommendation_dialog.style.removeProperty("--recommendation-backdrop");
+        }
+    } catch (error) {
+        console.error("Unable to load recommendation details:", error);
+        recommendation_dialog_facts.innerHTML =
+            "<span>Additional details could not be loaded.</span>";
+    }
+}
+
+async function run_recommendation_action(item, action, button) {
+    button.disabled = true;
+    try {
+        if (action === "not_interested") {
+            await mark_not_interested(item);
+            if (recommendation_dialog.open) recommendation_dialog.close();
+            show_toast(`${item.title} won't be recommended again.`);
+            return;
+        }
+        await save_recommendation_to_library(item, action);
+        ignored_recommendation_ids.add(recommendation_id(item));
+        apply_recommendation_filter();
+        if (recommendation_dialog.open) recommendation_dialog.close();
+        show_toast(action === "watched"
+            ? `${item.title} added as watched.`
+            : `${item.title} added to Watch Later.`);
+    } catch (error) {
+        console.error("Unable to update recommendation:", error);
+        button.disabled = false;
+        alert("Unable to update that recommendation. Please try again.");
+    }
+}
+
 recommendation_genre_filter.addEventListener("change", apply_recommendation_filter);
 
 recommendation_grid.addEventListener("click", async (event) => {
     const card = event.target.closest(".recommendation-card");
     if (!card) return;
-
-    const id = Number(card.dataset.recommendationId);
     const item = recommendation_pool.find((entry) =>
-        recommendation_id(entry) === id
+        recommendation_id(entry) === Number(card.dataset.recommendationId)
     );
     if (!item) return;
 
     const action = event.target.closest("[data-rec-action]");
-    const refresh_button = event.target.closest(".recommendation-refresh");
-
     if (action) {
-        event.stopPropagation();
-        action.disabled = true;
-        try {
-            if (action.dataset.recAction === "not_interested") {
-                await mark_not_interested(item);
-                show_toast(`${item.title} won't be recommended again.`);
-            } else {
-                await save_recommendation_to_library(
-                    item, action.dataset.recAction
-                );
-                ignored_recommendation_ids.add(id);
-                apply_recommendation_filter();
-                show_toast(action.dataset.recAction === "watched"
-                    ? `${item.title} added as watched.`
-                    : `${item.title} added to Watch Later.`);
-            }
-        } catch (error) {
-            console.error("Unable to update recommendation:", error);
-            action.disabled = false;
-            alert("Unable to update that recommendation. Please try again.");
-        }
+        await run_recommendation_action(item, action.dataset.recAction, action);
         return;
     }
 
+    const refresh_button = event.target.closest(".recommendation-refresh");
     if (refresh_button) {
-        event.stopPropagation();
-        ignored_recommendation_ids.add(id);
+        ignored_recommendation_ids.add(recommendation_id(item));
         apply_recommendation_filter();
         return;
     }
 
-    card.classList.toggle("expanded");
+    if (event.target.closest("[data-rec-open]")) {
+        await open_recommendation_details(item);
+    }
 });
 
-recommendation_grid.addEventListener("keydown", (event) => {
-    if (event.key !== "Enter" && event.key !== " ") return;
-    if (event.target.closest("button, select")) return;
-    const card = event.target.closest(".recommendation-card");
-    if (!card) return;
-    event.preventDefault();
-    card.classList.toggle("expanded");
+recommendation_dialog_actions.addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-dialog-action]");
+    if (!button || !active_recommendation_detail) return;
+    await run_recommendation_action(
+        active_recommendation_detail,
+        button.dataset.dialogAction,
+        button
+    );
+});
+
+recommendation_dialog_close.addEventListener("click", () =>
+    recommendation_dialog.close()
+);
+
+recommendation_dialog.addEventListener("close", () => {
+    active_recommendation_detail = null;
+    recommendation_dialog.style.removeProperty("--recommendation-backdrop");
 });
 //#endregion
 
