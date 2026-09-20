@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Entertainment | Stellaz HQ</title>
-    <link rel="stylesheet" href="EntertainmentStyles.css?v=25">
+    <link rel="stylesheet" href="EntertainmentStyles.css?v=26">
     <link rel="stylesheet" href="../firebase/profile_widget.css?v=2">
 </head>
 <body>
@@ -25,6 +25,10 @@
             <a href="../lobby_page/Lobby.html">Calendar</a>
             <a href="../lobby_page/Lobby.html">Notes</a>
         </nav>
+        <div class="connection-badges" id="connection_badges" aria-label="Connected entertainment accounts">
+            <span class="connection-badge mal-connection-badge" id="mal_connection_badge" title="MyAnimeList connected" hidden>MAL</span>
+            <span class="connection-badge plex-connection-badge" id="plex_connection_badge" title="Plex connected" hidden>P</span>
+        </div>
         <div class="profile-widget" data-profile-widget>
             <button class="profile-trigger" type="button" aria-label="Open profile menu" aria-expanded="false">
                 <span class="profile-avatar" data-profile-avatar>△</span>
@@ -378,7 +382,7 @@
     </section>
 
     <div class="toast" id="toast" role="status"></div>
-    <script type="module" src="Entertainment.js?v=47"></script>
+    <script type="module" src="Entertainment.js?v=48"></script>
     <script type="module" src="../firebase/profile_widget.js"></script>
 </body>
 </html>

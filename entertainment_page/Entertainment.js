@@ -2348,6 +2348,8 @@ async function load_mal_connection_status() {
         const get_status = httpsCallable(functions, "getMALConnectionStatus");
         const result = await get_status();
         if (result.data.connected) {
+            document.getElementById("mal_connection_badge")?.removeAttribute("hidden");
+            mal_connect_card.hidden = true;
             mal_connection_label.textContent = "CONNECTED";
             mal_connect_title.textContent = "MyAnimeList Connected ✓";
             mal_connect_description.textContent =
@@ -2872,6 +2874,9 @@ async function load_plex_connection_status() {
     try {
         const result = await httpsCallable(functions, "getPlexConnectionStatus")();
         if (result.data.connected) {
+            document.getElementById("plex_connection_badge")?.removeAttribute("hidden");
+            const plex_card = document.getElementById("plex_connect_card");
+            if (plex_card) plex_card.hidden = true;
             plex_connect_title.textContent = "Plex Connected ✓";
             plex_connect_description.textContent =
                 "Connected as " + result.data.username + ". Rating import comes next.";
