@@ -632,7 +632,13 @@ a {
 .movie-filters {
     margin-bottom: 20px;
     display: grid;
-    grid-template-columns: minmax(190px, 1.5fr) repeat(3, minmax(150px, 1fr)) auto;
+    grid-template-columns:
+        minmax(135px, 0.8fr)
+        minmax(165px, 1fr)
+        minmax(110px, 0.65fr)
+        minmax(135px, 0.8fr)
+        minmax(185px, 1.15fr)
+        86px;
     gap: 10px;
 }
 
@@ -668,7 +674,8 @@ a {
 }
 
 .movie-filter-clear {
-    padding: 0 16px;
+    width: 86px;
+    padding: 0 12px;
     cursor: pointer;
 }
 
