@@ -3449,14 +3449,16 @@ onAuthStateChanged(auth, async (user) => {
         await load_plex_connection_status();
         await Promise.all([
             load_movie_library(),
-            load_show_library()
+            load_show_library(),
+            load_mal_connection_status(),
+            load_anime_library()
         ]);
-        // Plex activity sync must run only after both local libraries are
-        // populated so new watched/rated titles can be detected correctly.
-        await auto_sync_plex_activity();
-        await load_mal_connection_status();
-        await load_anime_library();
         await finish_mal_connection();
+
+        // Do not make MAL/anime startup wait for a remote Plex server scan.
+        auto_sync_plex_activity().catch((error) =>
+            console.error("Unable to auto-sync Plex ratings:", error)
+        );
 
         // Movies are the default visible category on first load.
         // Load its recommendations and release rows immediately instead
