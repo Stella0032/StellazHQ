@@ -107,12 +107,21 @@ async function load_release_rows(type) {
         const upcoming = result.data.upcoming || [];
         release_items = [...newly_released, ...upcoming];
 
-        new_release_grid.innerHTML = newly_released.length
-            ? newly_released.map(create_release_card).join("")
+        const mobile_release_limit =
+            window.matchMedia("(max-width: 700px)").matches ? 6 : null;
+        const visible_new_releases = mobile_release_limit
+            ? newly_released.slice(0, mobile_release_limit)
+            : newly_released;
+        const visible_upcoming = mobile_release_limit
+            ? upcoming.slice(0, mobile_release_limit)
+            : upcoming;
+
+        new_release_grid.innerHTML = visible_new_releases.length
+            ? visible_new_releases.map(create_release_card).join("")
             : '<p class="recommendation-loading">No new releases found.</p>';
 
-        upcoming_release_grid.innerHTML = upcoming.length
-            ? upcoming.map(create_release_card).join("")
+        upcoming_release_grid.innerHTML = visible_upcoming.length
+            ? visible_upcoming.map(create_release_card).join("")
             : '<p class="recommendation-loading">No upcoming releases found.</p>';
     } catch (error) {
         console.error("Unable to load release rows:", error);
@@ -254,7 +263,9 @@ function apply_recommendation_filter() {
         !ignored_recommendation_ids.has(recommendation_id(item)) &&
         (!genre_id || (item.genre_ids || []).includes(genre_id))
     );
-    visible_recommendations = filtered.slice(0, 7);
+    const recommendation_limit =
+        window.matchMedia("(max-width: 700px)").matches ? 6 : 7;
+    visible_recommendations = filtered.slice(0, recommendation_limit);
     render_recommendations();
 }
 
