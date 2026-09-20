@@ -1975,7 +1975,12 @@ exports.getPlexMetadataFallback = onCall(async (request) => {
     const normalize = (value) => String(value || "").trim().toLowerCase();
     for (const server of servers) {
         const token = server.accessToken || account_token;
-        for (const connection_item of (server.connections || [])) {
+        const connections = [...(server.connections || [])].sort((a, b) => {
+            const score = (item) => (item.protocol === "https" ? 4 : 0) +
+                (!item.relay ? 2 : 0) + (!item.local ? 1 : 0);
+            return score(b) - score(a);
+        });
+        for (const connection_item of connections) {
             if (!connection_item.uri) continue;
             const base = connection_item.uri.replace(/\/$/, "");
             try {
@@ -2009,10 +2014,17 @@ exports.getPlexMetadataFallback = onCall(async (request) => {
                         plex_thumb: match.thumb || null
                     };
                 }
-            } catch (_) {}
+            } catch (error) {
+                logger.warn("Plex metadata fallback connection failed.", {
+                    server: server.name || null,
+                    uri: connection_item.uri,
+                    error: error?.message || String(error)
+                });
+            }
         }
     }
-    throw new HttpsError("not-found", "That title was not found in Plex.");
+    throw new HttpsError("not-found",
+        "That title was not found on any reachable Plex Media Server.");
 });
 
 exports.getPlexPoster = onCall(async (request) => {
