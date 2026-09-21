@@ -3973,3 +3973,16 @@ html.anime-category-active .anime-library-panel .movie-filter-clear {
     justify-content: flex-end;
     gap: 10px;
 }
+
+
+.trakt-service-logo {
+    color: #fff;
+    background: linear-gradient(135deg, #ed1c24, #8f1118);
+    font-size: 18px;
+}
+
+.trakt-connection-badge {
+    color: #fff;
+    background: linear-gradient(135deg, #ed1c24, #8f1118);
+    font-size: 10px;
+}
