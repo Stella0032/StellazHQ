@@ -3700,3 +3700,175 @@ html.anime-category-active .anime-library-panel .movie-filter-clear {
         width: 100%;
     }
 }
+
+
+/* Connected services live at the account level instead of inside media tabs. */
+.connected-services-dialog {
+    width: min(920px, calc(100% - 28px));
+    max-height: calc(100dvh - 32px);
+    padding: 0;
+    border: 1px solid var(--glass-border);
+    border-radius: 22px;
+    color: var(--text);
+    background: #0d0f23;
+    box-shadow: 0 30px 100px rgba(0, 0, 0, 0.62);
+    overflow: auto;
+}
+
+.connected-services-dialog::backdrop {
+    background: rgba(3, 4, 14, 0.78);
+    backdrop-filter: blur(8px);
+}
+
+.connected-services-shell {
+    padding: 28px;
+}
+
+.connected-services-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 22px;
+}
+
+.connected-services-header h2 {
+    margin: 4px 0 7px;
+    font-size: 28px;
+}
+
+.connected-services-header p {
+    margin: 0;
+    color: var(--muted);
+    line-height: 1.5;
+}
+
+.connected-services-grid {
+    display: grid;
+    gap: 14px;
+}
+
+.connected-service-card {
+    padding: 18px;
+    display: grid;
+    grid-template-columns: minmax(190px, .8fr) minmax(260px, 1.35fr) auto;
+    align-items: center;
+    gap: 20px;
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.035);
+}
+
+.connected-service-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.connected-service-brand h3 {
+    margin: 0 0 4px;
+    font-size: 17px;
+}
+
+.connected-service-status {
+    color: var(--muted);
+    font-size: 11px;
+}
+
+.connected-service-logo {
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 12px;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 850;
+    letter-spacing: -.2px;
+}
+
+.plex-service-logo {
+    color: #e5a00d;
+    background: #171717;
+    font-size: 22px;
+}
+
+.mal-service-logo {
+    background: linear-gradient(135deg, #2e51a2, #5479d8);
+}
+
+.anilist-service-logo {
+    background: linear-gradient(135deg, #2b2d42, #02a9ff);
+}
+
+.connected-service-card > p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.55;
+}
+
+.connected-service-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.connected-service-actions .library-add-button,
+.connected-service-import {
+    white-space: nowrap;
+}
+
+.connected-service-actions .library-add-button:disabled {
+    opacity: .7;
+    cursor: default;
+}
+
+.connected-service-import {
+    padding: 9px 13px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 10px;
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.055);
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.connected-service-import:hover {
+    border-color: rgba(194, 120, 255, 0.48);
+    background: rgba(194, 120, 255, 0.10);
+}
+
+.connected-services-note {
+    margin: 18px 2px 0;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+@media (max-width: 760px) {
+    .connected-services-shell {
+        padding: 20px;
+    }
+
+    .connected-service-card {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .connected-service-actions {
+        justify-content: flex-start;
+    }
+
+    .connected-service-actions .library-add-button,
+    .connected-service-import {
+        flex: 1 1 150px;
+    }
+}
