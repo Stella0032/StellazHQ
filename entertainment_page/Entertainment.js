@@ -3179,6 +3179,95 @@ async function auto_sync_plex_activity() {
     }
 }
 
+async function sync_plex_episode_progress() {
+    try {
+        if (!show_library.length) return;
+
+        const result = await httpsCallable(functions, "getPlexWatchedEpisodes")({
+            shows: show_library.map((show) => ({
+                title: show.title,
+                year: show.year
+            }))
+        });
+        const episodes = result.data?.episodes || [];
+        if (!episodes.length) return;
+
+        const shows_by_title = new Map(
+            show_library.map((show) => [
+                String(show.title || "").trim().toLowerCase(),
+                show
+            ])
+        );
+        const rows = episodes.flatMap((episode) => {
+            const show = shows_by_title.get(
+                String(episode.show_title || "").trim().toLowerCase()
+            );
+            if (!show) return [];
+            return [{
+                tv_show_id: show.id,
+                season_number: Number(episode.season),
+                episode_number: Number(episode.episode),
+                watched: true
+            }];
+        });
+        if (!rows.length) return;
+
+        const {error} = await supabase.from("tv_episode_progress")
+            .upsert(rows, {
+                onConflict: "user_id,tv_show_id,season_number,episode_number"
+            });
+        if (error) throw error;
+
+        // Mark a season complete only when every episode returned by TMDB for
+        // that season is watched. Episode progress itself is always synced.
+        const touched = new Map();
+        for (const row of rows) {
+            const key = `${row.tv_show_id}:${row.season_number}`;
+            if (!touched.has(key)) touched.set(key, {
+                show_id: row.tv_show_id,
+                season: row.season_number
+            });
+        }
+        for (const item of touched.values()) {
+            const show = show_library.find((entry) => entry.id === item.show_id);
+            if (!show) continue;
+            try {
+                const seasons = await httpsCallable(functions, "getTVShowSeasons")({
+                    title: show.title,
+                    year: show.year
+                });
+                const season = (seasons.data?.seasons || []).find(
+                    (entry) => Number(entry.season_number) === item.season
+                );
+                if (!season?.episode_count) continue;
+                const watched_count = rows.filter((row) =>
+                    row.tv_show_id === item.show_id &&
+                    row.season_number === item.season
+                ).length;
+                if (watched_count >= Number(season.episode_count)) {
+                    const {error: season_error} = await supabase
+                        .from("tv_season_progress")
+                        .upsert({
+                            tv_show_id: item.show_id,
+                            season_number: item.season,
+                            watched: true
+                        }, {
+                            onConflict: "user_id,tv_show_id,season_number"
+                        });
+                    if (season_error) throw season_error;
+                }
+            } catch (error) {
+                console.warn("Unable to update Plex season completion:", show.title, error);
+            }
+        }
+
+        console.log(`Synced ${rows.length} watched Plex episodes to Stellaz.`);
+        await load_show_library();
+    } catch (error) {
+        console.error("Unable to sync Plex episode progress:", error);
+    }
+}
+
 async function open_plex_import_preview() {
     if (!plex_import_dialog) return;
     plex_import_preview = null;
@@ -3449,6 +3538,9 @@ onAuthStateChanged(auth, async (user) => {
         ]);
         auto_sync_plex_activity().catch((error) =>
             console.error("Unable to auto-sync Plex ratings:", error)
+        );
+        sync_plex_episode_progress().catch((error) =>
+            console.error("Unable to auto-sync Plex episode progress:", error)
         );
 
         // Anime/MAL startup is independent from Plex.
