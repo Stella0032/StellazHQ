@@ -857,8 +857,12 @@ function get_filtered_movies() {
                     b.franchise || "zzzz"
                 ) || (Number(b.year) || 0) - (Number(a.year) || 0) ||
                     a.title.localeCompare(b.title);
+            case "year-desc":
+                return (Number(b.year) || 0) - (Number(a.year) || 0) ||
+                    a.title.localeCompare(b.title);
             case "year-asc":
-                return a.year - b.year;
+                return (Number(a.year) || 0) - (Number(b.year) || 0) ||
+                    a.title.localeCompare(b.title);
             case "title-asc":
                 return a.title.localeCompare(b.title);
             case "title-desc":
@@ -868,9 +872,7 @@ function get_filtered_movies() {
             case "mine-desc":
                 return (b.my_rating ?? -1) - (a.my_rating ?? -1);
             default:
-                return (a.franchise || "zzzz").localeCompare(
-                    b.franchise || "zzzz"
-                ) || (Number(b.year) || 0) - (Number(a.year) || 0) ||
+                return (b.my_rating ?? -1) - (a.my_rating ?? -1) ||
                     a.title.localeCompare(b.title);
         }
     });
@@ -1032,7 +1034,7 @@ movie_filter_clear.addEventListener("click", () => {
     genre_filter.value = "";
     franchise_filter.value = "";
     movie_status_filter.value = "";
-    movie_sort.value = "franchise-asc";
+    movie_sort.value = "mine-desc";
     render_movie_library();
 });
 
@@ -1145,14 +1147,26 @@ function get_filtered_shows() {
             (!status || show.status === status);
     }).sort((a, b) => {
         switch (show_sort.value) {
-            case "year-asc": return a.year - b.year;
+            case "franchise-asc":
+                return (a.franchise || "zzzz").localeCompare(
+                    b.franchise || "zzzz"
+                ) || (Number(b.year) || 0) - (Number(a.year) || 0) ||
+                    a.title.localeCompare(b.title);
+            case "year-desc":
+                return (Number(b.year) || 0) - (Number(a.year) || 0) ||
+                    a.title.localeCompare(b.title);
+            case "year-asc":
+                return (Number(a.year) || 0) - (Number(b.year) || 0) ||
+                    a.title.localeCompare(b.title);
             case "title-asc": return a.title.localeCompare(b.title);
             case "title-desc": return b.title.localeCompare(a.title);
             case "tmdb-desc":
                 return (b.tmdb_rating ?? -1) - (a.tmdb_rating ?? -1);
             case "mine-desc":
                 return (b.my_rating ?? -1) - (a.my_rating ?? -1);
-            default: return b.year - a.year;
+            default:
+                return (b.my_rating ?? -1) - (a.my_rating ?? -1) ||
+                    a.title.localeCompare(b.title);
         }
     });
 }
@@ -1701,7 +1715,7 @@ show_filter_clear.addEventListener("click", () => {
     show_search.value = "";
     show_genre_filter.value = "";
     show_status_filter.value = "";
-    show_sort.value = "year-desc";
+    show_sort.value = "mine-desc";
     render_show_library();
 });
 
