@@ -3495,3 +3495,162 @@ html.anime-category-active .anime-library-panel .movie-filter-clear {
         min-width: 0;
     }
 }
+
+
+/*? -------------------------------- */
+/*^ ----- Manga / Manhwa Library --- */
+/*? -------------------------------- */
+/*#region*/
+.manga-library-panel {
+    border-color: rgba(102, 229, 179, 0.22);
+}
+
+.manga-filters {
+    grid-template-columns:
+        minmax(125px, 0.75fr)
+        minmax(145px, 0.9fr)
+        minmax(170px, 1fr)
+        minmax(210px, 1.25fr)
+        86px
+        minmax(140px, auto);
+}
+
+.manga-library-panel .movie-search:focus,
+.manga-library-panel .movie-filter:focus {
+    border-color: rgba(102, 229, 179, 0.65);
+}
+
+.manga-card:hover {
+    border-color: rgba(102, 229, 179, 0.55);
+}
+
+.manga-type-badge {
+    position: absolute;
+    left: 7px;
+    top: 7px;
+    padding: 5px 7px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: #eafff7;
+    background: rgba(5, 24, 19, 0.84);
+    backdrop-filter: blur(8px);
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: .6px;
+    text-transform: uppercase;
+}
+
+.manga-open {
+    cursor: pointer;
+}
+
+.manga-add-shell {
+    max-width: 780px;
+}
+
+.manga-detail-dialog {
+    max-height: calc(100dvh - 32px);
+    overflow-y: auto;
+}
+
+.manga-detail-shell {
+    min-height: 100%;
+    background:
+        linear-gradient(
+            90deg,
+            rgba(9, 12, 27, 0.98) 0%,
+            rgba(9, 12, 27, 0.92) 42%,
+            rgba(9, 12, 27, 0.86) 100%
+        );
+}
+
+.manga-detail-controls {
+    display: grid;
+    grid-template-columns:
+        minmax(150px, 1fr)
+        minmax(150px, 1fr)
+        minmax(150px, 1fr);
+    gap: 12px;
+}
+
+.manga-detail-controls label {
+    display: grid;
+    gap: 7px;
+    color: #cbd0df;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.manga-detail-controls .movie-filter,
+.manga-detail-controls .movie-search {
+    width: 100%;
+}
+
+.manga-detail-actions {
+    margin-top: 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.manga-detail-save {
+    min-width: 150px;
+}
+
+.manga-remove-button {
+    padding: 10px 14px;
+    border: 1px solid rgba(255, 112, 136, 0.32);
+    border-radius: 11px;
+    color: #ffb8c4;
+    background: rgba(255, 86, 115, 0.07);
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.manga-remove-button:hover {
+    border-color: rgba(255, 112, 136, 0.62);
+    background: rgba(255, 86, 115, 0.13);
+}
+
+@media (max-width: 900px) {
+    .manga-filters {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 700px) {
+    #manga_type_filter,
+    #manga_status_filter,
+    #manga_sort,
+    #manga_search {
+        grid-column: 1 / -1;
+    }
+
+    #manga_filter_clear {
+        grid-column: 1;
+    }
+
+    #manga_library_toggle {
+        grid-column: 2;
+    }
+
+    #manga_filter_clear,
+    #manga_library_toggle {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .manga-detail-controls {
+        grid-template-columns: 1fr;
+    }
+
+    .manga-detail-actions,
+    .manga-detail-save,
+    .manga-remove-button {
+        width: 100%;
+    }
+}
+/*#endregion*/
