@@ -3816,7 +3816,7 @@ html.anime-category-active .anime-library-panel .movie-filter-clear {
     justify-content: flex-end;
     align-items: center;
     gap: 8px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
 }
 
 .connected-service-actions .library-add-button,
@@ -3865,6 +3865,7 @@ html.anime-category-active .anime-library-panel .movie-filter-clear {
 
     .connected-service-actions {
         justify-content: flex-start;
+        flex-wrap: wrap;
     }
 
     .connected-service-actions .library-add-button,
