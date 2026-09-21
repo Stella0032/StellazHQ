@@ -10,6 +10,7 @@
 const {setGlobalOptions} = require("firebase-functions");
 const {defineSecret} = require("firebase-functions/params");
 const {onRequest, onCall, HttpsError} = require("firebase-functions/https");
+const {onSchedule} = require("firebase-functions/v2/scheduler");
 const logger = require("firebase-functions/logger");
 
 
@@ -176,6 +177,126 @@ exports.createInvitedAccount = onCall(async (request) => {
     }
 
     return {success: true};
+});
+//#endregion
+
+
+//? ---------------------------------
+//* ----- Notifications -------------
+//? ---------------------------------
+//#region
+exports.getEntertainmentNotifications = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError(
+            "unauthenticated",
+            "You must be logged in."
+        );
+    }
+
+    const snapshot = await db
+        .collection("users")
+        .doc(request.auth.uid)
+        .collection("notifications")
+        .where("deliver_at", "<=", new Date())
+        .orderBy("deliver_at", "desc")
+        .limit(40)
+        .get();
+
+    const notifications = snapshot.docs.map((doc_snapshot) => {
+        const data = doc_snapshot.data();
+        return {
+            id: doc_snapshot.id,
+            type: data.type || "release",
+            title: data.title || "New release",
+            message: data.message || "",
+            library: data.library || null,
+            source: data.source || null,
+            read: data.read === true,
+            deliver_at:
+                data.deliver_at?.toDate?.().toISOString?.() ||
+                null,
+        };
+    });
+
+    return {
+        notifications,
+        unread_count:
+            notifications.filter((item) => !item.read).length,
+    };
+});
+
+exports.markEntertainmentNotificationRead = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError(
+            "unauthenticated",
+            "You must be logged in."
+        );
+    }
+
+    const notification_id =
+        String(request.data?.notification_id || "").trim();
+
+    if (!notification_id ||
+        notification_id.length > 220 ||
+        notification_id.includes("/")) {
+        throw new HttpsError(
+            "invalid-argument",
+            "Invalid notification."
+        );
+    }
+
+    await db
+        .collection("users")
+        .doc(request.auth.uid)
+        .collection("notifications")
+        .doc(notification_id)
+        .set({
+            read: true,
+            read_at: new Date(),
+        }, {merge: true});
+
+    return {success: true};
+});
+
+exports.markAllEntertainmentNotificationsRead = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError(
+            "unauthenticated",
+            "You must be logged in."
+        );
+    }
+
+    const ref = db
+        .collection("users")
+        .doc(request.auth.uid)
+        .collection("notifications");
+
+    const snapshot = await ref
+        .where("read", "==", false)
+        .limit(250)
+        .get();
+
+    if (snapshot.empty) {
+        return {success: true, updated: 0};
+    }
+
+    const batch = db.batch();
+    const read_at = new Date();
+
+    snapshot.docs.forEach((doc_snapshot) => {
+        batch.set(
+            doc_snapshot.ref,
+            {read: true, read_at},
+            {merge: true}
+        );
+    });
+
+    await batch.commit();
+
+    return {
+        success: true,
+        updated: snapshot.size,
+    };
 });
 //#endregion
 
@@ -2735,6 +2856,832 @@ exports.getTVShowRecommendations = onCall(
 const openai_api_key = defineSecret("OPENAI_API_KEY");
 const supabase_secret_key = defineSecret("SUPABASE_SECRET_KEY");
 const supabase_url = "https://xmycfxwapejnbpareaxc.supabase.co";
+
+async function notification_supabase_select(table, select_fields) {
+    const endpoint = new URL(
+        supabase_url + "/rest/v1/" + table
+    );
+    endpoint.searchParams.set("select", select_fields);
+
+    const response = await fetch(endpoint, {
+        headers: {
+            apikey: supabase_secret_key.value(),
+            Authorization:
+                "Bearer " + supabase_secret_key.value(),
+            Accept: "application/json",
+        },
+    });
+
+    if (!response.ok) {
+        const error_text = await response.text();
+        logger.error("Release checker Supabase read failed.", {
+            table,
+            status: response.status,
+            error: error_text,
+        });
+        throw new Error(
+            "Unable to load " + table + " for release checking."
+        );
+    }
+
+    return await response.json();
+}
+
+function notification_normalize_title(value) {
+    return String(value || "")
+        .normalize("NFKD")
+        .toLowerCase()
+        .replace(/&/g, " and ")
+        .replace(/[^a-z0-9]+/g, " ")
+        .trim();
+}
+
+function notification_safe_id(value) {
+    return String(value || "")
+        .replace(/[^a-zA-Z0-9_.-]+/g, "_")
+        .slice(0, 180);
+}
+
+async function create_release_notification(
+    uid,
+    notification_id,
+    data
+) {
+    const ref = db
+        .collection("users")
+        .doc(uid)
+        .collection("notifications")
+        .doc(notification_safe_id(notification_id));
+
+    try {
+        await ref.create({
+            ...data,
+            read: false,
+            created_at: new Date(),
+        });
+        return true;
+    } catch (error) {
+        if (error?.code === 6 ||
+            String(error?.code) === "6" ||
+            String(error?.message || "")
+                .includes("ALREADY_EXISTS")) {
+            return false;
+        }
+
+        throw error;
+    }
+}
+
+async function anilist_graphql_public(query, variables = {}) {
+    const response = await fetch(
+        "https://graphql.anilist.co",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json",
+            },
+            body: JSON.stringify({query, variables}),
+        }
+    );
+
+    const payload =
+        await response.json().catch(() => ({}));
+
+    if (!response.ok ||
+        (Array.isArray(payload.errors) &&
+         payload.errors.length)) {
+        throw new Error(
+            payload.errors?.[0]?.message ||
+            "AniList release lookup failed."
+        );
+    }
+
+    return payload.data;
+}
+
+async function resolve_anilist_ids_for_anime(anime_rows) {
+    const resolved = new Map();
+
+    for (const item of anime_rows) {
+        if (Number(item.anilist_id || 0) > 0) {
+            resolved.set(
+                String(item.id),
+                Number(item.anilist_id)
+            );
+        }
+    }
+
+    const mal_rows = anime_rows.filter((item) =>
+        !resolved.has(String(item.id)) &&
+        Number(item.mal_id || 0) > 0
+    );
+
+    for (let start = 0; start < mal_rows.length; start += 35) {
+        const chunk = mal_rows.slice(start, start + 35);
+        const fields = chunk.map((item, index) =>
+            "m" + index +
+            ": Media(idMal: " +
+            Number(item.mal_id) +
+            ", type: ANIME) { id }"
+        );
+
+        let data;
+        try {
+            data = await anilist_graphql_public(
+                "query { " + fields.join("\n") + " }"
+            );
+        } catch (error) {
+            logger.warn("Unable to resolve MAL IDs through AniList.", {
+                error: error.message,
+            });
+            continue;
+        }
+
+        chunk.forEach((item, index) => {
+            const anilist_id =
+                Number(data?.["m" + index]?.id || 0);
+            if (anilist_id) {
+                resolved.set(
+                    String(item.id),
+                    anilist_id
+                );
+            }
+        });
+    }
+
+    return resolved;
+}
+
+async function schedule_anime_release_notifications(anime_rows) {
+    const active = anime_rows.filter((item) =>
+        !["completed", "dropped"].includes(
+            String(item.status || "")
+        )
+    );
+
+    if (!active.length) return 0;
+
+    const resolved =
+        await resolve_anilist_ids_for_anime(active);
+    const media_ids = [
+        ...new Set([...resolved.values()]),
+    ];
+
+    if (!media_ids.length) return 0;
+
+    const now_seconds =
+        Math.floor(Date.now() / 1000);
+    const before_seconds =
+        now_seconds + 24 * 60 * 60;
+
+    const query = [
+        "query ($ids: [Int], $after: Int, $before: Int, $page: Int) {",
+        "  Page(page: $page, perPage: 50) {",
+        "    pageInfo { hasNextPage }",
+        "    airingSchedules(",
+        "      mediaId_in: $ids,",
+        "      airingAt_greater: $after,",
+        "      airingAt_lesser: $before,",
+        "      sort: TIME",
+        "    ) {",
+        "      mediaId episode airingAt",
+        "      media { title { english romaji userPreferred } }",
+        "    }",
+        "  }",
+        "}",
+    ].join("\n");
+
+    const schedules = [];
+    let page = 1;
+    let has_next_page = true;
+
+    while (has_next_page && page <= 20) {
+        const data = await anilist_graphql_public(
+            query,
+            {
+                ids: media_ids,
+                after: now_seconds - 60,
+                before: before_seconds,
+                page,
+            }
+        );
+
+        schedules.push(
+            ...(data?.Page?.airingSchedules || [])
+        );
+
+        has_next_page =
+            data?.Page?.pageInfo?.hasNextPage === true;
+        page += 1;
+    }
+
+    const rows_by_anilist = new Map();
+
+    for (const item of active) {
+        const anilist_id =
+            resolved.get(String(item.id));
+        if (!anilist_id) continue;
+
+        if (!rows_by_anilist.has(anilist_id)) {
+            rows_by_anilist.set(anilist_id, []);
+        }
+        rows_by_anilist.get(anilist_id).push(item);
+    }
+
+    let created = 0;
+
+    for (const schedule of schedules) {
+        const media_id = Number(schedule.mediaId || 0);
+        const episode = Number(schedule.episode || 0);
+        const airing_at =
+            Number(schedule.airingAt || 0);
+        if (!media_id || !episode || !airing_at) continue;
+
+        const library_rows =
+            rows_by_anilist.get(media_id) || [];
+
+        for (const item of library_rows) {
+            if (episode <=
+                Number(item.episodes_watched || 0)) {
+                continue;
+            }
+
+            const title =
+                item.title ||
+                schedule.media?.title?.english ||
+                schedule.media?.title?.userPreferred ||
+                schedule.media?.title?.romaji ||
+                "Anime";
+
+            const did_create =
+                await create_release_notification(
+                    item.user_id,
+                    "anime_" + media_id +
+                        "_episode_" + episode,
+                    {
+                        type: "anime_episode",
+                        library: "Anime",
+                        source: "AniList",
+                        title: "New episode · " + title,
+                        message:
+                            "Episode " + episode +
+                            " is now available.",
+                        deliver_at:
+                            new Date(airing_at * 1000),
+                        media_title: title,
+                        episode,
+                        anilist_id: media_id,
+                    }
+                );
+
+            if (did_create) created += 1;
+        }
+    }
+
+    return created;
+}
+
+function manga_release_key(item) {
+    if (Number(item.anilist_id || 0) > 0) {
+        return "al_" + Number(item.anilist_id);
+    }
+    if (Number(item.mal_id || 0) > 0) {
+        return "mal_" + Number(item.mal_id);
+    }
+    if (Number(item.kitsu_id || 0) > 0) {
+        return "kitsu_" + Number(item.kitsu_id);
+    }
+
+    return "title_" +
+        notification_safe_id(
+            notification_normalize_title(item.title)
+        );
+}
+
+function manga_target_aliases(item) {
+    return [
+        item.title,
+        item.title_romaji,
+        item.title_native,
+        ...(Array.isArray(item.synonyms)
+            ? item.synonyms
+            : []),
+    ]
+        .map(notification_normalize_title)
+        .filter(Boolean);
+}
+
+function mangadex_candidate_aliases(candidate) {
+    const attrs = candidate?.attributes || {};
+    const titles = Object.values(attrs.title || {});
+    const alt_titles = (attrs.altTitles || [])
+        .flatMap((entry) => Object.values(entry || {}));
+
+    return [
+        ...titles,
+        ...alt_titles,
+    ]
+        .map(notification_normalize_title)
+        .filter(Boolean);
+}
+
+function choose_mangadex_match(item, candidates) {
+    const anilist_id =
+        Number(item.anilist_id || 0);
+    const mal_id =
+        Number(item.mal_id || 0);
+    const aliases =
+        new Set(manga_target_aliases(item));
+    const start_year = item.start_date
+        ? Number(String(item.start_date).slice(0, 4))
+        : null;
+
+    let best = null;
+    let best_score = -1;
+
+    for (const candidate of candidates) {
+        const attrs = candidate.attributes || {};
+        const links = attrs.links || {};
+        let score = 0;
+
+        if (anilist_id &&
+            Number(links.al || 0) === anilist_id) {
+            score += 100;
+        }
+        if (mal_id &&
+            Number(links.mal || 0) === mal_id) {
+            score += 100;
+        }
+
+        const candidate_aliases =
+            mangadex_candidate_aliases(candidate);
+
+        if (candidate_aliases.some(
+            (alias) => aliases.has(alias)
+        )) {
+            score += 40;
+        }
+
+        if (start_year &&
+            Number(attrs.year || 0) === start_year) {
+            score += 10;
+        }
+
+        if (score > best_score) {
+            best = candidate;
+            best_score = score;
+        }
+    }
+
+    return best_score >= 40 ? best : null;
+}
+
+async function resolve_mangadex_mapping(item) {
+    const key = manga_release_key(item);
+    const ref = db
+        .collection("release_source_maps")
+        .doc("manga_" + key);
+    const existing = await ref.get();
+
+    if (existing.exists) {
+        const data = existing.data();
+
+        if (data.mangadex_id) {
+            return {
+                key,
+                mangadex_id: data.mangadex_id,
+                tracked_from:
+                    data.tracked_from?.toDate?.() ||
+                    new Date(0),
+            };
+        }
+
+        const checked_at =
+            data.checked_at?.toDate?.();
+        if (checked_at &&
+            Date.now() - checked_at.getTime() <
+                7 * 24 * 60 * 60 * 1000) {
+            return null;
+        }
+    }
+
+    const search_title =
+        item.title_romaji ||
+        item.title ||
+        item.title_native;
+    if (!search_title) return null;
+
+    const url = new URL(
+        "https://api.mangadex.org/manga"
+    );
+    url.searchParams.set("title", search_title);
+    url.searchParams.set("limit", "10");
+    ["safe", "suggestive", "erotica"].forEach(
+        (rating) =>
+            url.searchParams.append(
+                "contentRating[]",
+                rating
+            )
+    );
+
+    let payload;
+    try {
+        const response = await fetch(url, {
+            headers: {
+                Accept: "application/json",
+                "User-Agent":
+                    "StellazHQ/1.0 (https://stellaz.org)",
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(
+                "MangaDex search failed (" +
+                response.status + ")."
+            );
+        }
+
+        payload = await response.json();
+    } catch (error) {
+        logger.warn("MangaDex title lookup failed.", {
+            title: item.title,
+            error: error.message,
+        });
+        return null;
+    }
+
+    const match = choose_mangadex_match(
+        item,
+        payload.data || []
+    );
+
+    if (!match?.id) {
+        await ref.set({
+            status: "not_found",
+            checked_at: new Date(),
+            title: item.title || null,
+        }, {merge: true});
+        return null;
+    }
+
+    const tracked_from = new Date();
+
+    await ref.set({
+        status: "matched",
+        mangadex_id: String(match.id),
+        title: item.title || null,
+        tracked_from,
+        checked_at: tracked_from,
+    }, {merge: true});
+
+    return {
+        key,
+        mangadex_id: String(match.id),
+        tracked_from,
+    };
+}
+
+async function map_manga_release_sources(manga_rows) {
+    const active = manga_rows.filter((item) =>
+        !["completed", "dropped"].includes(
+            String(item.user_status || "")
+        )
+    );
+
+    const by_key = new Map();
+    for (const item of active) {
+        const key = manga_release_key(item);
+        if (!by_key.has(key)) {
+            by_key.set(key, item);
+        }
+    }
+
+    const mappings = new Map();
+    const entries = [...by_key.entries()];
+
+    // Limit new source lookups per run so a newly deployed public site
+    // cannot create a large burst against MangaDex.
+    for (let index = 0;
+        index < entries.length;
+        index += 1) {
+        const [key, item] = entries[index];
+
+        const ref = db
+            .collection("release_source_maps")
+            .doc("manga_" + key);
+        const snap = await ref.get();
+
+        if (!snap.exists && index >= 35) {
+            continue;
+        }
+
+        const mapping =
+            await resolve_mangadex_mapping(item);
+        if (mapping?.mangadex_id) {
+            mappings.set(key, mapping);
+        }
+    }
+
+    return {active, mappings};
+}
+
+async function mangadex_recent_chapters(
+    manga_ids,
+    publish_since
+) {
+    const chapters = [];
+
+    for (let start = 0;
+        start < manga_ids.length;
+        start += 50) {
+        const chunk = manga_ids.slice(start, start + 50);
+        let offset = 0;
+
+        while (offset < 1000) {
+            const url = new URL(
+                "https://api.mangadex.org/chapter"
+            );
+
+            chunk.forEach((id) =>
+                url.searchParams.append("manga[]", id)
+            );
+            url.searchParams.append(
+                "translatedLanguage[]",
+                "en"
+            );
+            url.searchParams.set(
+                "publishAtSince",
+                publish_since.toISOString()
+            );
+            url.searchParams.set(
+                "order[publishAt]",
+                "asc"
+            );
+            url.searchParams.set("limit", "100");
+            url.searchParams.set(
+                "offset",
+                String(offset)
+            );
+            url.searchParams.set(
+                "includeFuturePublishAt",
+                "0"
+            );
+            url.searchParams.set(
+                "includeExternalUrl",
+                "1"
+            );
+
+            const response = await fetch(url, {
+                headers: {
+                    Accept: "application/json",
+                    "User-Agent":
+                        "StellazHQ/1.0 (https://stellaz.org)",
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error(
+                    "MangaDex chapter lookup failed (" +
+                    response.status + ")."
+                );
+            }
+
+            const payload = await response.json();
+            const data =
+                Array.isArray(payload.data)
+                    ? payload.data
+                    : [];
+            chapters.push(...data);
+
+            if (data.length < 100) break;
+            offset += 100;
+        }
+    }
+
+    return chapters;
+}
+
+async function create_manga_release_notifications(manga_rows) {
+    const {active, mappings} =
+        await map_manga_release_sources(manga_rows);
+
+    if (!mappings.size) return 0;
+
+    const state_ref = db
+        .collection("release_checker_state")
+        .doc("manga");
+    const state_snap = await state_ref.get();
+
+    const now = new Date();
+    const previous =
+        state_snap.data()?.last_success_at?.toDate?.();
+
+    const publish_since = previous
+        ? new Date(
+            Math.max(
+                previous.getTime() - 10 * 60 * 1000,
+                now.getTime() - 48 * 60 * 60 * 1000
+            )
+        )
+        : new Date(now.getTime() - 5 * 60 * 1000);
+
+    const manga_ids = [
+        ...new Set(
+            [...mappings.values()]
+                .map((item) => item.mangadex_id)
+        ),
+    ];
+
+    let chapters;
+    try {
+        chapters = await mangadex_recent_chapters(
+            manga_ids,
+            publish_since
+        );
+    } catch (error) {
+        logger.error("MangaDex release check failed.", {
+            error: error.message,
+        });
+        return 0;
+    }
+
+    const users_by_mangadex = new Map();
+
+    for (const item of active) {
+        const mapping =
+            mappings.get(manga_release_key(item));
+        if (!mapping) continue;
+
+        if (!users_by_mangadex.has(mapping.mangadex_id)) {
+            users_by_mangadex.set(
+                mapping.mangadex_id,
+                []
+            );
+        }
+
+        users_by_mangadex
+            .get(mapping.mangadex_id)
+            .push({
+                item,
+                tracked_from:
+                    mapping.tracked_from,
+            });
+    }
+
+    let created = 0;
+    const seen_chapters = new Set();
+
+    for (const chapter of chapters) {
+        const attrs = chapter.attributes || {};
+        const manga_relation =
+            (chapter.relationships || []).find(
+                (relation) =>
+                    relation.type === "manga"
+            );
+        const mangadex_id =
+            manga_relation?.id;
+        if (!mangadex_id) continue;
+
+        const chapter_number =
+            String(attrs.chapter || "").trim();
+        const numeric_chapter =
+            Number.parseFloat(chapter_number);
+        const publish_at =
+            attrs.publishAt
+                ? new Date(attrs.publishAt)
+                : now;
+
+        const dedupe_key =
+            mangadex_id + ":" +
+            (chapter_number ||
+             String(chapter.id));
+        if (seen_chapters.has(dedupe_key)) continue;
+        seen_chapters.add(dedupe_key);
+
+        const targets =
+            users_by_mangadex.get(mangadex_id) || [];
+
+        for (const target of targets) {
+            const {item, tracked_from} = target;
+
+            if (tracked_from &&
+                publish_at <= tracked_from) {
+                continue;
+            }
+
+            if (Number.isFinite(numeric_chapter) &&
+                numeric_chapter <=
+                    Number(item.chapters_read || 0)) {
+                continue;
+            }
+
+            const title = item.title || "Manga";
+            const chapter_label =
+                chapter_number
+                    ? "Chapter " + chapter_number
+                    : "A new chapter";
+
+            const did_create =
+                await create_release_notification(
+                    item.user_id,
+                    "manga_" +
+                        notification_safe_id(mangadex_id) +
+                        "_chapter_" +
+                        notification_safe_id(
+                            chapter_number ||
+                            chapter.id
+                        ),
+                    {
+                        type: "manga_chapter",
+                        library: "Manga / Manhwa",
+                        source: "MangaDex",
+                        title: "New chapter · " + title,
+                        message:
+                            chapter_label +
+                            " is now available in English.",
+                        deliver_at: publish_at,
+                        media_title: title,
+                        chapter:
+                            chapter_number || null,
+                        mangadex_id,
+                    }
+                );
+
+            if (did_create) created += 1;
+        }
+    }
+
+    await state_ref.set({
+        last_success_at: now,
+        updated_at: now,
+    }, {merge: true});
+
+    return created;
+}
+
+exports.checkEntertainmentReleases = onSchedule(
+    {
+        schedule: "every 30 minutes",
+        timeoutSeconds: 540,
+        secrets: [supabase_secret_key],
+    },
+    async () => {
+        const [anime_rows, manga_rows] =
+            await Promise.all([
+                notification_supabase_select(
+                    "anime",
+                    [
+                        "id",
+                        "user_id",
+                        "title",
+                        "anilist_id",
+                        "mal_id",
+                        "kitsu_id",
+                        "status",
+                        "episodes_watched",
+                        "start_date",
+                    ].join(",")
+                ),
+                notification_supabase_select(
+                    "manga_library",
+                    [
+                        "id",
+                        "user_id",
+                        "title",
+                        "title_romaji",
+                        "title_native",
+                        "synonyms",
+                        "anilist_id",
+                        "mal_id",
+                        "kitsu_id",
+                        "user_status",
+                        "chapters_read",
+                        "start_date",
+                    ].join(",")
+                ),
+            ]);
+
+        const [anime_created, manga_created] =
+            await Promise.all([
+                schedule_anime_release_notifications(
+                    anime_rows
+                ),
+                create_manga_release_notifications(
+                    manga_rows
+                ),
+            ]);
+
+        logger.info("Entertainment release check complete.", {
+            anime_notifications_created:
+                anime_created,
+            manga_notifications_created:
+                manga_created,
+        });
+    }
+);
+
+
 
 /**
  * Resolve one movie through TMDB and return the fields used by Stellaz.
