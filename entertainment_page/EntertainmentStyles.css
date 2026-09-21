@@ -3102,7 +3102,6 @@ html.anime-category-active .anime-library-panel .movie-grid { position: relative
 /* Anime full-page background preview: poster crossfade + glass panels. */
 html.anime-category-active body {
     position: relative;
-    background: #070816;
 }
 
 html.anime-category-active body::before,
@@ -3213,23 +3212,6 @@ html[data-theme="flurple"].anime-category-active .mal-connect-card {
     }
 }
 
-
-/* Anime backdrop fix: artwork sits behind the entire Entertainment page. */
-html.anime-category-active body {
-    background: transparent;
-}
-
-html.anime-category-active .ambient-background {
-    background: transparent;
-}
-
-html.anime-category-active .ambient-background::before {
-    opacity: .28;
-}
-
-html.anime-category-active .ambient-background::after {
-    opacity: .35;
-}
 
 /* Keep the Anime library as a true frosted-glass layer over the page art. */
 html.anime-category-active .anime-library-panel {
