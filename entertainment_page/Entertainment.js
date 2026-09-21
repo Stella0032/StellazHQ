@@ -2353,6 +2353,100 @@ connected_services_close?.addEventListener("click", () =>
 
 
 //? ---------------------------------
+//* ----- Kitsu Connection ----------
+//? ---------------------------------
+//#region
+const kitsu_connection_label =
+    document.getElementById("kitsu_connection_label");
+const kitsu_connect_description =
+    document.getElementById("kitsu_connect_description");
+const kitsu_connect_button =
+    document.getElementById("kitsu_connect_button");
+const kitsu_username_input =
+    document.getElementById("kitsu_username_input");
+const kitsu_anime_sync_button =
+    document.getElementById("kitsu_anime_sync_button");
+const kitsu_manga_sync_button =
+    document.getElementById("kitsu_manga_sync_button");
+
+async function load_kitsu_connection_status() {
+    try {
+        const get_status =
+            httpsCallable(functions, "getKitsuConnectionStatus");
+        const result = await get_status();
+
+        if (result.data.connected) {
+            document.getElementById("kitsu_connection_badge")
+                ?.removeAttribute("hidden");
+            kitsu_connection_label.textContent =
+                result.data.username
+                    ? "Connected as " + result.data.username
+                    : "Connected";
+            kitsu_connect_description.textContent =
+                "Connected to Stellaz. Import anime or manga to refresh your Kitsu progress, statuses, and ratings.";
+            kitsu_username_input.hidden = true;
+            kitsu_connect_button.hidden = true;
+            kitsu_anime_sync_button.hidden = false;
+            kitsu_manga_sync_button.hidden = false;
+            return;
+        }
+
+        document.getElementById("kitsu_connection_badge")
+            ?.setAttribute("hidden", "");
+        kitsu_connection_label.textContent = "Not connected";
+        kitsu_connect_description.textContent =
+            "Link your public Kitsu profile to import anime and manga progress, statuses, and ratings.";
+        kitsu_username_input.hidden = false;
+        kitsu_connect_button.hidden = false;
+        kitsu_anime_sync_button.hidden = true;
+        kitsu_manga_sync_button.hidden = true;
+    } catch (error) {
+        console.error("Unable to check Kitsu connection:", error);
+    }
+}
+
+async function connect_kitsu_profile() {
+    const username = kitsu_username_input.value.trim();
+    if (!username) {
+        kitsu_username_input.focus();
+        return;
+    }
+
+    kitsu_connect_button.disabled = true;
+    kitsu_connect_button.textContent = "Connecting...";
+
+    try {
+        const connect = httpsCallable(functions, "connectKitsuProfile");
+        const result = await connect({username});
+
+        await load_kitsu_connection_status();
+        show_toast(
+            "Kitsu connected as " +
+            (result.data.username || username) + "."
+        );
+    } catch (error) {
+        console.error("Unable to connect Kitsu:", error);
+        alert(
+            error?.message ||
+            "Unable to find that public Kitsu profile."
+        );
+    } finally {
+        kitsu_connect_button.disabled = false;
+        kitsu_connect_button.textContent = "Connect Kitsu";
+    }
+}
+
+kitsu_connect_button.addEventListener("click", connect_kitsu_profile);
+kitsu_username_input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+        event.preventDefault();
+        connect_kitsu_profile();
+    }
+});
+//#endregion
+
+
+//? ---------------------------------
 //* ----- Manga / Manhwa Library ----
 //? ---------------------------------
 //#region
@@ -2548,6 +2642,13 @@ function find_existing_manga_for_import(row) {
         if (by_mal) return by_mal;
     }
 
+    if (row.kitsu_id) {
+        const by_kitsu = manga_library.find(
+            (item) => Number(item.kitsu_id) === Number(row.kitsu_id)
+        );
+        if (by_kitsu) return by_kitsu;
+    }
+
     const incoming_aliases = new Set(manga_import_aliases(row));
     if (!incoming_aliases.size) return null;
 
@@ -2568,7 +2669,8 @@ function manga_import_patch(existing, row) {
     };
 
     [
-        "anilist_id", "mal_id", "anilist_score", "mal_score",
+        "anilist_id", "mal_id", "kitsu_id",
+        "anilist_score", "mal_score", "kitsu_score",
         "total_chapters", "total_volumes", "publication_status",
         "start_date", "end_date"
     ].forEach((field) => {
@@ -2733,6 +2835,61 @@ anilist_connect_button.addEventListener("click", async () => {
 anilist_anime_sync_button.addEventListener("click", sync_anilist_anime);
 anilist_sync_header_button.addEventListener("click", sync_anilist_manga);
 
+async function sync_kitsu_anime() {
+    const original_text = kitsu_anime_sync_button.textContent;
+    kitsu_anime_sync_button.disabled = true;
+    kitsu_anime_sync_button.textContent = "Importing...";
+
+    try {
+        const sync = httpsCallable(functions, "syncKitsuAnimeList");
+        const result = await sync();
+        const rows = result.data.anime || [];
+        const merged = await merge_anime_import_rows(rows);
+
+        show_toast(
+            rows.length + " Kitsu anime title" +
+            (rows.length === 1 ? "" : "s") +
+            " imported · " + merged.added + " added, " +
+            merged.updated + " updated."
+        );
+    } catch (error) {
+        console.error("Unable to import Kitsu anime:", error);
+        alert("Unable to import your Kitsu anime list. Please try again.");
+    } finally {
+        kitsu_anime_sync_button.disabled = false;
+        kitsu_anime_sync_button.textContent = original_text;
+    }
+}
+
+async function sync_kitsu_manga() {
+    const original_text = kitsu_manga_sync_button.textContent;
+    kitsu_manga_sync_button.disabled = true;
+    kitsu_manga_sync_button.textContent = "Importing...";
+
+    try {
+        const sync = httpsCallable(functions, "syncKitsuMangaList");
+        const result = await sync();
+        const rows = result.data.manga || [];
+        const merged = await merge_manga_import_rows(rows);
+
+        show_toast(
+            rows.length + " Kitsu manga title" +
+            (rows.length === 1 ? "" : "s") +
+            " imported · " + merged.added + " added, " +
+            merged.updated + " updated."
+        );
+    } catch (error) {
+        console.error("Unable to import Kitsu manga:", error);
+        alert("Unable to import your Kitsu manga list. Please try again.");
+    } finally {
+        kitsu_manga_sync_button.disabled = false;
+        kitsu_manga_sync_button.textContent = original_text;
+    }
+}
+
+kitsu_anime_sync_button.addEventListener("click", sync_kitsu_anime);
+kitsu_manga_sync_button.addEventListener("click", sync_kitsu_manga);
+
 
 function render_manga_library() {
     const query = manga_search.value.trim().toLowerCase();
@@ -2760,7 +2917,9 @@ function render_manga_library() {
         const external_score = (item) =>
             item.anilist_score != null
                 ? Number(item.anilist_score)
-                : Number(item.mal_score || 0) * 10;
+                : item.mal_score != null
+                    ? Number(item.mal_score) * 10
+                    : Number(item.kitsu_score || 0);
         visible.sort((a, b) =>
             external_score(b) - external_score(a) ||
             a.title.localeCompare(b.title));
@@ -2789,7 +2948,9 @@ function render_manga_library() {
             ? "AniList: " + Number(item.anilist_score) + "%"
             : item.mal_score != null
                 ? "MAL: " + Number(item.mal_score).toFixed(2)
-                : "Rating: —";
+                : item.kitsu_score != null
+                    ? "Kitsu: " + Number(item.kitsu_score).toFixed(1) + "%"
+                    : "Rating: —";
         const personal_score = item.my_rating
             ? " · ★ " + Number(item.my_rating).toFixed(1) + "/10"
             : " · ★ —";
@@ -2864,7 +3025,9 @@ function open_manga_editor(manga_id) {
             ? "★ " + Number(active_manga.anilist_score) + "% AniList"
             : active_manga.mal_score != null
                 ? "★ " + Number(active_manga.mal_score).toFixed(2) + " MAL"
-                : null
+                : active_manga.kitsu_score != null
+                    ? "★ " + Number(active_manga.kitsu_score).toFixed(1) + "% Kitsu"
+                    : null
     ].filter(Boolean).join(" · ");
     manga_detail_description.textContent =
         active_manga.description || "No description available.";
@@ -3335,6 +3498,13 @@ function find_existing_anime_for_import(row) {
         if (by_mal) return by_mal;
     }
 
+    if (row.kitsu_id) {
+        const by_kitsu = anime_library.find(
+            (item) => Number(item.kitsu_id) === Number(row.kitsu_id)
+        );
+        if (by_kitsu) return by_kitsu;
+    }
+
     const incoming_aliases = new Set(anime_import_aliases(row));
     if (!incoming_aliases.size) return null;
     const incoming_year = anime_import_year(row);
@@ -3360,7 +3530,8 @@ function anime_import_patch(existing, row) {
     };
 
     [
-        "mal_id", "anilist_id", "mal_score", "anilist_score",
+        "mal_id", "anilist_id", "kitsu_id",
+        "mal_score", "anilist_score", "kitsu_score",
         "total_episodes", "start_date", "finish_date",
         "average_episode_duration_ms"
     ].forEach((field) => {
@@ -3526,7 +3697,9 @@ function render_anime_library() {
             ? "MAL: " + Number(item.mal_score).toFixed(2)
             : item.anilist_score != null
                 ? "AniList: " + Number(item.anilist_score) + "%"
-                : "Rating: —";
+                : item.kitsu_score != null
+                    ? "Kitsu: " + Number(item.kitsu_score).toFixed(1) + "%"
+                    : "Rating: —";
         const personal_score = item.my_rating
             ? " · ★ " + Number(item.my_rating).toFixed(1) + "/10"
             : " · ★ —";
@@ -3714,7 +3887,9 @@ async function open_anime_editor(anime_id) {
         ? ` · ⭐ ${Number(active_anime.mal_score).toFixed(2)} MAL`
         : active_anime.anilist_score != null
             ? ` · ⭐ ${Number(active_anime.anilist_score)}% AniList`
-            : "";
+            : active_anime.kitsu_score != null
+                ? ` · ⭐ ${Number(active_anime.kitsu_score).toFixed(1)}% Kitsu`
+                : "";
     anime_detail_meta.textContent = `${media_type}${source_score}`;
     anime_edit_save.textContent = active_anime.mal_id
         ? "Save to MyAnimeList"
@@ -4716,6 +4891,7 @@ onAuthStateChanged(auth, async (user) => {
         await Promise.allSettled([
             load_mal_connection_status(),
             load_anilist_connection_status(),
+            load_kitsu_connection_status(),
             load_anime_library(),
             load_manga_library()
         ]);

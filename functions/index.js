@@ -922,6 +922,460 @@ exports.syncMALMangaList = onCall(
 
 
 //? ------------------------------
+//* ----- Kitsu Import ----------
+//? ------------------------------
+//#region
+const kitsu_api_base = "https://kitsu.app/api/edge";
+
+function kitsu_headers() {
+    return {
+        "Accept": "application/vnd.api+json",
+        "Content-Type": "application/vnd.api+json",
+    };
+}
+
+function normalize_kitsu_username(value) {
+    let username = String(value || "").trim();
+
+    try {
+        if (/^https?:\/\//i.test(username)) {
+            const parsed = new URL(username);
+            const parts = parsed.pathname.split("/").filter(Boolean);
+            username = parts[parts.length - 1] || "";
+        }
+    } catch (_) {}
+
+    return username.replace(/^@/, "").trim();
+}
+
+async function kitsu_find_user(username) {
+    const candidates = [
+        ["slug", username],
+        ["name", username],
+    ];
+
+    for (const [field, value] of candidates) {
+        const url = new URL(kitsu_api_base + "/users");
+        url.searchParams.set("filter[" + field + "]", value);
+        url.searchParams.set("page[limit]", "5");
+
+        const response = await fetch(url, {
+            headers: kitsu_headers(),
+        });
+
+        if (!response.ok) continue;
+
+        const payload = await response.json();
+        const match = (payload.data || []).find((item) => {
+            const attrs = item.attributes || {};
+            return [
+                attrs.slug,
+                attrs.name,
+                attrs.about,
+            ].filter(Boolean).some(
+                (candidate) =>
+                    String(candidate).toLowerCase() ===
+                    String(value).toLowerCase()
+            );
+        }) || (payload.data || [])[0];
+
+        if (match?.id) return match;
+    }
+
+    return null;
+}
+
+exports.connectKitsuProfile = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError(
+            "unauthenticated",
+            "You must be logged in."
+        );
+    }
+
+    const username = normalize_kitsu_username(
+        request.data?.username
+    );
+
+    if (!username || username.length > 80) {
+        throw new HttpsError(
+            "invalid-argument",
+            "Enter a valid Kitsu username."
+        );
+    }
+
+    const user = await kitsu_find_user(username);
+    if (!user?.id) {
+        throw new HttpsError(
+            "not-found",
+            "No public Kitsu profile was found with that username."
+        );
+    }
+
+    const attrs = user.attributes || {};
+    const stored_username =
+        attrs.slug || attrs.name || username;
+
+    await db.collection("kitsu_connections")
+        .doc(request.auth.uid)
+        .set({
+            kitsu_user_id: String(user.id),
+            username: stored_username,
+            display_name: attrs.name || stored_username,
+            connected_at: new Date(),
+        }, {merge: true});
+
+    return {
+        connected: true,
+        username: stored_username,
+    };
+});
+
+exports.getKitsuConnectionStatus = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError(
+            "unauthenticated",
+            "You must be logged in."
+        );
+    }
+
+    const snapshot = await db.collection("kitsu_connections")
+        .doc(request.auth.uid)
+        .get();
+
+    if (!snapshot.exists) {
+        return {connected: false};
+    }
+
+    const data = snapshot.data();
+    return {
+        connected: Boolean(data.kitsu_user_id),
+        username: data.username || data.display_name || null,
+    };
+});
+
+function kitsu_entry_rating(attributes) {
+    const rating_twenty = Number(attributes?.ratingTwenty || 0);
+    if (rating_twenty > 0) return rating_twenty / 2;
+
+    const legacy_rating = Number(attributes?.rating || 0);
+    if (legacy_rating > 0) return legacy_rating * 2;
+
+    return null;
+}
+
+function kitsu_status_to_anime(status) {
+    return ({
+        current: "watching",
+        completed: "completed",
+        planned: "plan_to_watch",
+        on_hold: "on_hold",
+        dropped: "dropped",
+    })[status] || "plan_to_watch";
+}
+
+function kitsu_status_to_manga(status) {
+    return ({
+        current: "reading",
+        completed: "completed",
+        planned: "plan_to_read",
+        on_hold: "on_hold",
+        dropped: "dropped",
+    })[status] || "plan_to_read";
+}
+
+function kitsu_manga_kind(attributes) {
+    const kind = String(
+        attributes?.mangaType ||
+        attributes?.subtype ||
+        ""
+    ).toLowerCase();
+
+    if (kind === "manhwa") return "Manhwa";
+    if (kind === "manhua") return "Manhua";
+    if (kind) return "Manga";
+    return "Other";
+}
+
+function kitsu_media_title(attributes) {
+    const titles = attributes?.titles || {};
+    return titles.en ||
+        attributes?.canonicalTitle ||
+        titles.en_jp ||
+        titles.ja_jp ||
+        "Untitled";
+}
+
+function kitsu_aliases(attributes) {
+    const titles = attributes?.titles || {};
+    return [
+        titles.en,
+        titles.en_jp,
+        titles.ja_jp,
+        attributes?.canonicalTitle,
+        ...(attributes?.abbreviatedTitles || []),
+    ].filter(Boolean);
+}
+
+function kitsu_image(image) {
+    return image?.original ||
+        image?.large ||
+        image?.medium ||
+        image?.small ||
+        null;
+}
+
+async function get_kitsu_library(uid) {
+    const connection = await db.collection("kitsu_connections")
+        .doc(uid)
+        .get();
+
+    if (!connection.exists ||
+        !connection.data()?.kitsu_user_id) {
+        throw new HttpsError(
+            "failed-precondition",
+            "Connect a Kitsu profile before importing."
+        );
+    }
+
+    const user_id = String(
+        connection.data().kitsu_user_id
+    );
+    const entries = [];
+    const included = new Map();
+
+    let url = new URL(kitsu_api_base + "/library-entries");
+    url.searchParams.set("filter[userId]", user_id);
+    url.searchParams.set("include", "anime,manga");
+    url.searchParams.set("page[limit]", "20");
+
+    let pages = 0;
+
+    while (url && pages < 250) {
+        const response = await fetch(url, {
+            headers: kitsu_headers(),
+        });
+
+        if (!response.ok) {
+            logger.error("Kitsu library request failed.", {
+                status: response.status,
+            });
+            throw new HttpsError(
+                "internal",
+                "Kitsu library import failed."
+            );
+        }
+
+        const payload = await response.json();
+
+        for (const item of payload.data || []) {
+            entries.push(item);
+        }
+
+        for (const media of payload.included || []) {
+            if (!media?.id || !media?.type) continue;
+            included.set(
+                String(media.type) + ":" + String(media.id),
+                media
+            );
+        }
+
+        const next = payload.links?.next;
+        url = next ? new URL(next) : null;
+        pages += 1;
+    }
+
+    return {
+        entries,
+        included,
+        username:
+            connection.data().username || null,
+    };
+}
+
+exports.syncKitsuAnimeList = onCall(
+    {timeoutSeconds: 120},
+    async (request) => {
+        if (!request.auth) {
+            throw new HttpsError(
+                "unauthenticated",
+                "You must be logged in."
+            );
+        }
+
+        const library =
+            await get_kitsu_library(request.auth.uid);
+        const anime = [];
+
+        for (const entry of library.entries) {
+            const relation =
+                entry.relationships?.anime?.data;
+            if (!relation?.id) continue;
+
+            const media = library.included.get(
+                "anime:" + String(relation.id)
+            );
+            if (!media) continue;
+
+            const attrs = media.attributes || {};
+            const list = entry.attributes || {};
+
+            anime.push({
+                kitsu_id: Number(media.id),
+                mal_id: null,
+                anilist_id: null,
+                title: kitsu_media_title(attrs),
+                title_romaji:
+                    attrs.titles?.en_jp || null,
+                title_native:
+                    attrs.titles?.ja_jp || null,
+                synonyms: kitsu_aliases(attrs),
+                status:
+                    kitsu_status_to_anime(list.status),
+                episodes_watched:
+                    Math.max(0, Number(list.progress || 0)),
+                total_episodes:
+                    Number(attrs.episodeCount || 0) || null,
+                my_rating:
+                    kitsu_entry_rating(list),
+                poster_url:
+                    kitsu_image(attrs.posterImage),
+                media_type:
+                    String(attrs.subtype || "")
+                        .toLowerCase() || null,
+                start_date: attrs.startDate || null,
+                finish_date: attrs.endDate || null,
+                average_episode_duration_ms:
+                    Number(attrs.episodeLength || 0) > 0 ?
+                        Number(attrs.episodeLength) *
+                            60 * 1000 :
+                        null,
+                mal_score: null,
+                anilist_score: null,
+                kitsu_score:
+                    Number(attrs.averageRating || 0) || null,
+                description:
+                    attrs.synopsis ||
+                    attrs.description ||
+                    null,
+                genres: [],
+                site_url:
+                    "https://kitsu.app/anime/" +
+                    (attrs.slug || String(media.id)),
+                synced_at: new Date().toISOString(),
+            });
+        }
+
+        return {
+            username: library.username,
+            anime,
+            count: anime.length,
+        };
+    }
+);
+
+exports.syncKitsuMangaList = onCall(
+    {timeoutSeconds: 120},
+    async (request) => {
+        if (!request.auth) {
+            throw new HttpsError(
+                "unauthenticated",
+                "You must be logged in."
+            );
+        }
+
+        const library =
+            await get_kitsu_library(request.auth.uid);
+        const manga = [];
+
+        for (const entry of library.entries) {
+            const relation =
+                entry.relationships?.manga?.data;
+            if (!relation?.id) continue;
+
+            const media = library.included.get(
+                "manga:" + String(relation.id)
+            );
+            if (!media) continue;
+
+            const attrs = media.attributes || {};
+            const list = entry.attributes || {};
+
+            const kind = kitsu_manga_kind(attrs);
+            const manga_type = String(
+                attrs.mangaType ||
+                attrs.subtype ||
+                ""
+            ).toLowerCase();
+
+            if (manga_type === "novel") continue;
+
+            manga.push({
+                kitsu_id: Number(media.id),
+                mal_id: null,
+                anilist_id: null,
+                title: kitsu_media_title(attrs),
+                title_romaji:
+                    attrs.titles?.en_jp || null,
+                title_native:
+                    attrs.titles?.ja_jp || null,
+                synonyms: kitsu_aliases(attrs),
+                country_of_origin:
+                    kind === "Manhwa" ? "KR" :
+                        kind === "Manhua" ? "CN" :
+                            kind === "Manga" ? "JP" :
+                                null,
+                media_kind: kind,
+                format:
+                    attrs.mangaType ||
+                    attrs.subtype ||
+                    null,
+                publication_status:
+                    attrs.status || null,
+                user_status:
+                    kitsu_status_to_manga(list.status),
+                chapters_read:
+                    Math.max(0, Number(list.progress || 0)),
+                total_chapters:
+                    Number(attrs.chapterCount || 0) || null,
+                volumes_read: 0,
+                total_volumes:
+                    Number(attrs.volumeCount || 0) || null,
+                my_rating:
+                    kitsu_entry_rating(list),
+                anilist_score: null,
+                mal_score: null,
+                kitsu_score:
+                    Number(attrs.averageRating || 0) || null,
+                poster_url:
+                    kitsu_image(attrs.posterImage),
+                banner_url:
+                    kitsu_image(attrs.coverImage),
+                description:
+                    attrs.synopsis ||
+                    attrs.description ||
+                    null,
+                genres: [],
+                site_url:
+                    "https://kitsu.app/manga/" +
+                    (attrs.slug || String(media.id)),
+                start_date: attrs.startDate || null,
+                end_date: attrs.endDate || null,
+                updated_at: new Date().toISOString(),
+            });
+        }
+
+        return {
+            username: library.username,
+            manga,
+            count: manga.length,
+        };
+    }
+);
+//#endregion
+
+
+//? ------------------------------
 //* ----- TMDB Movie Data -------
 //? ------------------------------
 //#region
