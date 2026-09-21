@@ -4565,6 +4565,154 @@ function clean_anilist_description(value) {
         .trim();
 }
 
+exports.searchAniListAnime = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError(
+            "unauthenticated",
+            "You must be logged in."
+        );
+    }
+
+    const search =
+        String(request.data?.query || "").trim();
+
+    if (search.length < 2) {
+        return {results: []};
+    }
+
+    if (search.length > 120) {
+        throw new HttpsError(
+            "invalid-argument",
+            "Search is too long."
+        );
+    }
+
+    const query_text = [
+        "query ($search: String!, $perPage: Int!) {",
+        "  Page(page: 1, perPage: $perPage) {",
+        "    media(search: $search, type: ANIME, isAdult: false) {",
+        "      id",
+        "      title { romaji english native userPreferred }",
+        "      synonyms",
+        "      format",
+        "      status",
+        "      episodes",
+        "      duration",
+        "      averageScore",
+        "      description(asHtml: false)",
+        "      genres",
+        "      siteUrl",
+        "      coverImage { extraLarge large }",
+        "      startDate { year month day }",
+        "      endDate { year month day }",
+        "    }",
+        "  }",
+        "}",
+    ].join("\n");
+
+    const response = await fetch(
+        "https://graphql.anilist.co",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json",
+            },
+            body: JSON.stringify({
+                query: query_text,
+                variables: {
+                    search,
+                    perPage: 12,
+                },
+            }),
+        }
+    );
+
+    if (!response.ok) {
+        logger.error("AniList anime search failed.", {
+            status: response.status,
+        });
+        throw new HttpsError(
+            "internal",
+            "Anime search failed."
+        );
+    }
+
+    const payload = await response.json();
+
+    if (Array.isArray(payload.errors) &&
+        payload.errors.length) {
+        logger.error("AniList anime GraphQL search failed.", {
+            errors: payload.errors.map(
+                (error) => error.message
+            ),
+        });
+        throw new HttpsError(
+            "internal",
+            "Anime search failed."
+        );
+    }
+
+    const media =
+        payload.data?.Page?.media || [];
+
+    return {
+        results: media.map((item) => ({
+            anilist_id: Number(item.id),
+            title:
+                item.title?.english ||
+                item.title?.userPreferred ||
+                item.title?.romaji ||
+                item.title?.native ||
+                "Untitled",
+            title_romaji:
+                item.title?.romaji || null,
+            title_native:
+                item.title?.native || null,
+            synonyms:
+                Array.isArray(item.synonyms)
+                    ? item.synonyms
+                        .filter(Boolean)
+                        .slice(0, 20)
+                    : [],
+            media_type:
+                String(item.format || "")
+                    .toLowerCase() || null,
+            total_episodes:
+                Number(item.episodes || 0) || null,
+            average_episode_duration_seconds:
+                Number(item.duration || 0) > 0
+                    ? Number(item.duration) * 60
+                    : null,
+            anilist_score:
+                Number(item.averageScore || 0) || null,
+            poster_url:
+                item.coverImage?.extraLarge ||
+                item.coverImage?.large ||
+                null,
+            description:
+                clean_anilist_description(
+                    item.description
+                ),
+            genres:
+                Array.isArray(item.genres)
+                    ? item.genres
+                    : [],
+            site_url:
+                item.siteUrl || null,
+            start_date:
+                anilist_date_to_iso(
+                    item.startDate
+                ),
+            finish_date:
+                anilist_date_to_iso(
+                    item.endDate
+                ),
+        })),
+    };
+});
+
+
 exports.searchAniListManga = onCall(async (request) => {
     if (!request.auth) {
         throw new HttpsError("unauthenticated", "You must be logged in.");
