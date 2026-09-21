@@ -1868,6 +1868,415 @@ exports.stellazAI = onCall(
 
 
 //? ------------------------------
+//* ----- AniList Connection -----
+//? ------------------------------
+//#region
+const anilist_client_id = defineSecret("ANILIST_CLIENT_ID");
+const anilist_client_secret = defineSecret("ANILIST_CLIENT_SECRET");
+const anilist_redirect_uri =
+    "https://stellaz.org/entertainment_page/Entertainment.html?oauth=anilist";
+
+async function anilist_graphql(access_token, query, variables = {}) {
+    const response = await fetch("https://graphql.anilist.co", {
+        method: "POST",
+        headers: {
+            "Authorization": "Bearer " + access_token,
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        },
+        body: JSON.stringify({query, variables}),
+    });
+
+    const payload = await response.json().catch(() => ({}));
+
+    if (!response.ok || (Array.isArray(payload.errors) && payload.errors.length)) {
+        const message = payload.errors?.[0]?.message ||
+            "AniList request failed.";
+        const error = new Error(message);
+        error.status = response.status;
+        throw error;
+    }
+
+    return payload.data;
+}
+
+exports.getAniListAuthorizationUrl = onCall(
+    {secrets: [anilist_client_id]},
+    async (request) => {
+        if (!request.auth) {
+            throw new HttpsError(
+                "unauthenticated",
+                "You must be logged in."
+            );
+        }
+
+        await db.collection("anilist_connection_attempts")
+            .doc(request.auth.uid)
+            .set({
+                created_at: new Date(),
+                redirect_uri: anilist_redirect_uri,
+            });
+
+        const url = new URL(
+            "https://anilist.co/api/v2/oauth/authorize"
+        );
+        url.searchParams.set("client_id", anilist_client_id.value());
+        url.searchParams.set("redirect_uri", anilist_redirect_uri);
+        url.searchParams.set("response_type", "code");
+
+        return {authorization_url: url.toString()};
+    }
+);
+
+exports.exchangeAniListAuthorizationCode = onCall(
+    {secrets: [anilist_client_id, anilist_client_secret]},
+    async (request) => {
+        if (!request.auth) {
+            throw new HttpsError(
+                "unauthenticated",
+                "You must be logged in."
+            );
+        }
+
+        const code = String(request.data?.code || "").trim();
+        if (!code || code.length > 1000) {
+            throw new HttpsError(
+                "invalid-argument",
+                "Invalid AniList authorization code."
+            );
+        }
+
+        const attempt_ref = db.collection("anilist_connection_attempts")
+            .doc(request.auth.uid);
+        const attempt = await attempt_ref.get();
+
+        if (!attempt.exists) {
+            throw new HttpsError(
+                "failed-precondition",
+                "Start the AniList connection from Stellaz first."
+            );
+        }
+
+        const created_at = attempt.data()?.created_at?.toMillis?.() || 0;
+        if (!created_at || Date.now() - created_at > 15 * 60 * 1000) {
+            await attempt_ref.delete().catch(() => {});
+            throw new HttpsError(
+                "deadline-exceeded",
+                "The AniList connection request expired. Please try again."
+            );
+        }
+
+        const token_response = await fetch(
+            "https://anilist.co/api/v2/oauth/token",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                },
+                body: JSON.stringify({
+                    grant_type: "authorization_code",
+                    client_id: anilist_client_id.value(),
+                    client_secret: anilist_client_secret.value(),
+                    redirect_uri: anilist_redirect_uri,
+                    code,
+                }),
+            }
+        );
+
+        if (!token_response.ok) {
+            const error_text = await token_response.text();
+            logger.error("AniList token exchange failed.", {
+                status: token_response.status,
+                error: error_text,
+            });
+            throw new HttpsError(
+                "internal",
+                "AniList authorization could not be completed."
+            );
+        }
+
+        const tokens = await token_response.json();
+        const access_token = String(tokens.access_token || "");
+        if (!access_token) {
+            throw new HttpsError(
+                "internal",
+                "AniList did not return an access token."
+            );
+        }
+
+        let viewer;
+        try {
+            const data = await anilist_graphql(
+                access_token,
+                "query { Viewer { id name } }"
+            );
+            viewer = data?.Viewer;
+        } catch (error) {
+            logger.error("AniList Viewer lookup failed.", {
+                status: error.status || null,
+                error: error.message,
+            });
+            throw new HttpsError(
+                "internal",
+                "AniList account verification failed."
+            );
+        }
+
+        if (!viewer?.id) {
+            throw new HttpsError(
+                "internal",
+                "AniList account verification failed."
+            );
+        }
+
+        const expires_in = Number(tokens.expires_in || 31536000);
+        const expires_at = Date.now() + expires_in * 1000;
+
+        await db.collection("anilist_connections")
+            .doc(request.auth.uid)
+            .set({
+                access_token,
+                token_type: tokens.token_type || "Bearer",
+                expires_at,
+                anilist_user_id: Number(viewer.id),
+                username: viewer.name || "",
+                connected_at: new Date(),
+            }, {merge: true});
+
+        await attempt_ref.delete();
+
+        return {
+            success: true,
+            username: viewer.name || "AniList",
+        };
+    }
+);
+
+exports.getAniListConnectionStatus = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError(
+            "unauthenticated",
+            "You must be logged in."
+        );
+    }
+
+    const snapshot = await db.collection("anilist_connections")
+        .doc(request.auth.uid)
+        .get();
+
+    if (!snapshot.exists) {
+        return {connected: false, needs_reconnect: false};
+    }
+
+    const data = snapshot.data();
+    const expires_at = Number(data.expires_at || 0);
+
+    if (!data.access_token || !data.anilist_user_id ||
+        (expires_at && expires_at <= Date.now())) {
+        return {
+            connected: false,
+            needs_reconnect: true,
+            username: data.username || null,
+        };
+    }
+
+    return {
+        connected: true,
+        needs_reconnect: false,
+        username: data.username || null,
+    };
+});
+
+function anilist_list_status_to_stellaz(status) {
+    return ({
+        CURRENT: "reading",
+        COMPLETED: "completed",
+        PAUSED: "on_hold",
+        DROPPED: "dropped",
+        PLANNING: "plan_to_read",
+        REPEATING: "reading",
+    })[status] || "reading";
+}
+
+exports.syncAniListMangaList = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError(
+            "unauthenticated",
+            "You must be logged in."
+        );
+    }
+
+    const snapshot = await db.collection("anilist_connections")
+        .doc(request.auth.uid)
+        .get();
+
+    if (!snapshot.exists) {
+        throw new HttpsError(
+            "failed-precondition",
+            "Connect AniList before importing your manga list."
+        );
+    }
+
+    const connection = snapshot.data();
+    if (!connection.access_token ||
+        (Number(connection.expires_at || 0) &&
+         Number(connection.expires_at) <= Date.now())) {
+        throw new HttpsError(
+            "failed-precondition",
+            "Your AniList authorization expired. Reconnect AniList."
+        );
+    }
+
+    const query = [
+        "query ($userId: Int!, $page: Int!) {",
+        "  Page(page: $page, perPage: 50) {",
+        "    pageInfo { currentPage hasNextPage }",
+        "    mediaList(userId: $userId, type: MANGA, sort: UPDATED_TIME_DESC) {",
+        "      id",
+        "      status",
+        "      score(format: POINT_10_DECIMAL)",
+        "      progress",
+        "      progressVolumes",
+        "      updatedAt",
+        "      media {",
+        "        id",
+        "        title { romaji english native userPreferred }",
+        "        synonyms",
+        "        countryOfOrigin",
+        "        format",
+        "        status",
+        "        chapters",
+        "        volumes",
+        "        averageScore",
+        "        description(asHtml: false)",
+        "        genres",
+        "        siteUrl",
+        "        coverImage { extraLarge large }",
+        "        bannerImage",
+        "        startDate { year month day }",
+        "        endDate { year month day }",
+        "      }",
+        "    }",
+        "  }",
+        "}"
+    ].join("\n");
+
+    const imported = [];
+    let page = 1;
+    let has_next_page = true;
+
+    try {
+        while (has_next_page && page <= 220) {
+            const data = await anilist_graphql(
+                connection.access_token,
+                query,
+                {
+                    userId: Number(connection.anilist_user_id),
+                    page,
+                }
+            );
+
+            const page_data = data?.Page;
+            const entries = page_data?.mediaList || [];
+
+            for (const entry of entries) {
+                const media = entry.media;
+                if (!media?.id || media.format === "NOVEL") continue;
+
+                const total_chapters =
+                    Number(media.chapters || 0) || null;
+                let chapters_read =
+                    Math.max(0, Number(entry.progress || 0));
+
+                if (entry.status === "COMPLETED" &&
+                    total_chapters !== null) {
+                    chapters_read = Math.max(
+                        chapters_read,
+                        total_chapters
+                    );
+                }
+
+                imported.push({
+                    anilist_id: Number(media.id),
+                    title: media.title?.english ||
+                        media.title?.userPreferred ||
+                        media.title?.romaji ||
+                        media.title?.native ||
+                        "Untitled",
+                    title_romaji: media.title?.romaji || null,
+                    title_native: media.title?.native || null,
+                    synonyms: Array.isArray(media.synonyms) ?
+                        media.synonyms.filter(Boolean).slice(0, 20) : [],
+                    country_of_origin:
+                        media.countryOfOrigin || null,
+                    media_kind:
+                        anilist_media_kind(media.countryOfOrigin),
+                    format: media.format || null,
+                    publication_status: media.status || null,
+                    user_status:
+                        anilist_list_status_to_stellaz(entry.status),
+                    chapters_read,
+                    total_chapters,
+                    volumes_read:
+                        Math.max(0, Number(entry.progressVolumes || 0)),
+                    total_volumes:
+                        Number(media.volumes || 0) || null,
+                    my_rating:
+                        Number(entry.score || 0) > 0 ?
+                            Number(entry.score) : null,
+                    anilist_score:
+                        Number(media.averageScore || 0) || null,
+                    poster_url:
+                        media.coverImage?.extraLarge ||
+                        media.coverImage?.large ||
+                        null,
+                    banner_url: media.bannerImage || null,
+                    description:
+                        clean_anilist_description(media.description),
+                    genres: Array.isArray(media.genres) ?
+                        media.genres : [],
+                    site_url: media.siteUrl || null,
+                    start_date:
+                        anilist_date_to_iso(media.startDate),
+                    end_date:
+                        anilist_date_to_iso(media.endDate),
+                });
+            }
+
+            has_next_page =
+                page_data?.pageInfo?.hasNextPage === true;
+            page += 1;
+        }
+    } catch (error) {
+        logger.error("AniList manga import failed.", {
+            status: error.status || null,
+            error: error.message,
+        });
+
+        if (error.status === 401) {
+            throw new HttpsError(
+                "failed-precondition",
+                "Your AniList authorization is no longer valid. Reconnect AniList."
+            );
+        }
+
+        throw new HttpsError(
+            "internal",
+            "AniList manga import failed."
+        );
+    }
+
+    return {
+        username: connection.username || null,
+        manga: imported,
+        count: imported.length,
+    };
+});
+//#endregion
+
+
+//? ------------------------------
 //* ----- AniList Manga Search ---
 //? ------------------------------
 //#region
