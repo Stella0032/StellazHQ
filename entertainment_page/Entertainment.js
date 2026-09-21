@@ -5410,11 +5410,22 @@ onAuthStateChanged(auth, async (user) => {
         await finish_tmdb_connection();
         reopen_connected_services_if_requested();
 
-        // Movies are the default visible category on first load.
-        // Load its recommendations and release rows immediately instead
-        // of waiting for the user to switch categories.
-        load_movie_recommendations(movie_library);
-        load_release_rows("movie");
+        const requested_library =
+            new URLSearchParams(window.location.search).get("library");
+        const allowed_libraries = [
+            "Movies",
+            "TV Shows",
+            "Anime",
+            "Manga / Manhwa"
+        ];
+
+        if (allowed_libraries.includes(requested_library)) {
+            show_entertainment_category(requested_library);
+        } else {
+            // Movies are the default visible category on first load.
+            load_movie_recommendations(movie_library);
+            load_release_rows("movie");
+        }
     } catch (error) {
         console.error("Unable to prepare Supabase access:", error);
         movie_count.textContent = "Error";
