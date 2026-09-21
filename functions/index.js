@@ -1376,6 +1376,619 @@ exports.syncKitsuMangaList = onCall(
 
 
 //? ------------------------------
+//* ----- Trakt Connection ------
+//? ------------------------------
+//#region
+const trakt_client_id = defineSecret("TRAKT_CLIENT_ID");
+const trakt_client_secret = defineSecret("TRAKT_CLIENT_SECRET");
+const trakt_redirect_uri =
+    "https://stellaz.org/entertainment_page/Entertainment.html?oauth=trakt";
+
+function trakt_headers(access_token) {
+    const headers = {
+        "Content-Type": "application/json",
+        "User-Agent": "StellazHQ/1.0",
+        "trakt-api-key": trakt_client_id.value(),
+        "trakt-api-version": "2",
+    };
+
+    if (access_token) {
+        headers.Authorization = "Bearer " + access_token;
+    }
+
+    return headers;
+}
+
+exports.getTraktAuthorizationUrl = onCall(
+    {secrets: [trakt_client_id]},
+    async (request) => {
+        if (!request.auth) {
+            throw new HttpsError(
+                "unauthenticated",
+                "You must be logged in."
+            );
+        }
+
+        const state = String(request.data?.state || "");
+        if (state.length < 32 || state.length > 200) {
+            throw new HttpsError(
+                "invalid-argument",
+                "Invalid Trakt authorization state."
+            );
+        }
+
+        await db.collection("trakt_connection_attempts")
+            .doc(request.auth.uid)
+            .set({
+                state,
+                created_at: new Date(),
+            });
+
+        const url = new URL("https://trakt.tv/oauth/authorize");
+        url.searchParams.set("response_type", "code");
+        url.searchParams.set("client_id", trakt_client_id.value());
+        url.searchParams.set("redirect_uri", trakt_redirect_uri);
+        url.searchParams.set("state", state);
+
+        return {authorization_url: url.toString()};
+    }
+);
+
+async function trakt_token_request(body) {
+    const response = await fetch(
+        "https://auth.trakt.tv/oauth/token",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "User-Agent": "StellazHQ/1.0",
+            },
+            body: JSON.stringify(body),
+        }
+    );
+
+    const payload = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+        logger.error("Trakt token request failed.", {
+            status: response.status,
+            error: payload.error || null,
+            description: payload.error_description || null,
+        });
+
+        const error = new Error(
+            payload.error_description ||
+            payload.error ||
+            "Trakt token request failed."
+        );
+        error.status = response.status;
+        throw error;
+    }
+
+    return payload;
+}
+
+async function save_trakt_tokens(uid, tokens, extra = {}) {
+    const expires_in = Number(tokens.expires_in || 604800);
+    const expires_at = Date.now() + expires_in * 1000;
+
+    await db.collection("trakt_connections")
+        .doc(uid)
+        .set({
+            access_token: tokens.access_token,
+            refresh_token: tokens.refresh_token,
+            token_type: tokens.token_type || "Bearer",
+            scope: tokens.scope || null,
+            expires_at,
+            updated_at: new Date(),
+            ...extra,
+        }, {merge: true});
+
+    return expires_at;
+}
+
+async function trakt_get_settings(access_token) {
+    const response = await fetch(
+        "https://api.trakt.tv/users/settings",
+        {headers: trakt_headers(access_token)}
+    );
+
+    if (!response.ok) {
+        throw new Error(
+            "Trakt user settings request failed (" +
+            response.status + ")."
+        );
+    }
+
+    return await response.json();
+}
+
+exports.exchangeTraktAuthorizationCode = onCall(
+    {secrets: [trakt_client_id, trakt_client_secret]},
+    async (request) => {
+        if (!request.auth) {
+            throw new HttpsError(
+                "unauthenticated",
+                "You must be logged in."
+            );
+        }
+
+        const code = String(request.data?.code || "").trim();
+        const state = String(request.data?.state || "").trim();
+
+        if (!code || !state) {
+            throw new HttpsError(
+                "invalid-argument",
+                "Missing Trakt authorization data."
+            );
+        }
+
+        const attempt_ref =
+            db.collection("trakt_connection_attempts")
+                .doc(request.auth.uid);
+        const attempt = await attempt_ref.get();
+
+        if (!attempt.exists ||
+            attempt.data()?.state !== state) {
+            throw new HttpsError(
+                "permission-denied",
+                "The Trakt authorization could not be verified."
+            );
+        }
+
+        const created_at =
+            attempt.data()?.created_at?.toMillis?.() || 0;
+        if (!created_at ||
+            Date.now() - created_at > 15 * 60 * 1000) {
+            await attempt_ref.delete().catch(() => {});
+            throw new HttpsError(
+                "deadline-exceeded",
+                "The Trakt connection request expired."
+            );
+        }
+
+        let tokens;
+        try {
+            tokens = await trakt_token_request({
+                code,
+                client_id: trakt_client_id.value(),
+                client_secret: trakt_client_secret.value(),
+                redirect_uri: trakt_redirect_uri,
+                grant_type: "authorization_code",
+            });
+        } catch (error) {
+            throw new HttpsError(
+                "internal",
+                "Trakt authorization could not be completed."
+            );
+        }
+
+        if (!tokens.access_token ||
+            !tokens.refresh_token) {
+            throw new HttpsError(
+                "internal",
+                "Trakt did not return valid authorization tokens."
+            );
+        }
+
+        let settings = {};
+        try {
+            settings =
+                await trakt_get_settings(tokens.access_token);
+        } catch (error) {
+            logger.warn("Unable to load Trakt user settings.", {
+                error: error.message,
+            });
+        }
+
+        const username =
+            settings.user?.username ||
+            settings.user?.ids?.slug ||
+            null;
+
+        await save_trakt_tokens(
+            request.auth.uid,
+            tokens,
+            {
+                username,
+                connected_at: new Date(),
+            }
+        );
+
+        await attempt_ref.delete();
+
+        return {
+            connected: true,
+            username,
+        };
+    }
+);
+
+async function get_valid_trakt_access_token(uid) {
+    const ref = db.collection("trakt_connections").doc(uid);
+    const snapshot = await ref.get();
+
+    if (!snapshot.exists) {
+        throw new HttpsError(
+            "failed-precondition",
+            "Connect Trakt before importing."
+        );
+    }
+
+    const connection = snapshot.data();
+    const expires_at =
+        Number(connection.expires_at || 0);
+
+    if (connection.access_token &&
+        (!expires_at ||
+         expires_at > Date.now() + 60 * 1000)) {
+        return connection.access_token;
+    }
+
+    if (!connection.refresh_token) {
+        throw new HttpsError(
+            "failed-precondition",
+            "Reconnect Trakt before importing."
+        );
+    }
+
+    let tokens;
+    try {
+        tokens = await trakt_token_request({
+            refresh_token: connection.refresh_token,
+            client_id: trakt_client_id.value(),
+            client_secret: trakt_client_secret.value(),
+            redirect_uri: trakt_redirect_uri,
+            grant_type: "refresh_token",
+        });
+    } catch (error) {
+        await ref.set({
+            needs_reconnect: true,
+            updated_at: new Date(),
+        }, {merge: true});
+
+        throw new HttpsError(
+            "failed-precondition",
+            "Your Trakt authorization needs to be renewed."
+        );
+    }
+
+    // Trakt refresh tokens are single-use, so the newly returned refresh
+    // token must replace the previous one every time.
+    await save_trakt_tokens(uid, tokens, {
+        needs_reconnect: false,
+    });
+
+    return tokens.access_token;
+}
+
+exports.getTraktConnectionStatus = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError(
+            "unauthenticated",
+            "You must be logged in."
+        );
+    }
+
+    const snapshot = await db.collection("trakt_connections")
+        .doc(request.auth.uid)
+        .get();
+
+    if (!snapshot.exists) {
+        return {
+            connected: false,
+            needs_reconnect: false,
+        };
+    }
+
+    const data = snapshot.data();
+    return {
+        connected:
+            Boolean(data.access_token) &&
+            data.needs_reconnect !== true,
+        needs_reconnect:
+            data.needs_reconnect === true ||
+            !data.refresh_token,
+        username: data.username || null,
+    };
+});
+
+async function trakt_paginated_get(
+    access_token,
+    pathname,
+    parameters = {}
+) {
+    const collected = [];
+    const limit = 100;
+    let page = 1;
+
+    while (page <= 250) {
+        const url = new URL(
+            "https://api.trakt.tv" + pathname
+        );
+
+        for (const [key, value] of
+            Object.entries(parameters)) {
+            if (value !== null &&
+                value !== undefined) {
+                url.searchParams.set(
+                    key,
+                    String(value)
+                );
+            }
+        }
+
+        url.searchParams.set("page", String(page));
+        url.searchParams.set("limit", String(limit));
+
+        const response = await fetch(url, {
+            headers: trakt_headers(access_token),
+        });
+
+        if (!response.ok) {
+            logger.error("Trakt API request failed.", {
+                pathname,
+                status: response.status,
+            });
+
+            if (response.status === 401) {
+                throw new HttpsError(
+                    "failed-precondition",
+                    "Reconnect Trakt before importing."
+                );
+            }
+
+            throw new HttpsError(
+                "internal",
+                "Trakt import failed."
+            );
+        }
+
+        const payload = await response.json();
+        if (!Array.isArray(payload)) break;
+
+        collected.push(...payload);
+
+        const page_count =
+            Number(
+                response.headers.get(
+                    "x-pagination-page-count"
+                ) || 0
+            );
+
+        if ((page_count && page >= page_count) ||
+            payload.length < limit) {
+            break;
+        }
+
+        page += 1;
+    }
+
+    return collected;
+}
+
+function trakt_rating_map(entries, media_key) {
+    const map = new Map();
+
+    for (const entry of entries || []) {
+        const media = entry?.[media_key];
+        const id = Number(media?.ids?.trakt || 0);
+        if (!id) continue;
+
+        map.set(id, {
+            rating:
+                Number(entry.rating || 0) || null,
+            rated_at: entry.rated_at || null,
+            media,
+        });
+    }
+
+    return map;
+}
+
+exports.syncTraktMovies = onCall(
+    {
+        secrets: [trakt_client_id, trakt_client_secret],
+        timeoutSeconds: 120,
+    },
+    async (request) => {
+        if (!request.auth) {
+            throw new HttpsError(
+                "unauthenticated",
+                "You must be logged in."
+            );
+        }
+
+        const access_token =
+            await get_valid_trakt_access_token(
+                request.auth.uid
+            );
+
+        const [watched, ratings] =
+            await Promise.all([
+                trakt_paginated_get(
+                    access_token,
+                    "/users/me/watched/movies",
+                    {extended: "full"}
+                ),
+                trakt_paginated_get(
+                    access_token,
+                    "/users/me/ratings/movies",
+                    {extended: "full"}
+                ),
+            ]);
+
+        const rating_by_id =
+            trakt_rating_map(ratings, "movie");
+        const movie_by_id = new Map();
+
+        for (const item of watched) {
+            const movie = item.movie || {};
+            const trakt_id =
+                Number(movie.ids?.trakt || 0);
+            if (!trakt_id) continue;
+
+            const rating =
+                rating_by_id.get(trakt_id);
+
+            movie_by_id.set(trakt_id, {
+                trakt_id,
+                tmdb_id:
+                    Number(movie.ids?.tmdb || 0) ||
+                    null,
+                title: movie.title || null,
+                year:
+                    Number(movie.year || 0) || null,
+                status: "watched",
+                my_rating:
+                    rating?.rating ?? null,
+                watched_at:
+                    item.last_watched_at || null,
+            });
+        }
+
+        for (const [trakt_id, rating] of
+            rating_by_id.entries()) {
+            if (movie_by_id.has(trakt_id)) continue;
+
+            const movie = rating.media || {};
+            movie_by_id.set(trakt_id, {
+                trakt_id,
+                tmdb_id:
+                    Number(movie.ids?.tmdb || 0) ||
+                    null,
+                title: movie.title || null,
+                year:
+                    Number(movie.year || 0) || null,
+                status: "watched",
+                my_rating: rating.rating,
+                watched_at: null,
+            });
+        }
+
+        return {
+            movies: [...movie_by_id.values()]
+                .filter((item) =>
+                    item.title && item.year
+                ),
+            count: movie_by_id.size,
+        };
+    }
+);
+
+exports.syncTraktShows = onCall(
+    {
+        secrets: [trakt_client_id, trakt_client_secret],
+        timeoutSeconds: 120,
+    },
+    async (request) => {
+        if (!request.auth) {
+            throw new HttpsError(
+                "unauthenticated",
+                "You must be logged in."
+            );
+        }
+
+        const access_token =
+            await get_valid_trakt_access_token(
+                request.auth.uid
+            );
+
+        const [watched, ratings] =
+            await Promise.all([
+                trakt_paginated_get(
+                    access_token,
+                    "/users/me/watched/shows",
+                    {extended: "progress"}
+                ),
+                trakt_paginated_get(
+                    access_token,
+                    "/users/me/ratings/shows",
+                    {extended: "full"}
+                ),
+            ]);
+
+        const rating_by_id =
+            trakt_rating_map(ratings, "show");
+        const show_by_id = new Map();
+
+        for (const item of watched) {
+            const show = item.show || {};
+            const trakt_id =
+                Number(show.ids?.trakt || 0);
+            if (!trakt_id) continue;
+
+            const watched_episodes = [];
+
+            for (const season of item.seasons || []) {
+                const season_number =
+                    Number(season.number || 0);
+
+                for (const episode of
+                    season.episodes || []) {
+                    if (Number(episode.plays || 0) <= 0) {
+                        continue;
+                    }
+
+                    watched_episodes.push({
+                        season_number,
+                        episode_number:
+                            Number(episode.number || 0),
+                    });
+                }
+            }
+
+            const rating =
+                rating_by_id.get(trakt_id);
+
+            show_by_id.set(trakt_id, {
+                trakt_id,
+                tmdb_id:
+                    Number(show.ids?.tmdb || 0) ||
+                    null,
+                title: show.title || null,
+                year:
+                    Number(show.year || 0) || null,
+                status: "watched",
+                my_rating:
+                    rating?.rating ?? null,
+                watched_episodes,
+            });
+        }
+
+        for (const [trakt_id, rating] of
+            rating_by_id.entries()) {
+            if (show_by_id.has(trakt_id)) continue;
+
+            const show = rating.media || {};
+            show_by_id.set(trakt_id, {
+                trakt_id,
+                tmdb_id:
+                    Number(show.ids?.tmdb || 0) ||
+                    null,
+                title: show.title || null,
+                year:
+                    Number(show.year || 0) || null,
+                status: "watched",
+                my_rating: rating.rating,
+                watched_episodes: [],
+            });
+        }
+
+        return {
+            shows: [...show_by_id.values()]
+                .filter((item) =>
+                    item.title && item.year
+                ),
+            count: show_by_id.size,
+        };
+    }
+);
+//#endregion
+
+
+//? ------------------------------
 //* ----- TMDB Movie Data -------
 //? ------------------------------
 //#region
