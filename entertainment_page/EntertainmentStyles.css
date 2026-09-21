@@ -3914,3 +3914,62 @@ html.anime-category-active .anime-library-panel .movie-filter-clear {
         flex: 1 1 100%;
     }
 }
+
+
+.connected-service-copy {
+    min-width: 0;
+}
+
+.connected-service-copy > p:first-child {
+    margin: 0;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.55;
+}
+
+.connected-service-note {
+    margin: 7px 0 0;
+    color: #8f96ad;
+    font-size: 10px;
+    line-height: 1.45;
+}
+
+.service-import-confirm-dialog {
+    width: min(480px, calc(100% - 28px));
+    padding: 0;
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    color: var(--text);
+    background: #0d0f23;
+    box-shadow: 0 30px 100px rgba(0, 0, 0, 0.62);
+}
+
+.service-import-confirm-dialog::backdrop {
+    background: rgba(3, 4, 14, 0.78);
+    backdrop-filter: blur(8px);
+}
+
+.service-import-confirm-shell {
+    padding: 26px;
+}
+
+.service-import-confirm-shell h2 {
+    margin: 5px 0 12px;
+    font-size: 25px;
+}
+
+.service-import-confirm-shell > p:not(.eyebrow) {
+    color: var(--muted);
+    line-height: 1.55;
+}
+
+.service-import-confirm-note {
+    font-size: 11px;
+}
+
+.service-import-confirm-actions {
+    margin-top: 22px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
