@@ -2240,12 +2240,12 @@ exports.getPlexWatchedEpisodes = onCall(async (request) => {
         const section_url =
             base_url + "/library/sections/" + encodeURIComponent(section.key) + "/all";
         const watched = await plex_json(
-            section_url +
-                "?type=4&includeUserState=1&sort=viewedAt%3Adesc&viewCount%3E%3E=0",
+            section_url + "?type=4&includeUserState=1",
             server_token
         );
 
         for (const episode of (watched.MediaContainer?.Metadata || [])) {
+            if (Number(episode.viewCount || 0) <= 0) continue;
             const title = String(episode.grandparentTitle || "").trim();
             const match = wanted.get(title.toLowerCase());
             if (!match) continue;
