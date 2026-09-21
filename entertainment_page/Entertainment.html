@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Entertainment | Stellaz HQ</title>
     <link rel="icon" type="image/png" href="../images/stellaz_favicon.png">
-    <link rel="stylesheet" href="EntertainmentStyles.css?v=35">
+    <link rel="stylesheet" href="EntertainmentStyles.css?v=36">
     <link rel="stylesheet" href="../firebase/profile_widget.css?v=3">
 </head>
 <body>
@@ -75,21 +75,12 @@
         </section>
 
         <section class="movie-library-panel" id="movie_library">
-            <div class="plex-connect-card" id="plex_connect_card">
-                <div>
-                    <h3 id="plex_connect_title">Connect Plex</h3>
-                    <p id="plex_connect_description">Link your Plex account so Stellaz can import your movie and TV ratings.</p>
-                </div>
-                <button class="library-add-button" id="plex_connect_button" type="button">Connect Plex</button>
-            </div>
-
             <div class="movie-library-header">
                 <div>
                     <p class="eyebrow">YOUR COLLECTION</p>
                     <h2>Your Movies</h2>
                 </div>
                 <div class="library-header-actions">
-                    <button class="library-add-button plex-import-button" id="plex_import_button" type="button" hidden>Import Plex</button>
                     <button class="library-add-button" id="movie_add_button" type="button">＋ Add movie</button>
                     <span class="movie-library-count" id="movie_library_count">LOADING</span>
                 </div>
@@ -137,11 +128,8 @@
     </div>
     <div class="library-header-actions">
         <button class="library-add-button" id="anime_add_button" type="button">＋ Add anime</button>
-        <button class="library-add-button" id="mal_sync_header_button" type="button" hidden>Sync MyAnimeList</button>
-        <span class="movie-library-count" id="mal_connection_label">NOT CONNECTED</span>
     </div>
 </div>
-<div class="mal-connect-card" id="mal_connect_card"><div><h3 id="mal_connect_title">Connect MyAnimeList</h3><p id="mal_connect_description">Connect your MyAnimeList account so Stellaz can sync your anime library.</p></div><button class="library-add-button" id="mal_connect_button" type="button">Connect MyAnimeList</button></div>
 <div class="movie-filters anime-filters" id="anime_filters" aria-label="Anime filters" hidden>
     <select class="movie-filter" id="anime_status_filter" aria-label="Filter anime by status">
         <option value="">All statuses</option>
@@ -172,18 +160,9 @@
                     <h2>Your Manga / Manhwa</h2>
                 </div>
                 <div class="library-header-actions">
-                    <button class="library-add-button" id="anilist_sync_header_button" type="button" hidden>Import AniList</button>
                     <button class="library-add-button" id="manga_add_button" type="button">＋ Add manga / manhwa</button>
                     <span class="movie-library-count" id="manga_library_count">LOADING</span>
                 </div>
-            </div>
-
-            <div class="anilist-connect-card" id="anilist_connect_card">
-                <div>
-                    <h3 id="anilist_connect_title">Connect AniList</h3>
-                    <p id="anilist_connect_description">Import your AniList manga and manhwa reading progress, statuses, and ratings into Stellaz.</p>
-                </div>
-                <button class="library-add-button" id="anilist_connect_button" type="button">Connect AniList</button>
             </div>
 
             <div class="movie-filters manga-filters" id="manga_filters" aria-label="Manga and manhwa filters">
@@ -228,7 +207,6 @@
                     <h2>Your TV Shows</h2>
                 </div>
                 <div class="library-header-actions">
-                    <button class="library-add-button plex-import-button plex-import-button-tv" type="button" hidden>Import Plex</button>
                     <button class="library-add-button" id="show_add_button" type="button">＋ Add show</button>
                     <span class="movie-library-count" id="show_library_count">LOADING</span>
                 </div>
@@ -526,6 +504,71 @@
         <p class="stellaz-ai-note">For now, Stellaz AI can add watched movies.</p>
     </section>
 
+
+    <dialog class="connected-services-dialog" id="connected_services_dialog">
+        <div class="connected-services-shell">
+            <div class="connected-services-header">
+                <div>
+                    <p class="eyebrow">YOUR ACCOUNT</p>
+                    <h2>Connected services</h2>
+                    <p>Connect the services you already use, then import or sync your libraries from one place.</p>
+                </div>
+                <button class="profile-close" id="connected_services_close" type="button" aria-label="Close connected services">×</button>
+            </div>
+
+            <div class="connected-services-grid">
+                <article class="connected-service-card" id="plex_connect_card">
+                    <div class="connected-service-brand">
+                        <span class="connected-service-logo plex-service-logo">P</span>
+                        <div>
+                            <h3 id="plex_connect_title">Plex</h3>
+                            <span class="connected-service-status" id="plex_connection_label">Not connected</span>
+                        </div>
+                    </div>
+                    <p id="plex_connect_description">Import movie and TV ratings, watched titles, and episode progress from Plex.</p>
+                    <div class="connected-service-actions">
+                        <button class="library-add-button" id="plex_connect_button" type="button">Connect Plex</button>
+                        <button class="connected-service-import plex-import-button" id="plex_import_button" type="button" hidden>Import now</button>
+                    </div>
+                </article>
+
+                <article class="connected-service-card" id="mal_connect_card">
+                    <div class="connected-service-brand">
+                        <span class="connected-service-logo mal-service-logo">MAL</span>
+                        <div>
+                            <h3 id="mal_connect_title">MyAnimeList</h3>
+                            <span class="connected-service-status" id="mal_connection_label">Not connected</span>
+                        </div>
+                    </div>
+                    <p id="mal_connect_description">Import your anime list, ratings, statuses, and watched episode progress.</p>
+                    <div class="connected-service-actions">
+                        <button class="library-add-button" id="mal_connect_button" type="button">Connect MyAnimeList</button>
+                        <button class="connected-service-import" id="mal_sync_header_button" type="button" hidden>Sync now</button>
+                    </div>
+                </article>
+
+                <article class="connected-service-card" id="anilist_connect_card">
+                    <div class="connected-service-brand">
+                        <span class="connected-service-logo anilist-service-logo">AL</span>
+                        <div>
+                            <h3 id="anilist_connect_title">AniList</h3>
+                            <span class="connected-service-status" id="anilist_connection_label">Not connected</span>
+                        </div>
+                    </div>
+                    <p id="anilist_connect_description">Import manga, manhwa and manhua progress, statuses, and ratings.</p>
+                    <div class="connected-service-actions">
+                        <button class="library-add-button" id="anilist_connect_button" type="button">Connect AniList</button>
+                        <button class="connected-service-import" id="anilist_sync_header_button" type="button" hidden>Import now</button>
+                    </div>
+                </article>
+            </div>
+
+            <p class="connected-services-note">
+                More services can be added here later without tying them to a specific Movies, TV, Anime, or Manga tab.
+            </p>
+        </div>
+    </dialog>
+
     <dialog class="plex-import-dialog" id="plex_import_dialog">
         <button class="dialog-close" id="plex_import_close" type="button" aria-label="Close">×</button>
         <p class="eyebrow">PLEX IMPORT</p>
@@ -537,7 +580,7 @@
     </dialog>
 
     <div class="toast" id="toast" role="status"></div>
-    <script type="module" src="Entertainment.js?v=71"></script>
+    <script type="module" src="Entertainment.js?v=72"></script>
     <script type="module" src="../firebase/profile_widget.js"></script>
 </body>
 </html>
