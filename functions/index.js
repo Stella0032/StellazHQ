@@ -1203,8 +1203,7 @@ exports.syncKitsuAnimeList = onCall(
                 finish_date: attrs.endDate || null,
                 average_episode_duration_ms:
                     Number(attrs.episodeLength || 0) > 0 ?
-                        Number(attrs.episodeLength) *
-                            60 * 1000 :
+                        Number(attrs.episodeLength) * 60 :
                         null,
                 mal_score: null,
                 anilist_score: null,
@@ -3372,7 +3371,7 @@ exports.syncAniListAnimeList = onCall(async (request) => {
                         anilist_date_to_iso(media.endDate),
                     average_episode_duration_ms:
                         Number(media.duration || 0) > 0 ?
-                            Number(media.duration) * 60 * 1000 :
+                            Number(media.duration) * 60 :
                             null,
                     anilist_score:
                         Number(media.averageScore || 0) || null,
