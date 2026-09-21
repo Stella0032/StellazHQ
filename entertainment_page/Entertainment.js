@@ -2410,6 +2410,136 @@ service_import_confirm_dialog.addEventListener("cancel", (event) => {
 
 
 //? ---------------------------------
+//* ----- Trakt Connection ----------
+//? ---------------------------------
+//#region
+const trakt_connection_label =
+    document.getElementById("trakt_connection_label");
+const trakt_connect_description =
+    document.getElementById("trakt_connect_description");
+const trakt_connect_button =
+    document.getElementById("trakt_connect_button");
+const trakt_movie_sync_button =
+    document.getElementById("trakt_movie_sync_button");
+const trakt_show_sync_button =
+    document.getElementById("trakt_show_sync_button");
+
+async function load_trakt_connection_status() {
+    try {
+        const get_status =
+            httpsCallable(functions, "getTraktConnectionStatus");
+        const result = await get_status();
+
+        if (result.data.connected) {
+            document.getElementById("trakt_connection_badge")
+                ?.removeAttribute("hidden");
+            trakt_connection_label.textContent =
+                result.data.username
+                    ? "Connected as " + result.data.username
+                    : "Connected";
+            trakt_connect_description.textContent =
+                "Connected to Stellaz. Import movies or shows to refresh watched history, ratings, and episode progress.";
+            trakt_connect_button.textContent = "Connected";
+            trakt_connect_button.disabled = true;
+            trakt_movie_sync_button.hidden = false;
+            trakt_show_sync_button.hidden = false;
+            return;
+        }
+
+        document.getElementById("trakt_connection_badge")
+            ?.setAttribute("hidden", "");
+        trakt_connection_label.textContent =
+            result.data.needs_reconnect
+                ? "Reconnect required"
+                : "Not connected";
+        trakt_connect_description.textContent =
+            result.data.needs_reconnect
+                ? "Your Trakt authorization needs to be renewed before importing."
+                : "Import watched movies, TV shows, ratings, and watched episode progress from Trakt.";
+        trakt_connect_button.textContent =
+            result.data.needs_reconnect
+                ? "Reconnect Trakt"
+                : "Connect Trakt";
+        trakt_connect_button.disabled = false;
+        trakt_movie_sync_button.hidden = true;
+        trakt_show_sync_button.hidden = true;
+    } catch (error) {
+        console.error("Unable to check Trakt connection:", error);
+    }
+}
+
+async function begin_trakt_connection() {
+    remember_connected_services_return();
+
+    const state = random_url_safe_string(48);
+    sessionStorage.setItem("trakt_oauth_state", state);
+
+    trakt_connect_button.disabled = true;
+    trakt_connect_button.textContent = "Connecting...";
+
+    try {
+        const get_url =
+            httpsCallable(functions, "getTraktAuthorizationUrl");
+        const result = await get_url({state});
+        window.location.href = result.data.authorization_url;
+    } catch (error) {
+        sessionStorage.removeItem("trakt_oauth_state");
+        console.error("Unable to start Trakt connection:", error);
+        trakt_connect_button.disabled = false;
+        trakt_connect_button.textContent = "Connect Trakt";
+        alert("Unable to start the Trakt connection.");
+    }
+}
+
+async function finish_trakt_connection() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("oauth") !== "trakt") return false;
+
+    const code = params.get("code");
+    const returned_state = params.get("state");
+    const expected_state =
+        sessionStorage.getItem("trakt_oauth_state");
+
+    history.replaceState({}, document.title, window.location.pathname);
+
+    if (!code || !expected_state || returned_state !== expected_state) {
+        sessionStorage.removeItem("trakt_oauth_state");
+        alert("The Trakt connection could not be verified. Please try again.");
+        return true;
+    }
+
+    try {
+        const exchange =
+            httpsCallable(functions, "exchangeTraktAuthorizationCode");
+        const result = await exchange({
+            code,
+            state: returned_state
+        });
+
+        sessionStorage.removeItem("trakt_oauth_state");
+        await load_trakt_connection_status();
+
+        show_toast(
+            "Trakt connected" +
+            (result.data?.username
+                ? " as " + result.data.username
+                : "") +
+            "."
+        );
+    } catch (error) {
+        sessionStorage.removeItem("trakt_oauth_state");
+        console.error("Unable to finish Trakt connection:", error);
+        alert("Unable to connect Trakt. Please try again.");
+    }
+
+    return true;
+}
+
+trakt_connect_button.addEventListener("click", begin_trakt_connection);
+//#endregion
+
+
+//? ---------------------------------
 //* ----- Kitsu Connection ----------
 //? ---------------------------------
 //#region
@@ -4263,7 +4393,8 @@ async function begin_mal_connection() {
 
 async function finish_mal_connection() {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("oauth") === "anilist") return;
+    if (params.get("oauth") === "anilist" ||
+        params.get("oauth") === "trakt") return;
 
     const code = params.get("code");
     const returned_state = params.get("state");
@@ -4356,6 +4487,287 @@ mal_connect_button.addEventListener("click", async () => {
 //* ----- Authentication ---------
 //? ------------------------------
 //#region
+
+//? ---------------------------------
+//* ----- Trakt Imports ------------
+//? ---------------------------------
+//#region
+function find_existing_movie_for_trakt(item) {
+    if (item.trakt_id) {
+        const by_trakt = movie_library.find(
+            (movie) =>
+                Number(movie.trakt_id) === Number(item.trakt_id)
+        );
+        if (by_trakt) return by_trakt;
+    }
+
+    if (item.tmdb_id) {
+        const by_tmdb = movie_library.find(
+            (movie) =>
+                Number(movie.tmdb_id) === Number(item.tmdb_id)
+        );
+        if (by_tmdb) return by_tmdb;
+    }
+
+    return movie_library.find((movie) =>
+        same_library_title(movie, item)
+    ) || null;
+}
+
+function find_existing_show_for_trakt(item) {
+    if (item.trakt_id) {
+        const by_trakt = show_library.find(
+            (show) =>
+                Number(show.trakt_id) === Number(item.trakt_id)
+        );
+        if (by_trakt) return by_trakt;
+    }
+
+    if (item.tmdb_id) {
+        const by_tmdb = show_library.find(
+            (show) =>
+                Number(show.tmdb_id) === Number(item.tmdb_id)
+        );
+        if (by_tmdb) return by_tmdb;
+    }
+
+    return show_library.find((show) =>
+        same_library_title(show, item)
+    ) || null;
+}
+
+async function merge_trakt_movies(rows) {
+    await load_movie_library();
+
+    let added = 0;
+    let updated = 0;
+
+    for (const item of rows) {
+        const existing = find_existing_movie_for_trakt(item);
+
+        if (existing) {
+            const patch = {
+                status: "watched"
+            };
+
+            if (item.trakt_id) patch.trakt_id = Number(item.trakt_id);
+            if (item.tmdb_id) patch.tmdb_id = Number(item.tmdb_id);
+            if (item.my_rating != null) {
+                patch.my_rating = Number(item.my_rating);
+            }
+            if (item.watched_at) patch.watched_at = item.watched_at;
+
+            const {error} = await supabase
+                .from("movies")
+                .update(patch)
+                .eq("id", existing.id);
+            if (error) throw error;
+
+            Object.assign(existing, patch);
+            updated += 1;
+            continue;
+        }
+
+        if (!item.title || !Number(item.year)) continue;
+
+        const row = {
+            title: item.title,
+            year: Number(item.year),
+            status: "watched",
+            ...(item.trakt_id
+                ? {trakt_id: Number(item.trakt_id)}
+                : {}),
+            ...(item.tmdb_id
+                ? {tmdb_id: Number(item.tmdb_id)}
+                : {}),
+            ...(item.my_rating != null
+                ? {my_rating: Number(item.my_rating)}
+                : {}),
+            ...(item.watched_at
+                ? {watched_at: item.watched_at}
+                : {})
+        };
+
+        const {error} = await supabase.from("movies").insert(row);
+        if (error) throw error;
+        added += 1;
+    }
+
+    await load_movie_library();
+    return {added, updated};
+}
+
+async function upsert_trakt_episode_progress(show_id, episodes) {
+    if (!show_id || !episodes?.length || !auth.currentUser) return;
+
+    const rows = episodes
+        .filter((episode) =>
+            Number(episode.season_number) > 0 &&
+            Number(episode.episode_number) > 0
+        )
+        .map((episode) => ({
+            user_id: auth.currentUser.uid,
+            tv_show_id: Number(show_id),
+            season_number: Number(episode.season_number),
+            episode_number: Number(episode.episode_number),
+            watched: true,
+            updated_at: new Date().toISOString()
+        }));
+
+    for (let index = 0; index < rows.length; index += 400) {
+        const chunk = rows.slice(index, index + 400);
+        const {error} = await supabase
+            .from("tv_episode_progress")
+            .upsert(chunk, {
+                onConflict:
+                    "user_id,tv_show_id,season_number,episode_number"
+            });
+        if (error) throw error;
+    }
+}
+
+async function merge_trakt_shows(rows) {
+    await load_show_library();
+
+    let added = 0;
+    let updated = 0;
+
+    for (const item of rows) {
+        let existing = find_existing_show_for_trakt(item);
+
+        if (existing) {
+            const patch = {
+                status: "watched"
+            };
+
+            if (item.trakt_id) patch.trakt_id = Number(item.trakt_id);
+            if (item.tmdb_id) patch.tmdb_id = Number(item.tmdb_id);
+            if (item.my_rating != null) {
+                patch.my_rating = Number(item.my_rating);
+            }
+
+            const {error} = await supabase
+                .from("tv_shows")
+                .update(patch)
+                .eq("id", existing.id);
+            if (error) throw error;
+
+            Object.assign(existing, patch);
+            updated += 1;
+        } else {
+            if (!item.title || !Number(item.year)) continue;
+
+            const row = {
+                title: item.title,
+                year: Number(item.year),
+                status: "watched",
+                ...(item.trakt_id
+                    ? {trakt_id: Number(item.trakt_id)}
+                    : {}),
+                ...(item.tmdb_id
+                    ? {tmdb_id: Number(item.tmdb_id)}
+                    : {}),
+                ...(item.my_rating != null
+                    ? {my_rating: Number(item.my_rating)}
+                    : {})
+            };
+
+            const {data, error} = await supabase
+                .from("tv_shows")
+                .insert(row)
+                .select("*")
+                .single();
+            if (error) throw error;
+
+            existing = data;
+            show_library.push(data);
+            added += 1;
+        }
+
+        await upsert_trakt_episode_progress(
+            existing.id,
+            item.watched_episodes || []
+        );
+    }
+
+    await load_show_library();
+    return {added, updated};
+}
+
+async function sync_trakt_movies() {
+    const original_text = trakt_movie_sync_button.textContent;
+    trakt_movie_sync_button.disabled = true;
+    trakt_movie_sync_button.textContent = "Checking...";
+
+    try {
+        const sync = httpsCallable(functions, "syncTraktMovies");
+        const result = await sync();
+        const rows = result.data.movies || [];
+
+        const approved = await request_service_import_approval(
+            "Trakt",
+            "movie",
+            rows.length
+        );
+        if (!approved) return;
+
+        trakt_movie_sync_button.textContent = "Importing...";
+        const merged = await merge_trakt_movies(rows);
+
+        show_toast(
+            rows.length + " Trakt movie " +
+            (rows.length === 1 ? "entry" : "entries") +
+            " imported · " + merged.added + " added, " +
+            merged.updated + " updated."
+        );
+    } catch (error) {
+        console.error("Unable to import Trakt movies:", error);
+        alert("Unable to import your Trakt movies. Please try again.");
+    } finally {
+        trakt_movie_sync_button.disabled = false;
+        trakt_movie_sync_button.textContent = original_text;
+    }
+}
+
+async function sync_trakt_shows() {
+    const original_text = trakt_show_sync_button.textContent;
+    trakt_show_sync_button.disabled = true;
+    trakt_show_sync_button.textContent = "Checking...";
+
+    try {
+        const sync = httpsCallable(functions, "syncTraktShows");
+        const result = await sync();
+        const rows = result.data.shows || [];
+
+        const approved = await request_service_import_approval(
+            "Trakt",
+            "TV show",
+            rows.length
+        );
+        if (!approved) return;
+
+        trakt_show_sync_button.textContent = "Importing...";
+        const merged = await merge_trakt_shows(rows);
+
+        show_toast(
+            rows.length + " Trakt TV show " +
+            (rows.length === 1 ? "entry" : "entries") +
+            " imported · " + merged.added + " added, " +
+            merged.updated + " updated."
+        );
+    } catch (error) {
+        console.error("Unable to import Trakt shows:", error);
+        alert("Unable to import your Trakt TV shows. Please try again.");
+    } finally {
+        trakt_show_sync_button.disabled = false;
+        trakt_show_sync_button.textContent = original_text;
+    }
+}
+
+trakt_movie_sync_button.addEventListener("click", sync_trakt_movies);
+trakt_show_sync_button.addEventListener("click", sync_trakt_shows);
+//#endregion
+
 
 //? ------------------------------
 //* ----- Plex Connection --------
@@ -4998,11 +5410,13 @@ onAuthStateChanged(auth, async (user) => {
             load_mal_connection_status(),
             load_anilist_connection_status(),
             load_kitsu_connection_status(),
+            load_trakt_connection_status(),
             load_anime_library(),
             load_manga_library()
         ]);
         await finish_mal_connection();
         await finish_anilist_connection();
+        await finish_trakt_connection();
         reopen_connected_services_if_requested();
 
         // Movies are the default visible category on first load.
