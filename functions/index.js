@@ -2248,6 +2248,186 @@ function anilist_list_status_to_stellaz(status) {
     })[status] || "reading";
 }
 
+function anilist_anime_status_to_stellaz(status) {
+    return ({
+        CURRENT: "watching",
+        COMPLETED: "completed",
+        PAUSED: "on_hold",
+        DROPPED: "dropped",
+        PLANNING: "plan_to_watch",
+        REPEATING: "watching",
+    })[status] || "plan_to_watch";
+}
+
+exports.syncAniListAnimeList = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError(
+            "unauthenticated",
+            "You must be logged in."
+        );
+    }
+
+    const snapshot = await db.collection("anilist_connections")
+        .doc(request.auth.uid)
+        .get();
+
+    if (!snapshot.exists) {
+        throw new HttpsError(
+            "failed-precondition",
+            "Connect AniList before importing your anime list."
+        );
+    }
+
+    const connection = snapshot.data();
+    if (!connection.access_token ||
+        (Number(connection.expires_at || 0) &&
+         Number(connection.expires_at) <= Date.now())) {
+        throw new HttpsError(
+            "failed-precondition",
+            "Your AniList authorization expired. Reconnect AniList."
+        );
+    }
+
+    const query = [
+        "query ($userId: Int!, $page: Int!) {",
+        "  Page(page: $page, perPage: 50) {",
+        "    pageInfo { currentPage hasNextPage }",
+        "    mediaList(userId: $userId, type: ANIME, sort: UPDATED_TIME_DESC) {",
+        "      id",
+        "      status",
+        "      score(format: POINT_10_DECIMAL)",
+        "      progress",
+        "      updatedAt",
+        "      media {",
+        "        id",
+        "        title { romaji english native userPreferred }",
+        "        synonyms",
+        "        format",
+        "        status",
+        "        episodes",
+        "        duration",
+        "        averageScore",
+        "        description(asHtml: false)",
+        "        genres",
+        "        siteUrl",
+        "        coverImage { extraLarge large }",
+        "        startDate { year month day }",
+        "        endDate { year month day }",
+        "      }",
+        "    }",
+        "  }",
+        "}"
+    ].join("\n");
+
+    const imported = [];
+    let page = 1;
+    let has_next_page = true;
+
+    try {
+        while (has_next_page && page <= 220) {
+            const data = await anilist_graphql(
+                connection.access_token,
+                query,
+                {
+                    userId: Number(connection.anilist_user_id),
+                    page,
+                }
+            );
+
+            const page_data = data?.Page;
+            const entries = page_data?.mediaList || [];
+
+            for (const entry of entries) {
+                const media = entry.media;
+                if (!media?.id) continue;
+
+                const total_episodes =
+                    Number(media.episodes || 0) || null;
+                let episodes_watched =
+                    Math.max(0, Number(entry.progress || 0));
+
+                if (entry.status === "COMPLETED" &&
+                    total_episodes !== null) {
+                    episodes_watched = Math.max(
+                        episodes_watched,
+                        total_episodes
+                    );
+                }
+
+                imported.push({
+                    anilist_id: Number(media.id),
+                    title: media.title?.english ||
+                        media.title?.userPreferred ||
+                        media.title?.romaji ||
+                        media.title?.native ||
+                        "Untitled",
+                    title_romaji: media.title?.romaji || null,
+                    title_native: media.title?.native || null,
+                    synonyms: Array.isArray(media.synonyms) ?
+                        media.synonyms.filter(Boolean).slice(0, 20) : [],
+                    status:
+                        anilist_anime_status_to_stellaz(entry.status),
+                    episodes_watched,
+                    total_episodes,
+                    my_rating:
+                        Number(entry.score || 0) > 0 ?
+                            Number(entry.score) : null,
+                    poster_url:
+                        media.coverImage?.extraLarge ||
+                        media.coverImage?.large ||
+                        null,
+                    media_type:
+                        String(media.format || "")
+                            .toLowerCase() || null,
+                    start_date:
+                        anilist_date_to_iso(media.startDate),
+                    finish_date:
+                        anilist_date_to_iso(media.endDate),
+                    average_episode_duration_ms:
+                        Number(media.duration || 0) > 0 ?
+                            Number(media.duration) * 60 * 1000 :
+                            null,
+                    anilist_score:
+                        Number(media.averageScore || 0) || null,
+                    description:
+                        clean_anilist_description(media.description),
+                    genres: Array.isArray(media.genres) ?
+                        media.genres : [],
+                    site_url: media.siteUrl || null,
+                });
+            }
+
+            has_next_page =
+                page_data?.pageInfo?.hasNextPage === true;
+            page += 1;
+        }
+    } catch (error) {
+        logger.error("AniList anime import failed.", {
+            status: error.status || null,
+            error: error.message,
+        });
+
+        if (error.status === 401) {
+            throw new HttpsError(
+                "failed-precondition",
+                "Your AniList authorization is no longer valid. Reconnect AniList."
+            );
+        }
+
+        throw new HttpsError(
+            "internal",
+            "AniList anime import failed."
+        );
+    }
+
+    return {
+        username: connection.username || null,
+        anime: imported,
+        count: imported.length,
+    };
+});
+
+
 exports.syncAniListMangaList = onCall(async (request) => {
     if (!request.auth) {
         throw new HttpsError(
