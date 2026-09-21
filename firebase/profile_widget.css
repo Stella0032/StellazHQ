@@ -325,7 +325,7 @@ html[data-theme="flurple"] .recommendation-genre-filter:focus{
 
 
 
-/* Release notifications */
+/* Recent entertainment releases */
 .profile-widget{
     display:flex;
     align-items:center;
@@ -404,15 +404,6 @@ html[data-theme="flurple"] .recommendation-genre-filter:focus{
     color:#91a9bd;
     font-size:10px;
 }
-.notification-read-all{
-    padding:7px 9px;
-    border:0;
-    border-radius:8px;
-    color:#8bdcff;
-    background:rgba(75,211,255,.08);
-    cursor:pointer;
-    font-size:10px;
-}
 .notification-list{
     max-height:445px;
     overflow-y:auto;
@@ -421,8 +412,8 @@ html[data-theme="flurple"] .recommendation-genre-filter:focus{
     width:100%;
     padding:13px 15px;
     display:grid;
-    grid-template-columns:8px minmax(0,1fr);
-    gap:11px;
+    grid-template-columns:52px minmax(0,1fr);
+    gap:12px;
     border:0;
     border-bottom:1px solid rgba(255,255,255,.065);
     color:#dcecff;
@@ -433,19 +424,24 @@ html[data-theme="flurple"] .recommendation-genre-filter:focus{
 .notification-item:hover{
     background:rgba(83,190,255,.07);
 }
-.notification-item.unread{
-    background:rgba(83,190,255,.045);
+.release-kind{
+    align-self:start;
+    margin-top:1px;
+    padding:5px 6px;
+    border:1px solid rgba(255,255,255,.11);
+    border-radius:7px;
+    text-align:center;
+    font-size:8px;
+    font-weight:800;
+    letter-spacing:.5px;
 }
-.notification-dot{
-    width:7px;
-    height:7px;
-    margin-top:5px;
-    border-radius:50%;
-    background:transparent;
+.release-kind.anime{
+    color:#aee8ff;
+    background:rgba(70,183,255,.09);
 }
-.notification-item.unread .notification-dot{
-    background:#58d7ff;
-    box-shadow:0 0 10px rgba(88,215,255,.65);
+.release-kind.manga{
+    color:#bff6d9;
+    background:rgba(83,216,153,.09);
 }
 .notification-copy{
     min-width:0;
@@ -480,24 +476,10 @@ html[data-theme="neon"] .notification-panel{
     border-color:rgba(52,255,96,.22);
     background:rgba(1,8,3,.97);
 }
-html[data-theme="neon"] .notification-item.unread{
-    background:rgba(39,255,91,.055);
-}
-html[data-theme="neon"] .notification-item.unread .notification-dot{
-    background:#54ff79;
-    box-shadow:0 0 10px rgba(84,255,121,.62);
-}
 html[data-theme="flurple"] .notification-trigger,
 html[data-theme="flurple"] .notification-panel{
     border-color:rgba(225,170,69,.25);
     background:rgba(16,6,27,.98);
-}
-html[data-theme="flurple"] .notification-item.unread{
-    background:rgba(164,72,255,.07);
-}
-html[data-theme="flurple"] .notification-item.unread .notification-dot{
-    background:#f4c75e;
-    box-shadow:0 0 10px rgba(244,199,94,.6);
 }
 @media(max-width:600px){
     .notification-trigger{
