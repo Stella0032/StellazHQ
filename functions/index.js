@@ -1376,91 +1376,63 @@ exports.syncKitsuMangaList = onCall(
 
 
 //? ------------------------------
-//* ----- Trakt Connection ------
+//* ----- TMDB Movie Data -------
 //? ------------------------------
 //#region
-const trakt_client_id = defineSecret("TRAKT_CLIENT_ID");
-const trakt_client_secret = defineSecret("TRAKT_CLIENT_SECRET");
-const trakt_redirect_uri =
-    "https://stellaz.org/entertainment_page/Entertainment.html?oauth=trakt";
+const tmdb_read_access_token = defineSecret("TMDB_READ_ACCESS_TOKEN");
 
-function trakt_headers(access_token) {
-    const headers = {
+const tmdb_account_redirect_uri =
+    "https://stellaz.org/entertainment_page/Entertainment.html?oauth=tmdb";
+
+function tmdb_account_headers() {
+    return {
+        Authorization:
+            "Bearer " + tmdb_read_access_token.value(),
+        accept: "application/json",
         "Content-Type": "application/json",
-        "User-Agent": "StellazHQ/1.0",
-        "trakt-api-key": trakt_client_id.value(),
-        "trakt-api-version": "2",
     };
-
-    if (access_token) {
-        headers.Authorization = "Bearer " + access_token;
-    }
-
-    return headers;
 }
 
-exports.getTraktAuthorizationUrl = onCall(
-    {secrets: [trakt_client_id]},
-    async (request) => {
-        if (!request.auth) {
-            throw new HttpsError(
-                "unauthenticated",
-                "You must be logged in."
-            );
-        }
+async function tmdb_account_request(
+    url,
+    {
+        method = "GET",
+        body = null,
+        uid = null,
+    } = {}
+) {
+    const response = await fetch(url, {
+        method,
+        headers: tmdb_account_headers(),
+        ...(body !== null
+            ? {body: JSON.stringify(body)}
+            : {}),
+    });
 
-        const state = String(request.data?.state || "");
-        if (state.length < 32 || state.length > 200) {
-            throw new HttpsError(
-                "invalid-argument",
-                "Invalid Trakt authorization state."
-            );
-        }
+    const payload =
+        await response.json().catch(() => ({}));
 
-        await db.collection("trakt_connection_attempts")
-            .doc(request.auth.uid)
-            .set({
-                state,
-                created_at: new Date(),
-            });
-
-        const url = new URL("https://trakt.tv/oauth/authorize");
-        url.searchParams.set("response_type", "code");
-        url.searchParams.set("client_id", trakt_client_id.value());
-        url.searchParams.set("redirect_uri", trakt_redirect_uri);
-        url.searchParams.set("state", state);
-
-        return {authorization_url: url.toString()};
-    }
-);
-
-async function trakt_token_request(body) {
-    const response = await fetch(
-        "https://auth.trakt.tv/oauth/token",
-        {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-                "User-Agent": "StellazHQ/1.0",
-            },
-            body: JSON.stringify(body),
-        }
-    );
-
-    const payload = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-        logger.error("Trakt token request failed.", {
+    if (!response.ok || payload.success === false) {
+        logger.error("TMDB account request failed.", {
             status: response.status,
-            error: payload.error || null,
-            description: payload.error_description || null,
+            status_message:
+                payload.status_message || null,
         });
 
+        if (uid &&
+            (response.status === 401 ||
+             response.status === 403)) {
+            await db.collection("tmdb_connections")
+                .doc(uid)
+                .set({
+                    needs_reconnect: true,
+                    updated_at: new Date(),
+                }, {merge: true});
+        }
+
         const error = new Error(
-            payload.error_description ||
-            payload.error ||
-            "Trakt token request failed."
+            payload.status_message ||
+            "TMDB account request failed."
         );
         error.status = response.status;
         throw error;
@@ -1469,43 +1441,8 @@ async function trakt_token_request(body) {
     return payload;
 }
 
-async function save_trakt_tokens(uid, tokens, extra = {}) {
-    const expires_in = Number(tokens.expires_in || 604800);
-    const expires_at = Date.now() + expires_in * 1000;
-
-    await db.collection("trakt_connections")
-        .doc(uid)
-        .set({
-            access_token: tokens.access_token,
-            refresh_token: tokens.refresh_token,
-            token_type: tokens.token_type || "Bearer",
-            scope: tokens.scope || null,
-            expires_at,
-            updated_at: new Date(),
-            ...extra,
-        }, {merge: true});
-
-    return expires_at;
-}
-
-async function trakt_get_settings(access_token) {
-    const response = await fetch(
-        "https://api.trakt.tv/users/settings",
-        {headers: trakt_headers(access_token)}
-    );
-
-    if (!response.ok) {
-        throw new Error(
-            "Trakt user settings request failed (" +
-            response.status + ")."
-        );
-    }
-
-    return await response.json();
-}
-
-exports.exchangeTraktAuthorizationCode = onCall(
-    {secrets: [trakt_client_id, trakt_client_secret]},
+exports.getTMDBAuthorizationUrl = onCall(
+    {secrets: [tmdb_read_access_token]},
     async (request) => {
         if (!request.auth) {
             throw new HttpsError(
@@ -1514,282 +1451,356 @@ exports.exchangeTraktAuthorizationCode = onCall(
             );
         }
 
-        const code = String(request.data?.code || "").trim();
-        const state = String(request.data?.state || "").trim();
-
-        if (!code || !state) {
+        let token;
+        try {
+            token = await tmdb_account_request(
+                "https://api.themoviedb.org/3/authentication/token/new"
+            );
+        } catch (error) {
             throw new HttpsError(
-                "invalid-argument",
-                "Missing Trakt authorization data."
+                "internal",
+                "Unable to start TMDB authorization."
+            );
+        }
+
+        if (!token.request_token) {
+            throw new HttpsError(
+                "internal",
+                "TMDB did not return a request token."
+            );
+        }
+
+        await db.collection("tmdb_connection_attempts")
+            .doc(request.auth.uid)
+            .set({
+                request_token: token.request_token,
+                expires_at: token.expires_at || null,
+                created_at: new Date(),
+            });
+
+        const authorization_url = new URL(
+            "https://www.themoviedb.org/authenticate/" +
+            encodeURIComponent(token.request_token)
+        );
+        authorization_url.searchParams.set(
+            "redirect_to",
+            tmdb_account_redirect_uri
+        );
+
+        return {
+            authorization_url:
+                authorization_url.toString(),
+        };
+    }
+);
+
+exports.completeTMDBConnection = onCall(
+    {secrets: [tmdb_read_access_token]},
+    async (request) => {
+        if (!request.auth) {
+            throw new HttpsError(
+                "unauthenticated",
+                "You must be logged in."
             );
         }
 
         const attempt_ref =
-            db.collection("trakt_connection_attempts")
+            db.collection("tmdb_connection_attempts")
                 .doc(request.auth.uid);
         const attempt = await attempt_ref.get();
 
         if (!attempt.exists ||
-            attempt.data()?.state !== state) {
+            !attempt.data()?.request_token) {
             throw new HttpsError(
-                "permission-denied",
-                "The Trakt authorization could not be verified."
+                "failed-precondition",
+                "Start the TMDB connection from Stellaz first."
             );
         }
 
         const created_at =
             attempt.data()?.created_at?.toMillis?.() || 0;
+
         if (!created_at ||
-            Date.now() - created_at > 15 * 60 * 1000) {
+            Date.now() - created_at > 60 * 60 * 1000) {
             await attempt_ref.delete().catch(() => {});
             throw new HttpsError(
                 "deadline-exceeded",
-                "The Trakt connection request expired."
+                "The TMDB authorization request expired."
             );
         }
 
-        let tokens;
+        let session;
         try {
-            tokens = await trakt_token_request({
-                code,
-                client_id: trakt_client_id.value(),
-                client_secret: trakt_client_secret.value(),
-                redirect_uri: trakt_redirect_uri,
-                grant_type: "authorization_code",
-            });
+            session = await tmdb_account_request(
+                "https://api.themoviedb.org/3/authentication/session/new",
+                {
+                    method: "POST",
+                    body: {
+                        request_token:
+                            attempt.data().request_token,
+                    },
+                }
+            );
         } catch (error) {
             throw new HttpsError(
-                "internal",
-                "Trakt authorization could not be completed."
+                "failed-precondition",
+                "Approve Stellaz on TMDB, then try connecting again."
             );
         }
 
-        if (!tokens.access_token ||
-            !tokens.refresh_token) {
+        if (!session.session_id) {
             throw new HttpsError(
                 "internal",
-                "Trakt did not return valid authorization tokens."
+                "TMDB did not return a session."
             );
         }
 
-        let settings = {};
-        try {
-            settings =
-                await trakt_get_settings(tokens.access_token);
-        } catch (error) {
-            logger.warn("Unable to load Trakt user settings.", {
-                error: error.message,
-            });
-        }
-
-        const username =
-            settings.user?.username ||
-            settings.user?.ids?.slug ||
-            null;
-
-        await save_trakt_tokens(
-            request.auth.uid,
-            tokens,
-            {
-                username,
-                connected_at: new Date(),
-            }
+        const account_url = new URL(
+            "https://api.themoviedb.org/3/account"
         );
+        account_url.searchParams.set(
+            "session_id",
+            session.session_id
+        );
+
+        let account;
+        try {
+            account = await tmdb_account_request(
+                account_url
+            );
+        } catch (error) {
+            throw new HttpsError(
+                "internal",
+                "TMDB account verification failed."
+            );
+        }
+
+        await db.collection("tmdb_connections")
+            .doc(request.auth.uid)
+            .set({
+                session_id: session.session_id,
+                account_id: Number(account.id),
+                username:
+                    account.username ||
+                    account.name ||
+                    null,
+                name: account.name || null,
+                needs_reconnect: false,
+                connected_at: new Date(),
+                updated_at: new Date(),
+            }, {merge: true});
 
         await attempt_ref.delete();
 
         return {
             connected: true,
-            username,
+            username:
+                account.username ||
+                account.name ||
+                null,
         };
     }
 );
 
-async function get_valid_trakt_access_token(uid) {
-    const ref = db.collection("trakt_connections").doc(uid);
+exports.getTMDBConnectionStatus = onCall(
+    async (request) => {
+        if (!request.auth) {
+            throw new HttpsError(
+                "unauthenticated",
+                "You must be logged in."
+            );
+        }
+
+        const snapshot =
+            await db.collection("tmdb_connections")
+                .doc(request.auth.uid)
+                .get();
+
+        if (!snapshot.exists) {
+            return {
+                connected: false,
+                needs_reconnect: false,
+            };
+        }
+
+        const data = snapshot.data();
+
+        return {
+            connected:
+                Boolean(
+                    data.session_id &&
+                    data.account_id
+                ) &&
+                data.needs_reconnect !== true,
+            needs_reconnect:
+                data.needs_reconnect === true ||
+                !data.session_id ||
+                !data.account_id,
+            username: data.username || null,
+        };
+    }
+);
+
+async function get_tmdb_connection(uid) {
+    const ref =
+        db.collection("tmdb_connections").doc(uid);
     const snapshot = await ref.get();
 
     if (!snapshot.exists) {
         throw new HttpsError(
             "failed-precondition",
-            "Connect Trakt before importing."
+            "Connect TMDB before importing."
         );
-    }
-
-    const connection = snapshot.data();
-    const expires_at =
-        Number(connection.expires_at || 0);
-
-    if (connection.access_token &&
-        (!expires_at ||
-         expires_at > Date.now() + 60 * 1000)) {
-        return connection.access_token;
-    }
-
-    if (!connection.refresh_token) {
-        throw new HttpsError(
-            "failed-precondition",
-            "Reconnect Trakt before importing."
-        );
-    }
-
-    let tokens;
-    try {
-        tokens = await trakt_token_request({
-            refresh_token: connection.refresh_token,
-            client_id: trakt_client_id.value(),
-            client_secret: trakt_client_secret.value(),
-            redirect_uri: trakt_redirect_uri,
-            grant_type: "refresh_token",
-        });
-    } catch (error) {
-        await ref.set({
-            needs_reconnect: true,
-            updated_at: new Date(),
-        }, {merge: true});
-
-        throw new HttpsError(
-            "failed-precondition",
-            "Your Trakt authorization needs to be renewed."
-        );
-    }
-
-    // Trakt refresh tokens are single-use, so the newly returned refresh
-    // token must replace the previous one every time.
-    await save_trakt_tokens(uid, tokens, {
-        needs_reconnect: false,
-    });
-
-    return tokens.access_token;
-}
-
-exports.getTraktConnectionStatus = onCall(async (request) => {
-    if (!request.auth) {
-        throw new HttpsError(
-            "unauthenticated",
-            "You must be logged in."
-        );
-    }
-
-    const snapshot = await db.collection("trakt_connections")
-        .doc(request.auth.uid)
-        .get();
-
-    if (!snapshot.exists) {
-        return {
-            connected: false,
-            needs_reconnect: false,
-        };
     }
 
     const data = snapshot.data();
-    return {
-        connected:
-            Boolean(data.access_token) &&
-            data.needs_reconnect !== true,
-        needs_reconnect:
-            data.needs_reconnect === true ||
-            !data.refresh_token,
-        username: data.username || null,
-    };
-});
 
-async function trakt_paginated_get(
-    access_token,
-    pathname,
-    parameters = {}
+    if (!data.session_id ||
+        !data.account_id ||
+        data.needs_reconnect === true) {
+        throw new HttpsError(
+            "failed-precondition",
+            "Reconnect TMDB before importing."
+        );
+    }
+
+    return data;
+}
+
+async function tmdb_account_pages(
+    uid,
+    connection,
+    pathname
 ) {
-    const collected = [];
-    const limit = 100;
+    const items = [];
     let page = 1;
+    let total_pages = 1;
 
-    while (page <= 250) {
+    while (page <= total_pages &&
+           page <= 500) {
         const url = new URL(
-            "https://api.trakt.tv" + pathname
+            "https://api.themoviedb.org/3" +
+            pathname
+        );
+        url.searchParams.set(
+            "session_id",
+            connection.session_id
+        );
+        url.searchParams.set(
+            "language",
+            "en-US"
+        );
+        url.searchParams.set(
+            "page",
+            String(page)
+        );
+        url.searchParams.set(
+            "sort_by",
+            "created_at.desc"
         );
 
-        for (const [key, value] of
-            Object.entries(parameters)) {
-            if (value !== null &&
-                value !== undefined) {
-                url.searchParams.set(
-                    key,
-                    String(value)
-                );
-            }
-        }
-
-        url.searchParams.set("page", String(page));
-        url.searchParams.set("limit", String(limit));
-
-        const response = await fetch(url, {
-            headers: trakt_headers(access_token),
-        });
-
-        if (!response.ok) {
-            logger.error("Trakt API request failed.", {
-                pathname,
-                status: response.status,
-            });
-
-            if (response.status === 401) {
+        let payload;
+        try {
+            payload = await tmdb_account_request(
+                url,
+                {uid}
+            );
+        } catch (error) {
+            if (error.status === 401 ||
+                error.status === 403) {
                 throw new HttpsError(
                     "failed-precondition",
-                    "Reconnect Trakt before importing."
+                    "Your TMDB session is no longer valid. Reconnect TMDB."
                 );
             }
 
             throw new HttpsError(
                 "internal",
-                "Trakt import failed."
+                "TMDB import failed."
             );
         }
 
-        const payload = await response.json();
-        if (!Array.isArray(payload)) break;
+        items.push(
+            ...(Array.isArray(payload.results)
+                ? payload.results
+                : [])
+        );
 
-        collected.push(...payload);
-
-        const page_count =
-            Number(
-                response.headers.get(
-                    "x-pagination-page-count"
-                ) || 0
-            );
-
-        if ((page_count && page >= page_count) ||
-            payload.length < limit) {
-            break;
-        }
-
+        total_pages = Math.max(
+            1,
+            Number(payload.total_pages || 1)
+        );
         page += 1;
     }
 
-    return collected;
+    return items;
 }
 
-function trakt_rating_map(entries, media_key) {
-    const map = new Map();
-
-    for (const entry of entries || []) {
-        const media = entry?.[media_key];
-        const id = Number(media?.ids?.trakt || 0);
-        if (!id) continue;
-
-        map.set(id, {
-            rating:
-                Number(entry.rating || 0) || null,
-            rated_at: entry.rated_at || null,
-            media,
-        });
-    }
-
-    return map;
+function tmdb_movie_import_row(
+    movie,
+    status,
+    rating = null
+) {
+    return {
+        tmdb_id: Number(movie.id),
+        title: movie.title || null,
+        year: movie.release_date
+            ? Number(
+                movie.release_date.slice(0, 4)
+            ) || null
+            : null,
+        status,
+        my_rating:
+            rating !== null &&
+            rating !== undefined
+                ? Number(rating)
+                : null,
+        tmdb_rating:
+            movie.vote_average !== null &&
+            movie.vote_average !== undefined
+                ? Number(movie.vote_average)
+                : null,
+        poster_url: movie.poster_path
+            ? "https://image.tmdb.org/t/p/w500" +
+                movie.poster_path
+            : null,
+    };
 }
 
-exports.syncTraktMovies = onCall(
+function tmdb_show_import_row(
+    show,
+    status,
+    rating = null
+) {
+    return {
+        tmdb_id: Number(show.id),
+        title: show.name || null,
+        year: show.first_air_date
+            ? Number(
+                show.first_air_date.slice(0, 4)
+            ) || null
+            : null,
+        status,
+        my_rating:
+            rating !== null &&
+            rating !== undefined
+                ? Number(rating)
+                : null,
+        tmdb_rating:
+            show.vote_average !== null &&
+            show.vote_average !== undefined
+                ? Number(show.vote_average)
+                : null,
+        poster_url: show.poster_path
+            ? "https://image.tmdb.org/t/p/w500" +
+                show.poster_path
+            : null,
+    };
+}
+
+exports.syncTMDBMovies = onCall(
     {
-        secrets: [trakt_client_id, trakt_client_secret],
+        secrets: [tmdb_read_access_token],
         timeoutSeconds: 120,
     },
     async (request) => {
@@ -1800,86 +1811,75 @@ exports.syncTraktMovies = onCall(
             );
         }
 
-        const access_token =
-            await get_valid_trakt_access_token(
+        const connection =
+            await get_tmdb_connection(
                 request.auth.uid
             );
+        const account_id =
+            Number(connection.account_id);
 
-        const [watched, ratings] =
+        const [rated, watchlist] =
             await Promise.all([
-                trakt_paginated_get(
-                    access_token,
-                    "/users/me/watched/movies",
-                    {extended: "full"}
+                tmdb_account_pages(
+                    request.auth.uid,
+                    connection,
+                    "/account/" +
+                    account_id +
+                    "/rated/movies"
                 ),
-                trakt_paginated_get(
-                    access_token,
-                    "/users/me/ratings/movies",
-                    {extended: "full"}
+                tmdb_account_pages(
+                    request.auth.uid,
+                    connection,
+                    "/account/" +
+                    account_id +
+                    "/watchlist/movies"
                 ),
             ]);
 
-        const rating_by_id =
-            trakt_rating_map(ratings, "movie");
-        const movie_by_id = new Map();
+        const by_id = new Map();
 
-        for (const item of watched) {
-            const movie = item.movie || {};
-            const trakt_id =
-                Number(movie.ids?.trakt || 0);
-            if (!trakt_id) continue;
-
-            const rating =
-                rating_by_id.get(trakt_id);
-
-            movie_by_id.set(trakt_id, {
-                trakt_id,
-                tmdb_id:
-                    Number(movie.ids?.tmdb || 0) ||
-                    null,
-                title: movie.title || null,
-                year:
-                    Number(movie.year || 0) || null,
-                status: "watched",
-                my_rating:
-                    rating?.rating ?? null,
-                watched_at:
-                    item.last_watched_at || null,
-            });
+        for (const movie of watchlist) {
+            if (!movie?.id) continue;
+            by_id.set(
+                Number(movie.id),
+                tmdb_movie_import_row(
+                    movie,
+                    "watch_later"
+                )
+            );
         }
 
-        for (const [trakt_id, rating] of
-            rating_by_id.entries()) {
-            if (movie_by_id.has(trakt_id)) continue;
-
-            const movie = rating.media || {};
-            movie_by_id.set(trakt_id, {
-                trakt_id,
-                tmdb_id:
-                    Number(movie.ids?.tmdb || 0) ||
-                    null,
-                title: movie.title || null,
-                year:
-                    Number(movie.year || 0) || null,
-                status: "watched",
-                my_rating: rating.rating,
-                watched_at: null,
-            });
+        for (const movie of rated) {
+            if (!movie?.id) continue;
+            by_id.set(
+                Number(movie.id),
+                tmdb_movie_import_row(
+                    movie,
+                    "watched",
+                    movie.rating
+                )
+            );
         }
+
+        const movies = [...by_id.values()]
+            .filter((item) =>
+                item.title &&
+                item.year &&
+                item.tmdb_id
+            );
 
         return {
-            movies: [...movie_by_id.values()]
-                .filter((item) =>
-                    item.title && item.year
-                ),
-            count: movie_by_id.size,
+            movies,
+            count: movies.length,
+            rated_count: rated.length,
+            watchlist_count: watchlist.length,
         };
     }
 );
 
-exports.syncTraktShows = onCall(
+exports.syncTMDBShows = onCall(
     {
-        secrets: [trakt_client_id, trakt_client_secret],
+        secrets: [tmdb_read_access_token],
         timeoutSeconds: 120,
     },
     async (request) => {
@@ -1890,109 +1890,73 @@ exports.syncTraktShows = onCall(
             );
         }
 
-        const access_token =
-            await get_valid_trakt_access_token(
+        const connection =
+            await get_tmdb_connection(
                 request.auth.uid
             );
+        const account_id =
+            Number(connection.account_id);
 
-        const [watched, ratings] =
+        const [rated, watchlist] =
             await Promise.all([
-                trakt_paginated_get(
-                    access_token,
-                    "/users/me/watched/shows",
-                    {extended: "progress"}
+                tmdb_account_pages(
+                    request.auth.uid,
+                    connection,
+                    "/account/" +
+                    account_id +
+                    "/rated/tv"
                 ),
-                trakt_paginated_get(
-                    access_token,
-                    "/users/me/ratings/shows",
-                    {extended: "full"}
+                tmdb_account_pages(
+                    request.auth.uid,
+                    connection,
+                    "/account/" +
+                    account_id +
+                    "/watchlist/tv"
                 ),
             ]);
 
-        const rating_by_id =
-            trakt_rating_map(ratings, "show");
-        const show_by_id = new Map();
+        const by_id = new Map();
 
-        for (const item of watched) {
-            const show = item.show || {};
-            const trakt_id =
-                Number(show.ids?.trakt || 0);
-            if (!trakt_id) continue;
-
-            const watched_episodes = [];
-
-            for (const season of item.seasons || []) {
-                const season_number =
-                    Number(season.number || 0);
-
-                for (const episode of
-                    season.episodes || []) {
-                    if (Number(episode.plays || 0) <= 0) {
-                        continue;
-                    }
-
-                    watched_episodes.push({
-                        season_number,
-                        episode_number:
-                            Number(episode.number || 0),
-                    });
-                }
-            }
-
-            const rating =
-                rating_by_id.get(trakt_id);
-
-            show_by_id.set(trakt_id, {
-                trakt_id,
-                tmdb_id:
-                    Number(show.ids?.tmdb || 0) ||
-                    null,
-                title: show.title || null,
-                year:
-                    Number(show.year || 0) || null,
-                status: "watched",
-                my_rating:
-                    rating?.rating ?? null,
-                watched_episodes,
-            });
+        for (const show of watchlist) {
+            if (!show?.id) continue;
+            by_id.set(
+                Number(show.id),
+                tmdb_show_import_row(
+                    show,
+                    "watch_later"
+                )
+            );
         }
 
-        for (const [trakt_id, rating] of
-            rating_by_id.entries()) {
-            if (show_by_id.has(trakt_id)) continue;
-
-            const show = rating.media || {};
-            show_by_id.set(trakt_id, {
-                trakt_id,
-                tmdb_id:
-                    Number(show.ids?.tmdb || 0) ||
-                    null,
-                title: show.title || null,
-                year:
-                    Number(show.year || 0) || null,
-                status: "watched",
-                my_rating: rating.rating,
-                watched_episodes: [],
-            });
+        for (const show of rated) {
+            if (!show?.id) continue;
+            by_id.set(
+                Number(show.id),
+                tmdb_show_import_row(
+                    show,
+                    "watched",
+                    show.rating
+                )
+            );
         }
+
+        const shows = [...by_id.values()]
+            .filter((item) =>
+                item.title &&
+                item.year &&
+                item.tmdb_id
+            );
 
         return {
-            shows: [...show_by_id.values()]
-                .filter((item) =>
-                    item.title && item.year
-                ),
-            count: show_by_id.size,
+            shows,
+            count: shows.length,
+            rated_count: rated.length,
+            watchlist_count: watchlist.length,
         };
     }
 );
-//#endregion
 
 
-//? ------------------------------
-//* ----- TMDB Movie Data -------
-//? ------------------------------
-//#region
-const tmdb_read_access_token = defineSecret("TMDB_READ_ACCESS_TOKEN");
 
 exports.searchEntertainmentTitles = onCall(
     {secrets: [tmdb_read_access_token]},
