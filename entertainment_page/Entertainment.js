@@ -2301,6 +2301,58 @@ library_remove_form.addEventListener("submit", async (event) => {
 
 
 //? ---------------------------------
+//* ----- Connected Services --------
+//? ---------------------------------
+//#region
+const connected_services_dialog =
+    document.getElementById("connected_services_dialog");
+const connected_services_close =
+    document.getElementById("connected_services_close");
+const anilist_connection_label =
+    document.getElementById("anilist_connection_label");
+
+function open_connected_services_dialog() {
+    if (!connected_services_dialog?.open) {
+        connected_services_dialog?.showModal();
+    }
+}
+
+function remember_connected_services_return() {
+    sessionStorage.setItem("stellaz_open_connected_services", "true");
+}
+
+function reopen_connected_services_if_requested() {
+    const params = new URLSearchParams(window.location.search);
+    const requested_by_url = params.get("services") === "1";
+    const requested_by_oauth =
+        sessionStorage.getItem("stellaz_open_connected_services") === "true";
+
+    if (requested_by_url) {
+        params.delete("services");
+        const query = params.toString();
+        history.replaceState(
+            {},
+            document.title,
+            window.location.pathname + (query ? "?" + query : "")
+        );
+    }
+
+    if (requested_by_oauth) {
+        sessionStorage.removeItem("stellaz_open_connected_services");
+    }
+
+    if (requested_by_url || requested_by_oauth) {
+        open_connected_services_dialog();
+    }
+}
+
+connected_services_close?.addEventListener("click", () =>
+    connected_services_dialog.close()
+);
+//#endregion
+
+
+//? ---------------------------------
 //* ----- Manga / Manhwa Library ----
 //? ---------------------------------
 //#region
@@ -2373,27 +2425,37 @@ async function load_anilist_connection_status() {
         if (result.data.connected) {
             document.getElementById("anilist_connection_badge")
                 ?.removeAttribute("hidden");
-            anilist_connect_card.hidden = true;
+            anilist_connection_label.textContent =
+                result.data.username
+                    ? "Connected as " + result.data.username
+                    : "Connected";
             anilist_sync_header_button.hidden = false;
+            anilist_connect_button.textContent = "Connected";
+            anilist_connect_button.disabled = true;
             anilist_connect_button.dataset.connected = "true";
+            anilist_connect_title.textContent = "AniList";
+            anilist_connect_description.textContent =
+                "Connected to Stellaz. Import to refresh your manga, manhwa and manhua progress and ratings.";
             return;
         }
 
         document.getElementById("anilist_connection_badge")
             ?.setAttribute("hidden", "");
-        anilist_connect_card.hidden = false;
+        anilist_connection_label.textContent = result.data.needs_reconnect
+            ? "Reconnect required"
+            : "Not connected";
         anilist_sync_header_button.hidden = true;
+        anilist_connect_button.disabled = false;
         anilist_connect_button.dataset.connected = "false";
+        anilist_connect_title.textContent = "AniList";
 
         if (result.data.needs_reconnect) {
-            anilist_connect_title.textContent = "Reconnect AniList";
             anilist_connect_description.textContent =
                 "Your AniList authorization expired. Reconnect to import your latest reading progress and ratings.";
             anilist_connect_button.textContent = "Reconnect AniList";
         } else {
-            anilist_connect_title.textContent = "Connect AniList";
             anilist_connect_description.textContent =
-                "Import your AniList manga and manhwa reading progress, statuses, and ratings into Stellaz.";
+                "Import manga, manhwa and manhua progress, statuses, and ratings.";
             anilist_connect_button.textContent = "Connect AniList";
         }
     } catch (error) {
@@ -2402,6 +2464,7 @@ async function load_anilist_connection_status() {
 }
 
 async function begin_anilist_connection() {
+    remember_connected_services_return();
     anilist_connect_button.disabled = true;
     anilist_connect_button.textContent = "Connecting...";
 
@@ -2533,10 +2596,6 @@ async function finish_anilist_connection() {
 }
 
 anilist_connect_button.addEventListener("click", async () => {
-    if (anilist_connect_button.dataset.connected === "true") {
-        await sync_anilist_manga();
-        return;
-    }
     await begin_anilist_connection();
 });
 
@@ -3064,17 +3123,29 @@ async function load_mal_connection_status() {
     try {
         const get_status = httpsCallable(functions, "getMALConnectionStatus");
         const result = await get_status();
+
         if (result.data.connected) {
             document.getElementById("mal_connection_badge")?.removeAttribute("hidden");
-            mal_connect_card.hidden = true;
-            mal_connection_label.textContent = "CONNECTED";
-            mal_connect_title.textContent = "MyAnimeList Connected ✓";
+            mal_connection_label.textContent = "Connected";
+            mal_connect_title.textContent = "MyAnimeList";
             mal_connect_description.textContent =
-                "Your MyAnimeList account is connected to this Stellaz profile.";
-            mal_connect_button.textContent = "Sync MyAnimeList";
+                "Connected to Stellaz. Sync to import your latest anime ratings, statuses, and progress.";
+            mal_connect_button.textContent = "Connected";
+            mal_connect_button.disabled = true;
             mal_connect_button.dataset.connected = "true";
             mal_sync_header_button.hidden = false;
+            return;
         }
+
+        document.getElementById("mal_connection_badge")?.setAttribute("hidden", "");
+        mal_connection_label.textContent = "Not connected";
+        mal_connect_title.textContent = "MyAnimeList";
+        mal_connect_description.textContent =
+            "Import your anime list, ratings, statuses, and watched episode progress.";
+        mal_connect_button.textContent = "Connect MyAnimeList";
+        mal_connect_button.disabled = false;
+        mal_connect_button.dataset.connected = "false";
+        mal_sync_header_button.hidden = true;
     } catch (error) {
         console.error("Unable to check MAL connection:", error);
     }
@@ -3511,6 +3582,7 @@ async function sync_mal_anime() {
 }
 
 async function begin_mal_connection() {
+    remember_connected_services_return();
     const state = random_url_safe_string(48);
     const code_verifier = random_url_safe_string(64);
     sessionStorage.setItem("mal_oauth_state", state);
@@ -3560,11 +3632,6 @@ async function finish_mal_connection() {
 mal_sync_header_button.addEventListener("click", sync_mal_anime);
 
 mal_connect_button.addEventListener("click", async () => {
-    if (mal_connect_button.dataset.connected === "true") {
-        await sync_mal_anime();
-        return;
-    }
-
     mal_connect_button.disabled = true;
     mal_connect_button.textContent = "Connecting...";
 
@@ -3594,25 +3661,39 @@ const plex_connect_button = document.getElementById("plex_connect_button");
 
 async function load_plex_connection_status() {
     if (!plex_connect_button) return;
+
+    const plex_connection_label =
+        document.getElementById("plex_connection_label");
+
     try {
         const result = await httpsCallable(functions, "getPlexConnectionStatus")();
+
         if (result.data.connected) {
             document.getElementById("plex_connection_badge")?.removeAttribute("hidden");
             document.getElementById("plex_import_button")?.removeAttribute("hidden");
-            document.querySelector(".plex-import-button-tv")?.removeAttribute("hidden");
-            // Startup performs the activity import after the Stellaz movie/show
-            // libraries have loaded. Starting the same Plex scan here creates a
-            // race where the activity sync can reuse a metadata-only request
-            // before the local libraries are ready.
-            const plex_card = document.getElementById("plex_connect_card");
-            if (plex_card) plex_card.hidden = true;
-            plex_connect_title.textContent = "Plex Connected ✓";
+            plex_connect_title.textContent = "Plex";
+            plex_connection_label.textContent =
+                result.data.username
+                    ? "Connected as " + result.data.username
+                    : "Connected";
             plex_connect_description.textContent =
-                "Connected as " + result.data.username + ". Rating import comes next.";
-            plex_connect_button.textContent = "Plex Connected";
+                "Connected to Stellaz. Import to refresh movie and TV ratings, watched titles, and episode progress.";
+            plex_connect_button.textContent = "Connected";
             plex_connect_button.disabled = true;
+            return;
         }
-    } catch (error) { console.error("Unable to check Plex connection:", error); }
+
+        document.getElementById("plex_connection_badge")?.setAttribute("hidden", "");
+        document.getElementById("plex_import_button")?.setAttribute("hidden", "");
+        plex_connect_title.textContent = "Plex";
+        plex_connection_label.textContent = "Not connected";
+        plex_connect_description.textContent =
+            "Import movie and TV ratings, watched titles, and episode progress from Plex.";
+        plex_connect_button.textContent = "Connect Plex";
+        plex_connect_button.disabled = false;
+    } catch (error) {
+        console.error("Unable to check Plex connection:", error);
+    }
 }
 
 
@@ -3987,8 +4068,10 @@ async function open_plex_import_preview() {
         plex_import_summary.textContent = error.message || "Unable to read your Plex library.";
     }
 }
-plex_import_button?.addEventListener("click", open_plex_import_preview);
-document.querySelector(".plex-import-button-tv")?.addEventListener("click", open_plex_import_preview);
+plex_import_button?.addEventListener("click", () => {
+    connected_services_dialog?.close();
+    open_plex_import_preview();
+});
 plex_import_close?.addEventListener("click", () => plex_import_dialog.close());
 plex_import_confirm?.addEventListener("click", async () => {
     if (!plex_import_preview) return;
@@ -4148,6 +4231,7 @@ async function finish_plex_connection() {
 
 if (plex_connect_button) {
     plex_connect_button.addEventListener("click", async () => {
+        remember_connected_services_return();
         plex_connect_button.disabled = true;
         plex_connect_button.textContent = "Connecting...";
         try {
@@ -4212,6 +4296,7 @@ onAuthStateChanged(auth, async (user) => {
         ]);
         await finish_mal_connection();
         await finish_anilist_connection();
+        reopen_connected_services_if_requested();
 
         // Movies are the default visible category on first load.
         // Load its recommendations and release rows immediately instead
