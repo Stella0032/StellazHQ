@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Entertainment | Stellaz HQ</title>
     <link rel="icon" type="image/png" href="../images/stellaz_favicon.png">
-    <link rel="stylesheet" href="EntertainmentStyles.css?v=30">
+    <link rel="stylesheet" href="EntertainmentStyles.css?v=31">
     <link rel="stylesheet" href="../firebase/profile_widget.css?v=2">
 </head>
 <body>
@@ -129,8 +129,7 @@
 <div class="movie-library-header"><div><p class="eyebrow">YOUR COLLECTION</p><h2>Your Anime</h2></div><div class="library-header-actions"><button class="library-add-button" id="anime_add_button" type="button">＋ Add anime</button><button class="library-add-button" id="mal_sync_header_button" type="button" hidden>Sync MyAnimeList</button><span class="movie-library-count" id="mal_connection_label">NOT CONNECTED</span></div></div>
 <div class="mal-connect-card" id="mal_connect_card"><div><h3 id="mal_connect_title">Connect MyAnimeList</h3><p id="mal_connect_description">Connect your MyAnimeList account so Stellaz can sync your anime library.</p></div><button class="library-add-button" id="mal_connect_button" type="button">Connect MyAnimeList</button></div>
 <div class="anime-sync-summary" id="anime_sync_summary" hidden></div>
-<div class="movie-filters" id="anime_filters" aria-label="Anime filters" hidden>
-    <input class="movie-search" id="anime_search" type="search" placeholder="Search anime..." aria-label="Search anime">
+<div class="movie-filters anime-filters" id="anime_filters" aria-label="Anime filters" hidden>
     <select class="movie-filter" id="anime_status_filter" aria-label="Filter anime by status">
         <option value="">All statuses</option>
         <option value="watching">Currently watching</option>
@@ -144,9 +143,10 @@
         <option value="title-asc">Title A–Z</option>
         <option value="title-desc">Title Z–A</option>
     </select>
+    <input class="movie-search" id="anime_search" type="search" placeholder="Search anime..." aria-label="Search anime">
     <button class="movie-filter-clear" id="anime_filter_clear" type="button">Clear</button>
+    <button class="movie-filter-clear movie-library-toggle" id="anime_library_toggle" type="button" hidden>Show all anime</button>
 </div>
-<button class="movie-library-toggle" id="anime_library_toggle" type="button" hidden>Show all anime</button>
 
 <div class="movie-grid anime-grid" id="anime_grid"></div>
 </section>

@@ -3435,3 +3435,70 @@ html.anime-category-active body::after {
 @media (max-width:900px) and (min-width:621px) {
     .plex-import-stats { grid-template-columns:repeat(3,1fr); }
 }
+
+
+/* Anime library polish: match the Movies / TV Shows panel and toolbar. */
+.anime-filters {
+    grid-template-columns:
+        minmax(170px, 1fr)
+        minmax(170px, 1fr)
+        minmax(210px, 1.2fr)
+        86px
+        minmax(130px, auto);
+}
+
+/* The Anime library should use the same panel surface as Movies and TV Shows. */
+html.anime-category-active .anime-library-panel {
+    background: rgba(13, 15, 35, 0.58) !important;
+    border-color: var(--glass-border) !important;
+    backdrop-filter: blur(28px) !important;
+    -webkit-backdrop-filter: blur(28px) !important;
+    box-shadow:
+        inset 0 1px rgba(255, 255, 255, 0.08),
+        0 22px 65px rgba(0, 0, 0, 0.22) !important;
+}
+
+/* Do not place rotating artwork inside the Anime library panel itself. */
+html.anime-category-active .anime-library-panel::before,
+html.anime-category-active .anime-library-panel::after {
+    background-image: none !important;
+    opacity: 0 !important;
+}
+
+/* Keep Anime toolbar controls visually identical to the Movies / TV Shows controls. */
+html.anime-category-active .anime-library-panel .movie-search,
+html.anime-category-active .anime-library-panel .movie-filter,
+html.anime-category-active .anime-library-panel .movie-filter-clear {
+    background: rgba(255, 255, 255, 0.055);
+    border-color: rgba(255, 255, 255, 0.12);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+@media (max-width: 900px) {
+    .anime-filters {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 700px) {
+    #anime_status_filter,
+    #anime_sort,
+    #anime_search {
+        grid-column: 1 / -1;
+    }
+
+    #anime_filter_clear {
+        grid-column: 1;
+    }
+
+    #anime_library_toggle {
+        grid-column: 2;
+    }
+
+    #anime_filter_clear,
+    #anime_library_toggle {
+        width: 100%;
+        min-width: 0;
+    }
+}
