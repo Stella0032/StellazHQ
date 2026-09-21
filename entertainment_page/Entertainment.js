@@ -2315,6 +2315,11 @@ const manga_search = document.getElementById("manga_search");
 const manga_filter_clear = document.getElementById("manga_filter_clear");
 const manga_library_toggle = document.getElementById("manga_library_toggle");
 const manga_add_button = document.getElementById("manga_add_button");
+const anilist_connect_card = document.getElementById("anilist_connect_card");
+const anilist_connect_title = document.getElementById("anilist_connect_title");
+const anilist_connect_description = document.getElementById("anilist_connect_description");
+const anilist_connect_button = document.getElementById("anilist_connect_button");
+const anilist_sync_header_button = document.getElementById("anilist_sync_header_button");
 const manga_add_dialog = document.getElementById("manga_add_dialog");
 const manga_add_close = document.getElementById("manga_add_close");
 const manga_add_search_form = document.getElementById("manga_add_search_form");
@@ -2358,6 +2363,185 @@ function manga_status_label(status) {
         plan_to_read: "Plan to read"
     })[status] || status || "Reading";
 }
+
+async function load_anilist_connection_status() {
+    try {
+        const get_status =
+            httpsCallable(functions, "getAniListConnectionStatus");
+        const result = await get_status();
+
+        if (result.data.connected) {
+            document.getElementById("anilist_connection_badge")
+                ?.removeAttribute("hidden");
+            anilist_connect_card.hidden = true;
+            anilist_sync_header_button.hidden = false;
+            anilist_connect_button.dataset.connected = "true";
+            return;
+        }
+
+        document.getElementById("anilist_connection_badge")
+            ?.setAttribute("hidden", "");
+        anilist_connect_card.hidden = false;
+        anilist_sync_header_button.hidden = true;
+        anilist_connect_button.dataset.connected = "false";
+
+        if (result.data.needs_reconnect) {
+            anilist_connect_title.textContent = "Reconnect AniList";
+            anilist_connect_description.textContent =
+                "Your AniList authorization expired. Reconnect to import your latest reading progress and ratings.";
+            anilist_connect_button.textContent = "Reconnect AniList";
+        } else {
+            anilist_connect_title.textContent = "Connect AniList";
+            anilist_connect_description.textContent =
+                "Import your AniList manga and manhwa reading progress, statuses, and ratings into Stellaz.";
+            anilist_connect_button.textContent = "Connect AniList";
+        }
+    } catch (error) {
+        console.error("Unable to check AniList connection:", error);
+    }
+}
+
+async function begin_anilist_connection() {
+    anilist_connect_button.disabled = true;
+    anilist_connect_button.textContent = "Connecting...";
+
+    try {
+        const get_url =
+            httpsCallable(functions, "getAniListAuthorizationUrl");
+        const result = await get_url();
+        window.location.href = result.data.authorization_url;
+    } catch (error) {
+        console.error("Unable to start AniList connection:", error);
+        anilist_connect_button.disabled = false;
+        anilist_connect_button.textContent = "Connect AniList";
+        alert("Unable to start the AniList connection.");
+    }
+}
+
+function map_anilist_import_row(item) {
+    return {
+        anilist_id: item.anilist_id,
+        title: item.title,
+        title_romaji: item.title_romaji,
+        title_native: item.title_native,
+        synonyms: item.synonyms || [],
+        country_of_origin: item.country_of_origin,
+        media_kind: item.media_kind,
+        format: item.format,
+        publication_status: item.publication_status,
+        user_status: item.user_status,
+        chapters_read: Number(item.chapters_read || 0),
+        total_chapters: item.total_chapters,
+        volumes_read: Number(item.volumes_read || 0),
+        total_volumes: item.total_volumes,
+        my_rating: item.my_rating,
+        anilist_score: item.anilist_score,
+        poster_url: item.poster_url,
+        banner_url: item.banner_url,
+        description: item.description,
+        genres: item.genres || [],
+        site_url: item.site_url,
+        start_date: item.start_date,
+        end_date: item.end_date,
+        updated_at: new Date().toISOString()
+    };
+}
+
+async function sync_anilist_manga() {
+    const buttons = [anilist_sync_header_button, anilist_connect_button]
+        .filter(Boolean);
+    buttons.forEach((button) => {
+        button.disabled = true;
+        button.dataset.originalText = button.textContent;
+        button.textContent = "Importing...";
+    });
+
+    try {
+        const sync = httpsCallable(functions, "syncAniListMangaList");
+        const result = await sync();
+        const manga = result.data.manga || [];
+
+        if (manga.length > 0) {
+            const rows = manga.map(map_anilist_import_row);
+            const {error} = await supabase
+                .from("manga_library")
+                .upsert(rows, {onConflict: "user_id,anilist_id"});
+            if (error) throw error;
+        }
+
+        await load_manga_library();
+        await load_anilist_connection_status();
+
+        const username = result.data.username
+            ? " from " + result.data.username
+            : "";
+        show_toast(
+            manga.length + " AniList title" +
+            (manga.length === 1 ? "" : "s") +
+            " imported" + username + "."
+        );
+    } catch (error) {
+        console.error("Unable to import AniList manga:", error);
+        const code = error?.code || "";
+        if (code.includes("failed-precondition") ||
+            code.includes("unauthenticated")) {
+            await load_anilist_connection_status();
+        }
+        alert("Unable to import your AniList manga list. Please try again.");
+    } finally {
+        buttons.forEach((button) => {
+            button.disabled = false;
+            button.textContent =
+                button.dataset.originalText || "Import AniList";
+            delete button.dataset.originalText;
+        });
+    }
+}
+
+async function finish_anilist_connection() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("oauth") !== "anilist") return false;
+
+    const code = params.get("code");
+    history.replaceState({}, document.title, window.location.pathname);
+
+    if (!code) {
+        alert("AniList did not return an authorization code.");
+        return true;
+    }
+
+    try {
+        const exchange =
+            httpsCallable(functions, "exchangeAniListAuthorizationCode");
+        const result = await exchange({code});
+
+        await load_anilist_connection_status();
+        await sync_anilist_manga();
+        show_entertainment_category("Manga / Manhwa");
+
+        if (result.data?.username) {
+            show_toast(
+                "AniList connected as " + result.data.username + "."
+            );
+        }
+    } catch (error) {
+        console.error("Unable to finish AniList connection:", error);
+        alert("Unable to connect AniList. Please try again.");
+    }
+
+    return true;
+}
+
+anilist_connect_button.addEventListener("click", async () => {
+    if (anilist_connect_button.dataset.connected === "true") {
+        await sync_anilist_manga();
+        return;
+    }
+    await begin_anilist_connection();
+});
+
+anilist_sync_header_button.addEventListener("click", sync_anilist_manga);
+
 
 function render_manga_library() {
     const query = manga_search.value.trim().toLowerCase();
@@ -3339,15 +3523,21 @@ async function begin_mal_connection() {
 
 async function finish_mal_connection() {
     const params = new URLSearchParams(window.location.search);
+    if (params.get("oauth") === "anilist") return;
+
     const code = params.get("code");
     const returned_state = params.get("state");
     if (!code) return;
 
     const expected_state = sessionStorage.getItem("mal_oauth_state");
     const code_verifier = sessionStorage.getItem("mal_code_verifier");
+
+    // Ignore OAuth callbacks that do not belong to the MAL flow.
+    if (!expected_state || !code_verifier) return;
+
     history.replaceState({}, document.title, window.location.pathname);
 
-    if (!expected_state || returned_state !== expected_state || !code_verifier) {
+    if (returned_state !== expected_state) {
         alert("MyAnimeList connection could not be verified. Please try again.");
         return;
     }
@@ -4016,10 +4206,12 @@ onAuthStateChanged(auth, async (user) => {
         // Anime/MAL startup is independent from Plex.
         await Promise.allSettled([
             load_mal_connection_status(),
+            load_anilist_connection_status(),
             load_anime_library(),
             load_manga_library()
         ]);
         await finish_mal_connection();
+        await finish_anilist_connection();
 
         // Movies are the default visible category on first load.
         // Load its recommendations and release rows immediately instead
