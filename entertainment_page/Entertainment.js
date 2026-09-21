@@ -2510,6 +2510,139 @@ function map_anilist_import_row(item) {
     };
 }
 
+function normalize_manga_import_title(value) {
+    return String(value || "")
+        .normalize("NFKD")
+        .toLowerCase()
+        .replace(/&/g, " and ")
+        .replace(/[^a-z0-9]+/g, " ")
+        .trim();
+}
+
+function manga_import_aliases(item) {
+    return [
+        item.title,
+        item.title_romaji,
+        item.title_native,
+        ...(item.synonyms || [])
+    ]
+        .map(normalize_manga_import_title)
+        .filter(Boolean);
+}
+
+function find_existing_manga_for_import(row) {
+    if (row.anilist_id) {
+        const by_anilist = manga_library.find(
+            (item) => Number(item.anilist_id) === Number(row.anilist_id)
+        );
+        if (by_anilist) return by_anilist;
+    }
+
+    if (row.mal_id) {
+        const by_mal = manga_library.find(
+            (item) => Number(item.mal_id) === Number(row.mal_id)
+        );
+        if (by_mal) return by_mal;
+    }
+
+    const incoming_aliases = new Set(manga_import_aliases(row));
+    if (!incoming_aliases.size) return null;
+
+    return manga_library.find((item) =>
+        manga_import_aliases(item).some(
+            (alias) => incoming_aliases.has(alias)
+        )
+    ) || null;
+}
+
+function manga_import_patch(existing, row) {
+    const patch = {
+        user_status: row.user_status || existing.user_status,
+        chapters_read: Number(row.chapters_read || 0),
+        volumes_read: Number(row.volumes_read || 0),
+        my_rating: row.my_rating ?? existing.my_rating ?? null,
+        updated_at: new Date().toISOString()
+    };
+
+    [
+        "anilist_id", "mal_id", "anilist_score", "mal_score",
+        "total_chapters", "total_volumes", "publication_status",
+        "start_date", "end_date"
+    ].forEach((field) => {
+        if (row[field] !== null && row[field] !== undefined &&
+            row[field] !== "") {
+            patch[field] = row[field];
+        }
+    });
+
+    if ((!existing.media_kind || existing.media_kind === "Other") &&
+        row.media_kind) {
+        patch.media_kind = row.media_kind;
+    }
+
+    [
+        "title_romaji", "title_native", "country_of_origin", "format",
+        "poster_url", "banner_url", "description", "site_url"
+    ].forEach((field) => {
+        if (!existing[field] && row[field]) patch[field] = row[field];
+    });
+
+    const merged_synonyms = [
+        ...(existing.synonyms || []),
+        ...(row.synonyms || [])
+    ].filter(Boolean);
+    if (merged_synonyms.length) {
+        patch.synonyms = [...new Set(merged_synonyms)].slice(0, 40);
+    }
+
+    const merged_genres = [
+        ...(existing.genres || []),
+        ...(row.genres || [])
+    ].filter(Boolean);
+    if (merged_genres.length) {
+        patch.genres = [...new Set(merged_genres)];
+    }
+
+    return patch;
+}
+
+async function merge_manga_import_rows(rows) {
+    if (!rows.length) return {added: 0, updated: 0};
+
+    await load_manga_library();
+
+    let added = 0;
+    let updated = 0;
+
+    for (const row of rows) {
+        const existing = find_existing_manga_for_import(row);
+
+        if (existing) {
+            const patch = manga_import_patch(existing, row);
+            const {error} = await supabase
+                .from("manga_library")
+                .update(patch)
+                .eq("id", existing.id);
+            if (error) throw error;
+            Object.assign(existing, patch);
+            updated += 1;
+            continue;
+        }
+
+        const {data, error} = await supabase
+            .from("manga_library")
+            .insert(row)
+            .select("*")
+            .single();
+        if (error) throw error;
+        manga_library.push(data);
+        added += 1;
+    }
+
+    await load_manga_library();
+    return {added, updated};
+}
+
 async function sync_anilist_manga() {
     const buttons = [anilist_sync_header_button, anilist_connect_button]
         .filter(Boolean);
@@ -2523,16 +2656,9 @@ async function sync_anilist_manga() {
         const sync = httpsCallable(functions, "syncAniListMangaList");
         const result = await sync();
         const manga = result.data.manga || [];
+        const rows = manga.map(map_anilist_import_row);
+        const merged = await merge_manga_import_rows(rows);
 
-        if (manga.length > 0) {
-            const rows = manga.map(map_anilist_import_row);
-            const {error} = await supabase
-                .from("manga_library")
-                .upsert(rows, {onConflict: "user_id,anilist_id"});
-            if (error) throw error;
-        }
-
-        await load_manga_library();
         await load_anilist_connection_status();
 
         const username = result.data.username
@@ -2541,7 +2667,9 @@ async function sync_anilist_manga() {
         show_toast(
             manga.length + " AniList title" +
             (manga.length === 1 ? "" : "s") +
-            " imported" + username + "."
+            " imported" + username +
+            " · " + merged.added + " added, " +
+            merged.updated + " updated."
         );
     } catch (error) {
         console.error("Unable to import AniList manga:", error);
@@ -2624,9 +2752,13 @@ function render_manga_library() {
         visible.sort((a, b) => b.title.localeCompare(a.title));
     } else if (manga_sort.value === "title-asc") {
         visible.sort((a, b) => a.title.localeCompare(b.title));
-    } else if (manga_sort.value === "anilist-desc") {
+    } else if (manga_sort.value === "external-desc") {
+        const external_score = (item) =>
+            item.anilist_score != null
+                ? Number(item.anilist_score)
+                : Number(item.mal_score || 0) * 10;
         visible.sort((a, b) =>
-            Number(b.anilist_score || 0) - Number(a.anilist_score || 0) ||
+            external_score(b) - external_score(a) ||
             a.title.localeCompare(b.title));
     } else if (manga_sort.value === "newest-desc") {
         visible.sort((a, b) =>
@@ -2649,9 +2781,11 @@ function render_manga_library() {
         const chapters = item.total_chapters
             ? Number(item.chapters_read || 0) + "/" + Number(item.total_chapters) + " ch"
             : Number(item.chapters_read || 0) + " ch";
-        const anilist_score = item.anilist_score
+        const external_score = item.anilist_score != null
             ? "AniList: " + Number(item.anilist_score) + "%"
-            : "AniList: —";
+            : item.mal_score != null
+                ? "MAL: " + Number(item.mal_score).toFixed(2)
+                : "Rating: —";
         const personal_score = item.my_rating
             ? " · ★ " + Number(item.my_rating).toFixed(1) + "/10"
             : " · ★ —";
@@ -2668,7 +2802,7 @@ function render_manga_library() {
             '<h3 class="manga-open" data-manga-id="' + item.id +
             '" tabindex="0" role="button" title="Open ' + title + '">' +
             title + '</h3>' +
-            '<p>' + chapters + " · " + anilist_score + personal_score + '</p>' +
+            '<p>' + chapters + " · " + external_score + personal_score + '</p>' +
             '</article>';
     }).join("") : '<p class="library-loading">No matching manga or manhwa.</p>';
 
@@ -2722,9 +2856,11 @@ function open_manga_editor(manga_id) {
         active_manga.publication_status
             ? active_manga.publication_status.replaceAll("_", " ")
             : null,
-        active_manga.anilist_score
+        active_manga.anilist_score != null
             ? "★ " + Number(active_manga.anilist_score) + "% AniList"
-            : null
+            : active_manga.mal_score != null
+                ? "★ " + Number(active_manga.mal_score).toFixed(2) + " MAL"
+                : null
     ].filter(Boolean).join(" · ");
     manga_detail_description.textContent =
         active_manga.description || "No description available.";
@@ -3028,6 +3164,7 @@ const anime_edit_save = document.getElementById("anime_edit_save");
 const anime_view_seasons = document.getElementById("anime_view_seasons");
 const mal_connect_card = document.getElementById("mal_connect_card");
 const mal_sync_header_button = document.getElementById("mal_sync_header_button");
+const mal_manga_sync_button = document.getElementById("mal_manga_sync_button");
 const anime_add_button = document.getElementById("anime_add_button");
 const anime_add_dialog = document.getElementById("anime_add_dialog");
 const anime_add_close = document.getElementById("anime_add_close");
@@ -3129,11 +3266,12 @@ async function load_mal_connection_status() {
             mal_connection_label.textContent = "Connected";
             mal_connect_title.textContent = "MyAnimeList";
             mal_connect_description.textContent =
-                "Connected to Stellaz. Sync to import your latest anime ratings, statuses, and progress.";
+                "Connected to Stellaz. Sync anime or import manga/manhwa from your MyAnimeList account.";
             mal_connect_button.textContent = "Connected";
             mal_connect_button.disabled = true;
             mal_connect_button.dataset.connected = "true";
             mal_sync_header_button.hidden = false;
+            mal_manga_sync_button.hidden = false;
             return;
         }
 
@@ -3141,11 +3279,12 @@ async function load_mal_connection_status() {
         mal_connection_label.textContent = "Not connected";
         mal_connect_title.textContent = "MyAnimeList";
         mal_connect_description.textContent =
-            "Import your anime list, ratings, statuses, and watched episode progress.";
+            "Import both your anime and manga/manhwa lists, including ratings, statuses, and progress.";
         mal_connect_button.textContent = "Connect MyAnimeList";
         mal_connect_button.disabled = false;
         mal_connect_button.dataset.connected = "false";
         mal_sync_header_button.hidden = true;
+        mal_manga_sync_button.hidden = true;
     } catch (error) {
         console.error("Unable to check MAL connection:", error);
     }
@@ -3630,6 +3769,34 @@ async function finish_mal_connection() {
 }
 
 mal_sync_header_button.addEventListener("click", sync_mal_anime);
+
+async function sync_mal_manga() {
+    mal_manga_sync_button.disabled = true;
+    const original_text = mal_manga_sync_button.textContent;
+    mal_manga_sync_button.textContent = "Importing...";
+
+    try {
+        const sync = httpsCallable(functions, "syncMALMangaList");
+        const result = await sync();
+        const rows = result.data.manga || [];
+        const merged = await merge_manga_import_rows(rows);
+
+        show_toast(
+            rows.length + " MyAnimeList manga title" +
+            (rows.length === 1 ? "" : "s") +
+            " imported · " + merged.added + " added, " +
+            merged.updated + " updated."
+        );
+    } catch (error) {
+        console.error("Unable to import MAL manga:", error);
+        alert("Unable to import your MyAnimeList manga list. Please try again.");
+    } finally {
+        mal_manga_sync_button.disabled = false;
+        mal_manga_sync_button.textContent = original_text;
+    }
+}
+
+mal_manga_sync_button.addEventListener("click", sync_mal_manga);
 
 mal_connect_button.addEventListener("click", async () => {
     mal_connect_button.disabled = true;
