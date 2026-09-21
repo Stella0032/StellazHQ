@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Entertainment | Stellaz HQ</title>
     <link rel="icon" type="image/png" href="../images/stellaz_favicon.png">
-    <link rel="stylesheet" href="EntertainmentStyles.css?v=37">
+    <link rel="stylesheet" href="EntertainmentStyles.css?v=38">
     <link rel="stylesheet" href="../firebase/profile_widget.css?v=3">
 </head>
 <body>
@@ -30,6 +30,7 @@
             <div class="connection-badges" id="connection_badges" aria-label="Connected entertainment accounts">
                 <span class="connection-badge mal-connection-badge" id="mal_connection_badge" title="MyAnimeList connected" hidden>MAL</span>
                 <span class="connection-badge anilist-connection-badge" id="anilist_connection_badge" title="AniList connected" hidden>AL</span>
+                <span class="connection-badge kitsu-connection-badge" id="kitsu_connection_badge" title="Kitsu connected" hidden>K</span>
                 <span class="connection-badge plex-connection-badge" id="plex_connection_badge" title="Plex connected" hidden>P</span>
             </div>
             <div class="profile-widget" data-profile-widget>
@@ -563,10 +564,29 @@
                         <button class="connected-service-import" id="anilist_sync_header_button" type="button" hidden>Import manga</button>
                     </div>
                 </article>
+
+                <article class="connected-service-card" id="kitsu_connect_card">
+                    <div class="connected-service-brand">
+                        <span class="connected-service-logo kitsu-service-logo">K</span>
+                        <div>
+                            <h3 id="kitsu_connect_title">Kitsu</h3>
+                            <span class="connected-service-status" id="kitsu_connection_label">Not connected</span>
+                        </div>
+                    </div>
+                    <p id="kitsu_connect_description">Link your public Kitsu profile to import anime and manga progress, statuses, and ratings.</p>
+                    <div class="connected-service-actions">
+                        <input class="kitsu-profile-input" id="kitsu_username_input" type="text"
+                               placeholder="Kitsu username" autocomplete="off" maxlength="80"
+                               aria-label="Kitsu username">
+                        <button class="library-add-button" id="kitsu_connect_button" type="button">Connect Kitsu</button>
+                        <button class="connected-service-import" id="kitsu_anime_sync_button" type="button" hidden>Import anime</button>
+                        <button class="connected-service-import" id="kitsu_manga_sync_button" type="button" hidden>Import manga</button>
+                    </div>
+                </article>
             </div>
 
             <p class="connected-services-note">
-                More services can be added here later without tying them to a specific Movies, TV, Anime, or Manga tab.
+                Kitsu imports use your public Kitsu profile, so Stellaz never asks for your Kitsu password. Private Kitsu entries cannot be imported this way.
             </p>
         </div>
     </dialog>
@@ -582,7 +602,7 @@
     </dialog>
 
     <div class="toast" id="toast" role="status"></div>
-    <script type="module" src="Entertainment.js?v=74"></script>
+    <script type="module" src="Entertainment.js?v=75"></script>
     <script type="module" src="../firebase/profile_widget.js"></script>
 </body>
 </html>
