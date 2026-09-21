@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Entertainment | Stellaz HQ</title>
     <link rel="icon" type="image/png" href="../images/stellaz_favicon.png">
-    <link rel="stylesheet" href="EntertainmentStyles.css?v=38">
+    <link rel="stylesheet" href="EntertainmentStyles.css?v=39">
     <link rel="stylesheet" href="../firebase/profile_widget.css?v=3">
 </head>
 <body>
@@ -573,7 +573,10 @@
                             <span class="connected-service-status" id="kitsu_connection_label">Not connected</span>
                         </div>
                     </div>
-                    <p id="kitsu_connect_description">Link your public Kitsu profile to import anime and manga progress, statuses, and ratings.</p>
+                    <div class="connected-service-copy">
+                        <p id="kitsu_connect_description">Link your public Kitsu profile to import anime and manga progress, statuses, and ratings.</p>
+                        <p class="connected-service-note">Kitsu imports use your public Kitsu profile, so Stellaz never asks for your Kitsu password. Private Kitsu entries cannot be imported this way.</p>
+                    </div>
                     <div class="connected-service-actions">
                         <input class="kitsu-profile-input" id="kitsu_username_input" type="text"
                                placeholder="Kitsu username" autocomplete="off" maxlength="80"
@@ -586,8 +589,23 @@
             </div>
 
             <p class="connected-services-note">
-                Kitsu imports use your public Kitsu profile, so Stellaz never asks for your Kitsu password. Private Kitsu entries cannot be imported this way.
+                Every import is previewed before Stellaz adds or updates library entries.
             </p>
+        </div>
+    </dialog>
+
+    <dialog class="service-import-confirm-dialog" id="service_import_confirm_dialog">
+        <div class="service-import-confirm-shell">
+            <p class="eyebrow">IMPORT PREVIEW</p>
+            <h2 id="service_import_confirm_title">Approve import</h2>
+            <p id="service_import_confirm_message"></p>
+            <p class="service-import-confirm-note">
+                Existing matching titles may be updated instead of duplicated.
+            </p>
+            <div class="service-import-confirm-actions">
+                <button class="connected-service-import" id="service_import_cancel" type="button">Cancel</button>
+                <button class="library-add-button" id="service_import_approve" type="button">Approve</button>
+            </div>
         </div>
     </dialog>
 
@@ -602,7 +620,7 @@
     </dialog>
 
     <div class="toast" id="toast" role="status"></div>
-    <script type="module" src="Entertainment.js?v=75"></script>
+    <script type="module" src="Entertainment.js?v=76"></script>
     <script type="module" src="../firebase/profile_widget.js"></script>
 </body>
 </html>
