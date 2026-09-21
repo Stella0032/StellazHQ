@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Entertainment | Stellaz HQ</title>
     <link rel="icon" type="image/png" href="../images/stellaz_favicon.png">
-    <link rel="stylesheet" href="EntertainmentStyles.css?v=33">
+    <link rel="stylesheet" href="EntertainmentStyles.css?v=34">
     <link rel="stylesheet" href="../firebase/profile_widget.css?v=3">
 </head>
 <body>
@@ -66,9 +66,9 @@
                 <span class="card-arrow">→</span>
             </a>
 
-            <a class="library-card manga" href="#" data-library="Manga / Manhwa">
+            <a class="library-card manga" href="#manga_library" data-library="Manga / Manhwa">
                 <span class="library-icon">▤</span>
-                <div><h2>Manga / Manhwa</h2><p>Read: <strong>—</strong></p></div>
+                <div><h2>Manga / Manhwa</h2><p>Read: <strong id="manga_count">—</strong></p></div>
                 <span class="card-arrow">→</span>
             </a>
         </section>
@@ -163,6 +163,54 @@
 <div class="movie-grid anime-grid" id="anime_grid"></div>
 </section>
 
+
+        <section class="movie-library-panel manga-library-panel category-panel-hidden" id="manga_library">
+            <div class="movie-library-header">
+                <div>
+                    <p class="eyebrow">YOUR COLLECTION</p>
+                    <h2>Your Manga / Manhwa</h2>
+                </div>
+                <div class="library-header-actions">
+                    <button class="library-add-button" id="manga_add_button" type="button">＋ Add manga / manhwa</button>
+                    <span class="movie-library-count" id="manga_library_count">LOADING</span>
+                </div>
+            </div>
+
+            <div class="movie-filters manga-filters" id="manga_filters" aria-label="Manga and manhwa filters">
+                <select class="movie-filter" id="manga_type_filter" aria-label="Filter by type">
+                    <option value="">All types</option>
+                    <option value="Manga">Manga</option>
+                    <option value="Manhwa">Manhwa</option>
+                    <option value="Manhua">Manhua</option>
+                    <option value="Other">Other</option>
+                </select>
+                <select class="movie-filter" id="manga_status_filter" aria-label="Filter by reading status">
+                    <option value="">All statuses</option>
+                    <option value="reading">Reading</option>
+                    <option value="completed">Completed</option>
+                    <option value="on_hold">On hold</option>
+                    <option value="dropped">Dropped</option>
+                    <option value="plan_to_read">Plan to read</option>
+                </select>
+                <select class="movie-filter" id="manga_sort" aria-label="Sort manga and manhwa">
+                    <option value="mine-desc" selected>Best rated by me</option>
+                    <option value="anilist-desc">Best rated by AniList</option>
+                    <option value="newest-desc">Newest first</option>
+                    <option value="title-asc">Title A–Z</option>
+                    <option value="title-desc">Title Z–A</option>
+                </select>
+                <input class="movie-search" id="manga_search" type="search"
+                       placeholder="Search manga / manhwa..." aria-label="Search manga and manhwa">
+                <button class="movie-filter-clear" id="manga_filter_clear" type="button">Clear</button>
+                <button class="movie-filter-clear movie-library-toggle" id="manga_library_toggle"
+                        type="button" hidden>Show all manga</button>
+            </div>
+
+            <div class="movie-grid manga-grid" id="manga_grid">
+                <p class="library-loading">Loading your manga and manhwa...</p>
+            </div>
+        </section>
+
 <section class="movie-library-panel show-library-panel category-panel-hidden" id="show_library">
             <div class="movie-library-header">
                 <div>
@@ -237,6 +285,76 @@
             </div>
         </section>
     </main>
+
+
+    <dialog class="recommendation-dialog manga-add-dialog" id="manga_add_dialog">
+        <div class="recommendation-dialog-shell manga-add-shell">
+            <button class="library-dialog-close recommendation-dialog-close"
+                    id="manga_add_close" type="button" aria-label="Close">×</button>
+            <div class="recommendation-dialog-content">
+                <p class="eyebrow">ANILIST</p>
+                <h2>Add manga or manhwa</h2>
+                <p class="recommendation-dialog-description">
+                    Search AniList and add a title to your Stellaz reading library.
+                </p>
+                <form class="anime-add-search-form" id="manga_add_search_form">
+                    <input class="movie-search" id="manga_add_search" type="search"
+                           placeholder="Search AniList..." aria-label="Search AniList" required minlength="2">
+                    <button class="library-add-button" type="submit">Search</button>
+                </form>
+                <div class="anime-add-results" id="manga_add_results"></div>
+            </div>
+        </div>
+    </dialog>
+
+    <dialog class="recommendation-dialog manga-detail-dialog" id="manga_edit_dialog">
+        <div class="recommendation-dialog-shell manga-detail-shell">
+            <button class="library-dialog-close recommendation-dialog-close"
+                    id="manga_edit_close" type="button" aria-label="Close">×</button>
+            <img class="recommendation-dialog-poster" id="manga_edit_cover" alt="">
+            <div class="recommendation-dialog-content">
+                <p class="eyebrow" id="manga_detail_type">MANGA</p>
+                <h2 id="manga_edit_title">Manga</h2>
+                <p class="recommendation-dialog-meta" id="manga_detail_meta"></p>
+                <p class="recommendation-dialog-description" id="manga_detail_description"></p>
+                <div class="recommendation-dialog-facts" id="manga_detail_facts"></div>
+
+                <form id="manga_edit_form" class="anime-detail-form">
+                    <div class="manga-detail-controls">
+                        <label>Status
+                            <select class="movie-filter" id="manga_edit_status">
+                                <option value="reading">Reading</option>
+                                <option value="completed">Completed</option>
+                                <option value="on_hold">On hold</option>
+                                <option value="dropped">Dropped</option>
+                                <option value="plan_to_read">Plan to read</option>
+                            </select>
+                        </label>
+                        <label>Chapters read
+                            <input class="movie-search manga-progress-input" id="manga_edit_chapters"
+                                   type="number" min="0" step="1" value="0">
+                        </label>
+                        <label>Your rating
+                            <select class="movie-filter" id="manga_edit_score">
+                                <option value="">Not rated</option>
+                                <option value="10">10 / 10</option><option value="9">9 / 10</option>
+                                <option value="8">8 / 10</option><option value="7">7 / 10</option>
+                                <option value="6">6 / 10</option><option value="5">5 / 10</option>
+                                <option value="4">4 / 10</option><option value="3">3 / 10</option>
+                                <option value="2">2 / 10</option><option value="1">1 / 10</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div class="manga-detail-actions">
+                        <button class="library-add-button manga-detail-save"
+                                id="manga_edit_save" type="submit">Save progress</button>
+                        <button class="manga-remove-button" id="manga_remove_button"
+                                type="button">Remove from library</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </dialog>
 
     <dialog class="recommendation-dialog anime-add-dialog" id="anime_add_dialog">
         <div class="recommendation-dialog-shell anime-add-shell">
@@ -409,7 +527,7 @@
     </dialog>
 
     <div class="toast" id="toast" role="status"></div>
-    <script type="module" src="Entertainment.js?v=69"></script>
+    <script type="module" src="Entertainment.js?v=70"></script>
     <script type="module" src="../firebase/profile_widget.js"></script>
 </body>
 </html>
