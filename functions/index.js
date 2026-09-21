@@ -11,7 +11,6 @@ const {setGlobalOptions} = require("firebase-functions");
 const {defineSecret} = require("firebase-functions/params");
 const {onRequest, onCall, HttpsError} = require("firebase-functions/https");
 const logger = require("firebase-functions/logger");
-const crypto = require("crypto");
 
 
 const {initializeApp} = require("firebase-admin/app");
@@ -106,53 +105,21 @@ exports.addMovie = onCall(async (request) => {
 });
 
 //? ------------------------------
-//* ----- Invite-only Signup ----
+//* ----- Public Account Signup -
 //? ------------------------------
 //#region
+// Kept under the existing callable name so the deployed endpoint can be
+// updated in place without leaving a second signup function behind.
 exports.createInvitedAccount = onCall(async (request) => {
     const email = String(request.data?.email || "").trim().toLowerCase();
     const password = String(request.data?.password || "");
-    const invite_key = String(request.data?.invite_key || "").trim();
 
-    if (!email || !email.includes("@") || password.length < 6 || !invite_key) {
+    if (!email || !email.includes("@") || password.length < 6) {
         throw new HttpsError(
             "invalid-argument",
-            "A valid email, password, and invite key are required."
+            "A valid email and password are required."
         );
     }
-
-    const key_hash = crypto
-        .createHash("sha256")
-        .update(invite_key)
-        .digest("hex");
-
-    const invite_ref = db.collection("invite_keys").doc(key_hash);
-    const reservation_id = crypto.randomUUID();
-
-    // Reserve one use first. Firestore transactions can retry, so no
-    // Firebase Auth side effects happen inside this callback.
-    await db.runTransaction(async (transaction) => {
-        const invite_doc = await transaction.get(invite_ref);
-        const invite = invite_doc.data();
-
-        if (!invite_doc.exists ||
-            invite?.is_active !== true ||
-            Number(invite?.uses || 0) >= Number(invite?.max_uses || 1) ||
-            (invite?.expires_at &&
-                invite.expires_at.toDate() <= new Date())) {
-            throw new HttpsError(
-                "permission-denied",
-                "That invite key is invalid, expired, or already used."
-            );
-        }
-
-        transaction.update(invite_ref, {
-            uses: Number(invite.uses || 0) + 1,
-            pending_reservation: reservation_id,
-            pending_email: email,
-            reserved_at: new Date(),
-        });
-    });
 
     let user_record;
 
@@ -166,31 +133,9 @@ exports.createInvitedAccount = onCall(async (request) => {
         await getAuth().setCustomUserClaims(user_record.uid, {
             role: "authenticated",
         });
-
-        await invite_ref.update({
-            used_by: user_record.uid,
-            used_at: new Date(),
-            pending_reservation: FieldValue.delete(),
-            pending_email: FieldValue.delete(),
-            reserved_at: FieldValue.delete(),
-        });
     } catch (error) {
-        // Release this reservation if account creation or claim setup fails.
-        await db.runTransaction(async (transaction) => {
-            const invite_doc = await transaction.get(invite_ref);
-            const invite = invite_doc.data();
-
-            if (invite_doc.exists &&
-                invite?.pending_reservation === reservation_id) {
-                transaction.update(invite_ref, {
-                    uses: Math.max(Number(invite.uses || 1) - 1, 0),
-                    pending_reservation: FieldValue.delete(),
-                    pending_email: FieldValue.delete(),
-                    reserved_at: FieldValue.delete(),
-                });
-            }
-        });
-
+        // If claim setup fails after Auth creation, do not leave a partially
+        // provisioned account that cannot access the Supabase-backed site.
         if (user_record?.uid) {
             try {
                 await getAuth().deleteUser(user_record.uid);
@@ -209,8 +154,19 @@ exports.createInvitedAccount = onCall(async (request) => {
             );
         }
 
-        if (error instanceof HttpsError) {
-            throw error;
+        if (error.code === "auth/invalid-email") {
+            throw new HttpsError(
+                "invalid-argument",
+                "Enter a valid email address."
+            );
+        }
+
+        if (error.code === "auth/invalid-password" ||
+            error.code === "auth/weak-password") {
+            throw new HttpsError(
+                "invalid-argument",
+                "Password must be at least 6 characters."
+            );
         }
 
         throw new HttpsError(

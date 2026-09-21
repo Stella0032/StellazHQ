@@ -63,7 +63,7 @@ login_button.addEventListener("click", async () => {
 
 
 //? ----------------------------
-//* ----- Invite Signup --------
+//* ----- Account Signup -------
 //? ----------------------------
 //#region
 const signup_dialog = document.getElementById("signupDialog");
@@ -101,8 +101,6 @@ signup_form.addEventListener("submit", async (event) => {
         document.getElementById("signupPassword").value;
     const confirm_password =
         document.getElementById("signupConfirmPassword").value;
-    const invite_key =
-        document.getElementById("signupInviteKey").value.trim();
 
     if (signup_password !== confirm_password) {
         signup_message.textContent = "Passwords do not match.";
@@ -117,8 +115,7 @@ signup_form.addEventListener("submit", async (event) => {
             httpsCallable(functions, "createInvitedAccount");
         await create_invited_account({
             email,
-            password: signup_password,
-            invite_key
+            password: signup_password
         });
 
         signup_message.textContent =
@@ -135,8 +132,6 @@ signup_form.addEventListener("submit", async (event) => {
         console.error("Unable to create account:", error);
 
         const messages = {
-            "functions/permission-denied":
-                "That invite key is invalid, expired, or already used.",
             "functions/already-exists":
                 "An account already exists for that email.",
             "functions/invalid-argument":

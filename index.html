@@ -26,7 +26,7 @@
                 <label class="showPasswordLabel" for="showPassword"><input type="checkbox" id="showPassword"><span>Show password</span></label>
                 <div class="buttons primary-action"><button type="button" id="loginButton">Login</button></div>
                 <div class="buttons secondary-action"><button type="button" id="openSignupButton">Create Account</button></div>
-                <p class="invite-note">New accounts require a private invite key.</p>
+                <p class="invite-note">Create a Stellaz account to get started.</p>
                 <div class="login-divider"><span>OR</span></div>
                 <div class="buttons portfolio-action"><button type="button" id="portfolioButton">Justin's Portfolio</button></div>
             </section>
@@ -34,16 +34,15 @@
         <dialog id="signupDialog" class="signupDialog">
             <form id="signupForm">
                 <button type="button" id="closeSignupButton" class="signupClose" aria-label="Close">×</button>
-                <p class="card-kicker">INVITE ONLY</p><h2>Create Stellaz Account</h2>
-                <p class="signupIntro">Enter the private invite key you received from Justin.</p>
+                <p class="card-kicker">GET STARTED</p><h2>Create Stellaz Account</h2>
+                <p class="signupIntro">Create your account with an email and password.</p>
                 <div class="signupField"><label for="signupEmail">Email</label><input type="email" id="signupEmail" autocomplete="email" required></div>
                 <div class="signupField"><label for="signupPassword">Password</label><input type="password" id="signupPassword" autocomplete="new-password" minlength="6" required></div>
                 <div class="signupField"><label for="signupConfirmPassword">Confirm password</label><input type="password" id="signupConfirmPassword" autocomplete="new-password" minlength="6" required></div>
-                <div class="signupField"><label for="signupInviteKey">Invite key</label><input type="text" id="signupInviteKey" autocomplete="off" required></div>
                 <p id="signupMessage" class="signupMessage" aria-live="polite"></p>
                 <button type="submit" id="createAccountButton" class="createAccountButton">Create Account</button>
             </form>
         </dialog>
-        <script type="module" src="index.js?v=4"></script>
+        <script type="module" src="index.js?v=5"></script>
     </body>
 </html>
