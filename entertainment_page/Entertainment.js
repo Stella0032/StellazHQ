@@ -2349,6 +2349,63 @@ function reopen_connected_services_if_requested() {
 connected_services_close?.addEventListener("click", () =>
     connected_services_dialog.close()
 );
+
+const service_import_confirm_dialog =
+    document.getElementById("service_import_confirm_dialog");
+const service_import_confirm_title =
+    document.getElementById("service_import_confirm_title");
+const service_import_confirm_message =
+    document.getElementById("service_import_confirm_message");
+const service_import_cancel =
+    document.getElementById("service_import_cancel");
+const service_import_approve =
+    document.getElementById("service_import_approve");
+
+let service_import_confirm_resolve = null;
+
+function settle_service_import_confirmation(approved) {
+    const resolve = service_import_confirm_resolve;
+    service_import_confirm_resolve = null;
+
+    if (service_import_confirm_dialog.open) {
+        service_import_confirm_dialog.close();
+    }
+
+    if (resolve) resolve(approved);
+}
+
+function request_service_import_approval(service, media_label, count) {
+    if (count <= 0) {
+        show_toast("No " + media_label + " entries were found on " + service + ".");
+        return Promise.resolve(false);
+    }
+
+    const noun = count === 1 ? "entry" : "entries";
+    service_import_confirm_title.textContent =
+        "Import " + media_label + " from " + service + "?";
+    service_import_confirm_message.textContent =
+        service + " found " + count + " " + media_label + " " + noun +
+        ". Approve to import them into Stellaz.";
+
+    service_import_confirm_dialog.showModal();
+
+    return new Promise((resolve) => {
+        service_import_confirm_resolve = resolve;
+    });
+}
+
+service_import_cancel.addEventListener("click", () =>
+    settle_service_import_confirmation(false)
+);
+
+service_import_approve.addEventListener("click", () =>
+    settle_service_import_confirmation(true)
+);
+
+service_import_confirm_dialog.addEventListener("cancel", (event) => {
+    event.preventDefault();
+    settle_service_import_confirmation(false);
+});
 //#endregion
 
 
@@ -2762,6 +2819,14 @@ async function sync_anilist_manga() {
         const result = await sync();
         const manga = result.data.manga || [];
         const rows = manga.map(map_anilist_import_row);
+
+        const approved = await request_service_import_approval(
+            "AniList",
+            "manga",
+            rows.length
+        );
+        if (!approved) return;
+
         const merged = await merge_manga_import_rows(rows);
 
         await load_anilist_connection_status();
@@ -2812,8 +2877,6 @@ async function finish_anilist_connection() {
         const result = await exchange({code});
 
         await load_anilist_connection_status();
-        await sync_anilist_anime();
-        await sync_anilist_manga();
 
         if (result.data?.username) {
             show_toast(
@@ -2844,6 +2907,14 @@ async function sync_kitsu_anime() {
         const sync = httpsCallable(functions, "syncKitsuAnimeList");
         const result = await sync();
         const rows = result.data.anime || [];
+
+        const approved = await request_service_import_approval(
+            "Kitsu",
+            "anime",
+            rows.length
+        );
+        if (!approved) return;
+
         const merged = await merge_anime_import_rows(rows);
 
         show_toast(
@@ -2870,6 +2941,14 @@ async function sync_kitsu_manga() {
         const sync = httpsCallable(functions, "syncKitsuMangaList");
         const result = await sync();
         const rows = result.data.manga || [];
+
+        const approved = await request_service_import_approval(
+            "Kitsu",
+            "manga",
+            rows.length
+        );
+        if (!approved) return;
+
         const merged = await merge_manga_import_rows(rows);
 
         show_toast(
@@ -3641,6 +3720,14 @@ async function sync_anilist_anime() {
         const result = await sync();
         const anime = result.data.anime || [];
         const rows = anime.map(map_anilist_anime_import_row);
+
+        const approved = await request_service_import_approval(
+            "AniList",
+            "anime",
+            rows.length
+        );
+        if (!approved) return;
+
         const merged = await merge_anime_import_rows(rows);
 
         show_toast(
@@ -4107,7 +4194,7 @@ anime_library_toggle.addEventListener("click", () => {
     }
 });
 
-async function sync_mal_anime() {
+async function sync_mal_anime({confirm_import = true} = {}) {
     const original_text = mal_sync_header_button.textContent;
     mal_sync_header_button.disabled = true;
     mal_sync_header_button.textContent = "Syncing...";
@@ -4135,6 +4222,15 @@ async function sync_mal_anime() {
             anilist_score: null,
             synced_at: new Date().toISOString()
         }));
+
+        if (confirm_import) {
+            const approved = await request_service_import_approval(
+                "MyAnimeList",
+                "anime",
+                rows.length
+            );
+            if (!approved) return;
+        }
 
         const merged = await merge_anime_import_rows(rows);
 
@@ -4201,7 +4297,9 @@ async function finish_mal_connection() {
     }
 }
 
-mal_sync_header_button.addEventListener("click", sync_mal_anime);
+mal_sync_header_button.addEventListener("click", () =>
+    sync_mal_anime()
+);
 
 async function sync_mal_manga() {
     mal_manga_sync_button.disabled = true;
@@ -4212,6 +4310,14 @@ async function sync_mal_manga() {
         const sync = httpsCallable(functions, "syncMALMangaList");
         const result = await sync();
         const rows = result.data.manga || [];
+
+        const approved = await request_service_import_approval(
+            "MyAnimeList",
+            "manga",
+            rows.length
+        );
+        if (!approved) return;
+
         const merged = await merge_manga_import_rows(rows);
 
         show_toast(
