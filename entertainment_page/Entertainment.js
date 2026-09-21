@@ -2372,6 +2372,7 @@ const anilist_connect_title = document.getElementById("anilist_connect_title");
 const anilist_connect_description = document.getElementById("anilist_connect_description");
 const anilist_connect_button = document.getElementById("anilist_connect_button");
 const anilist_sync_header_button = document.getElementById("anilist_sync_header_button");
+const anilist_anime_sync_button = document.getElementById("anilist_anime_sync_button");
 const manga_add_dialog = document.getElementById("manga_add_dialog");
 const manga_add_close = document.getElementById("manga_add_close");
 const manga_add_search_form = document.getElementById("manga_add_search_form");
@@ -2430,12 +2431,13 @@ async function load_anilist_connection_status() {
                     ? "Connected as " + result.data.username
                     : "Connected";
             anilist_sync_header_button.hidden = false;
+            anilist_anime_sync_button.hidden = false;
             anilist_connect_button.textContent = "Connected";
             anilist_connect_button.disabled = true;
             anilist_connect_button.dataset.connected = "true";
             anilist_connect_title.textContent = "AniList";
             anilist_connect_description.textContent =
-                "Connected to Stellaz. Import to refresh your manga, manhwa and manhua progress and ratings.";
+                "Connected to Stellaz. Import anime or manga/manhwa to refresh your ratings, statuses, and progress.";
             return;
         }
 
@@ -2445,17 +2447,18 @@ async function load_anilist_connection_status() {
             ? "Reconnect required"
             : "Not connected";
         anilist_sync_header_button.hidden = true;
+        anilist_anime_sync_button.hidden = true;
         anilist_connect_button.disabled = false;
         anilist_connect_button.dataset.connected = "false";
         anilist_connect_title.textContent = "AniList";
 
         if (result.data.needs_reconnect) {
             anilist_connect_description.textContent =
-                "Your AniList authorization expired. Reconnect to import your latest reading progress and ratings.";
+                "Your AniList authorization expired. Reconnect to import your latest anime and manga progress and ratings.";
             anilist_connect_button.textContent = "Reconnect AniList";
         } else {
             anilist_connect_description.textContent =
-                "Import manga, manhwa and manhua progress, statuses, and ratings.";
+                "Import both your anime and manga/manhwa lists, including ratings, statuses, and progress.";
             anilist_connect_button.textContent = "Connect AniList";
         }
     } catch (error) {
@@ -2707,8 +2710,8 @@ async function finish_anilist_connection() {
         const result = await exchange({code});
 
         await load_anilist_connection_status();
+        await sync_anilist_anime();
         await sync_anilist_manga();
-        show_entertainment_category("Manga / Manhwa");
 
         if (result.data?.username) {
             show_toast(
@@ -2727,6 +2730,7 @@ anilist_connect_button.addEventListener("click", async () => {
     await begin_anilist_connection();
 });
 
+anilist_anime_sync_button.addEventListener("click", sync_anilist_anime);
 anilist_sync_header_button.addEventListener("click", sync_anilist_manga);
 
 
@@ -3291,6 +3295,204 @@ async function load_mal_connection_status() {
 }
 
 
+function normalize_anime_import_title(value) {
+    return String(value || "")
+        .normalize("NFKD")
+        .toLowerCase()
+        .replace(/&/g, " and ")
+        .replace(/[^a-z0-9]+/g, " ")
+        .trim();
+}
+
+function anime_import_aliases(item) {
+    return [
+        item.title,
+        item.title_romaji,
+        item.title_native,
+        ...(item.synonyms || [])
+    ]
+        .map(normalize_anime_import_title)
+        .filter(Boolean);
+}
+
+function anime_import_year(item) {
+    const value = String(item.start_date || "");
+    return /^\d{4}/.test(value) ? Number(value.slice(0, 4)) : null;
+}
+
+function find_existing_anime_for_import(row) {
+    if (row.anilist_id) {
+        const by_anilist = anime_library.find(
+            (item) => Number(item.anilist_id) === Number(row.anilist_id)
+        );
+        if (by_anilist) return by_anilist;
+    }
+
+    if (row.mal_id) {
+        const by_mal = anime_library.find(
+            (item) => Number(item.mal_id) === Number(row.mal_id)
+        );
+        if (by_mal) return by_mal;
+    }
+
+    const incoming_aliases = new Set(anime_import_aliases(row));
+    if (!incoming_aliases.size) return null;
+    const incoming_year = anime_import_year(row);
+
+    return anime_library.find((item) => {
+        const existing_year = anime_import_year(item);
+        if (incoming_year && existing_year && incoming_year !== existing_year) {
+            return false;
+        }
+
+        return anime_import_aliases(item).some(
+            (alias) => incoming_aliases.has(alias)
+        );
+    }) || null;
+}
+
+function anime_import_patch(existing, row) {
+    const patch = {
+        status: row.status || existing.status,
+        episodes_watched: Number(row.episodes_watched || 0),
+        my_rating: row.my_rating ?? existing.my_rating ?? null,
+        synced_at: new Date().toISOString()
+    };
+
+    [
+        "mal_id", "anilist_id", "mal_score", "anilist_score",
+        "total_episodes", "start_date", "finish_date",
+        "average_episode_duration_ms"
+    ].forEach((field) => {
+        if (row[field] !== null && row[field] !== undefined &&
+            row[field] !== "") {
+            patch[field] = row[field];
+        }
+    });
+
+    [
+        "title_romaji", "title_native", "media_type", "poster_url",
+        "description", "site_url"
+    ].forEach((field) => {
+        if (!existing[field] && row[field]) patch[field] = row[field];
+    });
+
+    const merged_synonyms = [
+        ...(existing.synonyms || []),
+        ...(row.synonyms || [])
+    ].filter(Boolean);
+    if (merged_synonyms.length) {
+        patch.synonyms = [...new Set(merged_synonyms)].slice(0, 40);
+    }
+
+    const merged_genres = [
+        ...(existing.genres || []),
+        ...(row.genres || [])
+    ].filter(Boolean);
+    if (merged_genres.length) {
+        patch.genres = [...new Set(merged_genres)];
+    }
+
+    return patch;
+}
+
+async function merge_anime_import_rows(rows) {
+    if (!rows.length) return {added: 0, updated: 0};
+
+    await load_anime_library();
+
+    let added = 0;
+    let updated = 0;
+
+    for (const row of rows) {
+        const existing = find_existing_anime_for_import(row);
+
+        if (existing) {
+            const patch = anime_import_patch(existing, row);
+            const {error} = await supabase
+                .from("anime")
+                .update(patch)
+                .eq("id", existing.id);
+            if (error) throw error;
+            Object.assign(existing, patch);
+            updated += 1;
+            continue;
+        }
+
+        const {data, error} = await supabase
+            .from("anime")
+            .insert(row)
+            .select("*")
+            .single();
+        if (error) throw error;
+        anime_library.push(data);
+        added += 1;
+    }
+
+    await load_anime_library();
+    return {added, updated};
+}
+
+function map_anilist_anime_import_row(item) {
+    return {
+        mal_id: null,
+        anilist_id: item.anilist_id,
+        title: item.title,
+        title_romaji: item.title_romaji,
+        title_native: item.title_native,
+        synonyms: item.synonyms || [],
+        status: item.status,
+        episodes_watched: Number(item.episodes_watched || 0),
+        total_episodes: item.total_episodes,
+        my_rating: item.my_rating,
+        poster_url: item.poster_url,
+        media_type: item.media_type,
+        start_date: item.start_date,
+        finish_date: item.finish_date,
+        average_episode_duration_ms:
+            Number(item.average_episode_duration_ms || 0) || null,
+        mal_score: null,
+        anilist_score: item.anilist_score,
+        description: item.description,
+        genres: item.genres || [],
+        site_url: item.site_url,
+        synced_at: new Date().toISOString()
+    };
+}
+
+async function sync_anilist_anime() {
+    const original_text = anilist_anime_sync_button.textContent;
+    anilist_anime_sync_button.disabled = true;
+    anilist_anime_sync_button.textContent = "Importing...";
+
+    try {
+        const sync = httpsCallable(functions, "syncAniListAnimeList");
+        const result = await sync();
+        const anime = result.data.anime || [];
+        const rows = anime.map(map_anilist_anime_import_row);
+        const merged = await merge_anime_import_rows(rows);
+
+        show_toast(
+            anime.length + " AniList anime title" +
+            (anime.length === 1 ? "" : "s") +
+            " imported · " + merged.added + " added, " +
+            merged.updated + " updated."
+        );
+    } catch (error) {
+        console.error("Unable to import AniList anime:", error);
+        const code = error?.code || "";
+        if (code.includes("failed-precondition") ||
+            code.includes("unauthenticated")) {
+            await load_anilist_connection_status();
+        }
+        alert("Unable to import your AniList anime list. Please try again.");
+    } finally {
+        anilist_anime_sync_button.disabled = false;
+        anilist_anime_sync_button.textContent = original_text;
+    }
+}
+
+
 function render_anime_library() {
     const search = anime_search.value.trim().toLowerCase();
     const status = anime_status_filter.value;
@@ -3320,9 +3522,11 @@ function render_anime_library() {
         const progress = item.total_episodes
             ? item.episodes_watched + "/" + item.total_episodes + " eps"
             : item.episodes_watched + " eps";
-        const mal_score = item.mal_score
+        const external_score = item.mal_score != null
             ? "MAL: " + Number(item.mal_score).toFixed(2)
-            : "MAL: —";
+            : item.anilist_score != null
+                ? "AniList: " + Number(item.anilist_score) + "%"
+                : "Rating: —";
         const personal_score = item.my_rating
             ? " · ★ " + Number(item.my_rating).toFixed(1) + "/10"
             : " · ★ —";
@@ -3332,10 +3536,10 @@ function render_anime_library() {
 
         return '<article class="movie-card anime-card' + extra_class + '">' +
             '<div class="movie-poster-wrap anime-edit-poster" data-anime-id="' +
-            item.id + '" tabindex="0" role="button" title="Edit on MyAnimeList">' +
+            item.id + '" tabindex="0" role="button" title="Open anime">' +
             poster + '</div>' +
-            '<h3 class="anime-edit-title" data-anime-id="' + item.id + '" tabindex="0" role="button" title="Edit on MyAnimeList">' + item.title + '</h3><p>' +
-            progress + " · " + mal_score + personal_score + '</p></article>';
+            '<h3 class="anime-edit-title" data-anime-id="' + item.id + '" tabindex="0" role="button" title="Open anime">' + item.title + '</h3><p>' +
+            progress + " · " + external_score + personal_score + '</p></article>';
     }).join("");
 
     const has_hidden_anime =
@@ -3460,14 +3664,8 @@ async function load_anime_library() {
     anime_sync_summary.hidden = !has_synced_anime;
     anime_sync_summary.textContent =
         watched_anime.length + " watched · " +
-        anime_library.length + " total synced from MyAnimeList";
+        anime_library.length + " total in library";
     anime_filters.hidden = !has_synced_anime;
-
-    if (has_synced_anime) {
-        mal_connect_card.hidden = true;
-        mal_connection_label.hidden = true;
-        mal_sync_header_button.hidden = false;
-    }
 }
 
 function render_anime_episode_picker() {
@@ -3512,10 +3710,17 @@ async function open_anime_editor(anime_id) {
     const media_type = active_anime.media_type
         ? active_anime.media_type.replaceAll("_", " ").toUpperCase()
         : "ANIME";
-    anime_detail_meta.textContent =
-        `${media_type}${active_anime.mal_score ?
-            ` · ⭐ ${Number(active_anime.mal_score).toFixed(2)} MAL` : ""}`;
-    anime_detail_description.textContent = "Loading description…";
+    const source_score = active_anime.mal_score != null
+        ? ` · ⭐ ${Number(active_anime.mal_score).toFixed(2)} MAL`
+        : active_anime.anilist_score != null
+            ? ` · ⭐ ${Number(active_anime.anilist_score)}% AniList`
+            : "";
+    anime_detail_meta.textContent = `${media_type}${source_score}`;
+    anime_edit_save.textContent = active_anime.mal_id
+        ? "Save to MyAnimeList"
+        : "Save in Stellaz";
+    anime_detail_description.textContent =
+        active_anime.description || "Loading description…";
     anime_detail_facts.innerHTML = [
         active_anime.total_episodes ?
             `Episodes: ${active_anime.total_episodes}` : null,
@@ -3530,38 +3735,56 @@ async function open_anime_editor(anime_id) {
     render_anime_episode_picker();
     anime_edit_dialog.showModal();
 
-    try {
-        const get_details = httpsCallable(functions, "getMALAnimeDetails");
-        const result = await get_details({anime_id: active_anime.mal_id});
-        if (!active_anime || active_anime.id !== opened_anime_id) return;
+    if (active_anime.mal_id) {
+        try {
+            const get_details = httpsCallable(functions, "getMALAnimeDetails");
+            const result = await get_details({anime_id: active_anime.mal_id});
+            if (!active_anime || active_anime.id !== opened_anime_id) return;
 
-        const data = result.data;
-        anime_detail_description.textContent =
-            data.synopsis || "No description available.";
+            const data = result.data;
+            anime_detail_description.textContent =
+                data.synopsis || active_anime.description ||
+                "No description available.";
+            const facts = [
+                data.media_type ? `Type: ${data.media_type}` : null,
+                data.num_episodes ? `Episodes: ${data.num_episodes}` : null,
+                data.average_episode_duration ?
+                    `Episode runtime: ~${Math.round(
+                        data.average_episode_duration / 60
+                    )} min` : null,
+                data.start_date ? `Aired: ${data.start_date}` : null,
+                data.end_date ? `Ended: ${data.end_date}` : null,
+                data.status ? `Status: ${data.status.replaceAll("_", " ")}` : null,
+                data.source ? `Source: ${data.source.replaceAll("_", " ")}` : null,
+                data.rating ? `Rating: ${data.rating.replaceAll("_", " ")}` : null,
+                data.genres?.length ? `Genres: ${data.genres.join(", ")}` : null,
+                data.studios?.length ? `Studios: ${data.studios.join(", ")}` : null,
+                data.mean ? `MAL score: ${Number(data.mean).toFixed(2)}` : null,
+                data.rank ? `Rank: #${data.rank}` : null,
+                data.popularity ? `Popularity: #${data.popularity}` : null
+            ].filter(Boolean);
+            anime_detail_facts.innerHTML =
+                facts.map((fact) => `<span>${fact}</span>`).join("");
+        } catch (error) {
+            console.error("Unable to load anime details:", error);
+            anime_detail_description.textContent =
+                active_anime.description ||
+                "Additional anime details could not be loaded.";
+        }
+    } else {
         const facts = [
-            data.media_type ? `Type: ${data.media_type}` : null,
-            data.num_episodes ? `Episodes: ${data.num_episodes}` : null,
-            data.average_episode_duration ?
-                `Episode runtime: ~${Math.round(
-                    data.average_episode_duration / 60
-                )} min` : null,
-            data.start_date ? `Aired: ${data.start_date}` : null,
-            data.end_date ? `Ended: ${data.end_date}` : null,
-            data.status ? `Status: ${data.status.replaceAll("_", " ")}` : null,
-            data.source ? `Source: ${data.source.replaceAll("_", " ")}` : null,
-            data.rating ? `Rating: ${data.rating.replaceAll("_", " ")}` : null,
-            data.genres?.length ? `Genres: ${data.genres.join(", ")}` : null,
-            data.studios?.length ? `Studios: ${data.studios.join(", ")}` : null,
-            data.mean ? `MAL score: ${Number(data.mean).toFixed(2)}` : null,
-            data.rank ? `Rank: #${data.rank}` : null,
-            data.popularity ? `Popularity: #${data.popularity}` : null
+            active_anime.media_type ? `Type: ${active_anime.media_type.replaceAll("_", " ")}` : null,
+            active_anime.total_episodes ? `Episodes: ${active_anime.total_episodes}` : null,
+            active_anime.start_date ? `Aired: ${active_anime.start_date}` : null,
+            active_anime.finish_date ? `Ended: ${active_anime.finish_date}` : null,
+            active_anime.genres?.length ? `Genres: ${active_anime.genres.join(", ")}` : null,
+            active_anime.anilist_score != null ?
+                `AniList score: ${Number(active_anime.anilist_score)}%` : null
         ].filter(Boolean);
+        anime_detail_description.textContent =
+            active_anime.description || "No description available.";
         anime_detail_facts.innerHTML =
             facts.map((fact) => `<span>${fact}</span>`).join("");
-    } catch (error) {
-        console.error("Unable to load anime details:", error);
-        anime_detail_description.textContent =
-            "Additional anime details could not be loaded.";
     }
 }
 
@@ -3625,28 +3848,61 @@ anime_edit_form.addEventListener("submit", async (event) => {
     anime_edit_save.textContent = "Saving...";
 
     try {
-        const update_mal = httpsCallable(functions, "updateMALAnimeStatus");
-        const result = await update_mal({
-            anime_id: active_anime.mal_id,
-            status: anime_edit_status.value,
-            episodes_watched: selected_anime_episode,
-            total_episodes: Number(active_anime.total_episodes || 0),
-            score: anime_edit_score.value === ""
-                ? null
-                : Number(anime_edit_score.value)
-        });
-        if (result.data?.status !== anime_edit_status.value) {
-            throw new Error("MyAnimeList did not save the selected status.");
+        const score = anime_edit_score.value === ""
+            ? null
+            : Number(anime_edit_score.value);
+
+        if (active_anime.mal_id) {
+            const update_mal = httpsCallable(
+                functions,
+                "updateMALAnimeStatus"
+            );
+            const result = await update_mal({
+                anime_id: active_anime.mal_id,
+                status: anime_edit_status.value,
+                episodes_watched: selected_anime_episode,
+                total_episodes: Number(active_anime.total_episodes || 0),
+                score
+            });
+            if (result.data?.status !== anime_edit_status.value) {
+                throw new Error(
+                    "MyAnimeList did not save the selected status."
+                );
+            }
+
+            anime_edit_dialog.close();
+            await sync_mal_anime();
+            show_toast("Updated on MyAnimeList.");
+        } else {
+            let watched = selected_anime_episode;
+            const total = Number(active_anime.total_episodes || 0);
+            if (anime_edit_status.value === "completed" && total > 0) {
+                watched = total;
+            }
+
+            const {error} = await supabase
+                .from("anime")
+                .update({
+                    status: anime_edit_status.value,
+                    episodes_watched: watched,
+                    my_rating: score,
+                    synced_at: new Date().toISOString()
+                })
+                .eq("id", active_anime.id);
+            if (error) throw error;
+
+            anime_edit_dialog.close();
+            await load_anime_library();
+            show_toast("Anime progress saved in Stellaz.");
         }
-        anime_edit_dialog.close();
-        await sync_mal_anime();
-        show_toast("Updated on MyAnimeList.");
     } catch (error) {
-        console.error("Unable to update MAL anime:", error);
-        alert("Unable to update this anime on MyAnimeList.");
+        console.error("Unable to update anime:", error);
+        alert("Unable to save this anime. Please try again.");
     } finally {
         anime_edit_save.disabled = false;
-        anime_edit_save.textContent = "Save to MyAnimeList";
+        anime_edit_save.textContent = active_anime?.mal_id
+            ? "Save to MyAnimeList"
+            : "Save in Stellaz";
     }
 });
 
@@ -3677,46 +3933,48 @@ anime_library_toggle.addEventListener("click", () => {
 });
 
 async function sync_mal_anime() {
-    mal_connect_button.disabled = true;
-    mal_connect_button.textContent = "Syncing...";
+    const original_text = mal_sync_header_button.textContent;
+    mal_sync_header_button.disabled = true;
+    mal_sync_header_button.textContent = "Syncing...";
 
     try {
         const sync = httpsCallable(functions, "syncMALAnimeList");
         const result = await sync();
         const anime = result.data.anime || [];
+        const rows = anime.map((item) => ({
+            mal_id: item.mal_id,
+            anilist_id: null,
+            title: item.title,
+            status: item.status,
+            episodes_watched: item.episodes_watched,
+            total_episodes: item.total_episodes,
+            my_rating: item.my_rating,
+            poster_url: item.poster_url,
+            media_type: item.media_type,
+            start_date: item.start_date,
+            finish_date: item.finish_date,
+            mal_updated_at: item.mal_updated_at,
+            average_episode_duration_ms:
+                item.average_episode_duration_ms,
+            mal_score: item.mal_score,
+            anilist_score: null,
+            synced_at: new Date().toISOString()
+        }));
 
-        if (anime.length > 0) {
-            const rows = anime.map((item) => ({
-                mal_id: item.mal_id,
-                title: item.title,
-                status: item.status,
-                episodes_watched: item.episodes_watched,
-                total_episodes: item.total_episodes,
-                my_rating: item.my_rating,
-                poster_url: item.poster_url,
-                media_type: item.media_type,
-                start_date: item.start_date,
-                finish_date: item.finish_date,
-                mal_updated_at: item.mal_updated_at,
-                average_episode_duration_ms: item.average_episode_duration_ms,
-                mal_score: item.mal_score,
-                synced_at: new Date().toISOString()
-            }));
+        const merged = await merge_anime_import_rows(rows);
 
-            const {error} = await supabase
-                .from("anime")
-                .upsert(rows, {onConflict: "user_id,mal_id"});
-            if (error) throw error;
-        }
-
-        await load_anime_library();
-        show_toast(anime.length + " anime synced from MyAnimeList.");
+        show_toast(
+            anime.length + " MyAnimeList anime title" +
+            (anime.length === 1 ? "" : "s") +
+            " synced · " + merged.added + " added, " +
+            merged.updated + " updated."
+        );
     } catch (error) {
         console.error("Unable to sync MAL anime:", error);
         alert("Unable to sync your MyAnimeList anime. Please try again.");
     } finally {
-        mal_connect_button.disabled = false;
-        mal_connect_button.textContent = "Sync MyAnimeList";
+        mal_sync_header_button.disabled = false;
+        mal_sync_header_button.textContent = original_text;
     }
 }
 
