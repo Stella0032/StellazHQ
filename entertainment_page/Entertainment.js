@@ -3559,59 +3559,96 @@ if (anime_add_button && anime_add_dialog && anime_add_close &&
         if (query.length < 2) return;
 
         anime_add_results.innerHTML =
-            '<p class="recommendation-loading">Searching MyAnimeList...</p>';
+            '<p class="recommendation-loading">Searching anime...</p>';
 
         try {
-            const search_mal = httpsCallable(functions, "searchMALAnime");
-            const result = await search_mal({query});
+            const search_anilist =
+                httpsCallable(functions, "searchAniListAnime");
+            const result = await search_anilist({query});
             anime_add_candidates = result.data.results || [];
+
             anime_add_results.innerHTML = anime_add_candidates.length
                 ? anime_add_candidates.map((item) => `
                     <button class="anime-add-result" type="button"
-                            data-mal-add-id="${item.mal_id}">
+                            data-anilist-add-id="${item.anilist_id}">
                         ${item.poster_url ? `<img src="${item.poster_url}" alt="">` : ""}
                         <span><strong>${item.title}</strong><small>${
                             item.start_date ? item.start_date.slice(0, 4) : ""
-                        }${item.mal_score ? ` · ⭐ ${Number(item.mal_score).toFixed(2)}` : ""}</small></span>
+                        }${item.anilist_score != null
+                            ? ` · ⭐ ${Number(item.anilist_score)}%`
+                            : ""}</small></span>
                         <b>＋ Watched</b>
                     </button>`).join("")
                 : '<p class="recommendation-loading">No anime found.</p>';
         } catch (error) {
-            console.error("Unable to search MAL:", error);
+            console.error("Unable to search anime:", error);
             anime_add_results.innerHTML =
-                '<p class="recommendation-loading">Unable to search MyAnimeList.</p>';
+                '<p class="recommendation-loading">Unable to search anime.</p>';
         }
     });
 
     anime_add_results.addEventListener("click", async (event) => {
-        const button = event.target.closest("[data-mal-add-id]");
+        const button = event.target.closest("[data-anilist-add-id]");
         if (!button) return;
 
         const item = anime_add_candidates.find(
-            (entry) => entry.mal_id === Number(button.dataset.malAddId)
+            (entry) =>
+                entry.anilist_id ===
+                Number(button.dataset.anilistAddId)
         );
         if (!item) return;
 
         button.disabled = true;
+
         try {
-            const update_mal =
-                httpsCallable(functions, "updateMALAnimeStatus");
-            const result = await update_mal({
-                anime_id: item.mal_id,
+            const total_episodes =
+                Number(item.total_episodes || 0);
+
+            const row = {
+                mal_id: null,
+                anilist_id: item.anilist_id,
+                kitsu_id: null,
+                title: item.title,
+                title_romaji: item.title_romaji,
+                title_native: item.title_native,
+                synonyms: item.synonyms || [],
                 status: "completed",
-                episodes_watched: Number(item.total_episodes || 0),
-                total_episodes: Number(item.total_episodes || 0),
-                score: null
-            });
-            if (result.data?.status !== "completed") {
-                throw new Error("MyAnimeList did not save completed status.");
-            }
+                episodes_watched: total_episodes,
+                total_episodes:
+                    total_episodes || null,
+                my_rating: null,
+                poster_url: item.poster_url,
+                media_type: item.media_type,
+                start_date: item.start_date,
+                finish_date: item.finish_date,
+                average_episode_duration_ms:
+                    Number(item.average_episode_duration_seconds || 0) ||
+                    null,
+                mal_score: null,
+                anilist_score: item.anilist_score,
+                kitsu_score: null,
+                description: item.description,
+                genres: item.genres || [],
+                site_url: item.site_url,
+                synced_at: new Date().toISOString()
+            };
+
+            const merged =
+                await merge_anime_import_rows([row]);
+
             anime_add_dialog.close();
-            await sync_mal_anime();
-            show_toast(`${item.title} added to MyAnimeList as watched.`);
+
+            const action = merged.added
+                ? "added"
+                : "updated";
+            show_toast(
+                item.title +
+                " " + action +
+                " in Stellaz as watched."
+            );
         } catch (error) {
-            console.error("Unable to add MAL anime:", error);
-            alert("Unable to add this anime to MyAnimeList.");
+            console.error("Unable to add anime:", error);
+            alert("Unable to add this anime to Stellaz.");
             button.disabled = false;
         }
     });
@@ -4111,7 +4148,11 @@ async function open_anime_editor(anime_id) {
                 ? ` · ⭐ ${Number(active_anime.kitsu_score).toFixed(1)}% Kitsu`
                 : "";
     anime_detail_meta.textContent = `${media_type}${source_score}`;
-    anime_edit_save.textContent = active_anime.mal_id
+    const can_write_to_mal =
+        Boolean(active_anime.mal_id) &&
+        mal_connect_button?.dataset.connected === "true";
+
+    anime_edit_save.textContent = can_write_to_mal
         ? "Save to MyAnimeList"
         : "Save in Stellaz";
     anime_detail_description.textContent =
@@ -4130,7 +4171,8 @@ async function open_anime_editor(anime_id) {
     render_anime_episode_picker();
     anime_edit_dialog.showModal();
 
-    if (active_anime.mal_id) {
+    if (active_anime.mal_id &&
+        mal_connect_button?.dataset.connected === "true") {
         try {
             const get_details = httpsCallable(functions, "getMALAnimeDetails");
             const result = await get_details({anime_id: active_anime.mal_id});
@@ -4247,7 +4289,11 @@ anime_edit_form.addEventListener("submit", async (event) => {
             ? null
             : Number(anime_edit_score.value);
 
-        if (active_anime.mal_id) {
+        const can_write_to_mal =
+            Boolean(active_anime.mal_id) &&
+            mal_connect_button?.dataset.connected === "true";
+
+        if (can_write_to_mal) {
             const update_mal = httpsCallable(
                 functions,
                 "updateMALAnimeStatus"
@@ -4295,9 +4341,11 @@ anime_edit_form.addEventListener("submit", async (event) => {
         alert("Unable to save this anime. Please try again.");
     } finally {
         anime_edit_save.disabled = false;
-        anime_edit_save.textContent = active_anime?.mal_id
-            ? "Save to MyAnimeList"
-            : "Save in Stellaz";
+        anime_edit_save.textContent =
+            active_anime?.mal_id &&
+            mal_connect_button?.dataset.connected === "true"
+                ? "Save to MyAnimeList"
+                : "Save in Stellaz";
     }
 });
 
