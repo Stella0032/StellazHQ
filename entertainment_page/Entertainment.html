@@ -103,13 +103,13 @@
                     <option value="">All library</option><option value="watched">Watched</option><option value="watch_later">Watch later</option>
                 </select>
                 <select class="movie-filter" id="movie_sort" aria-label="Sort movies">
-                    <option value="franchise-asc" selected>Franchise A–Z</option>
+                    <option value="mine-desc" selected>Best rated by me</option>
+                    <option value="franchise-asc">By franchise</option>
                     <option value="year-desc">Newest first</option>
                     <option value="year-asc">Oldest first</option>
                     <option value="title-asc">Title A–Z</option>
                     <option value="title-desc">Title Z–A</option>
                     <option value="tmdb-desc">Best rated by TMDB</option>
-                    <option value="mine-desc">Best rated by me</option>
                 </select>
                 <input class="movie-search" id="movie_search" type="search" placeholder="Search movies..." aria-label="Search movies">
                 <button class="movie-filter-clear" id="movie_filter_clear" type="button">Clear</button>
@@ -168,12 +168,13 @@
                     <option value="">All library</option><option value="watched">Watched</option><option value="watch_later">Watch later</option>
                 </select>
                 <select class="movie-filter" id="show_sort" aria-label="Sort TV shows">
+                    <option value="mine-desc" selected>Best rated by me</option>
+                    <option value="franchise-asc">By franchise</option>
                     <option value="year-desc">Newest first</option>
                     <option value="year-asc">Oldest first</option>
                     <option value="title-asc">Title A–Z</option>
                     <option value="title-desc">Title Z–A</option>
                     <option value="tmdb-desc">Best rated by TMDB</option>
-                    <option value="mine-desc">Best rated by me</option>
                 </select>
                 <input class="movie-search" id="show_search" type="search" placeholder="Search shows..." aria-label="Search TV shows">
                 <button class="movie-filter-clear" id="show_filter_clear" type="button">Clear</button><button class="movie-filter-clear movie-library-toggle" id="show_library_toggle" type="button" hidden>Show all shows</button>
