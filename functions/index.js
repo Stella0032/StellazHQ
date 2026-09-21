@@ -1865,6 +1865,135 @@ exports.stellazAI = onCall(
 );
 //#endregion
 
+
+
+//? ------------------------------
+//* ----- AniList Manga Search ---
+//? ------------------------------
+//#region
+function anilist_date_to_iso(date) {
+    if (!date || !Number(date.year)) return null;
+    const month = String(Number(date.month) || 1).padStart(2, "0");
+    const day = String(Number(date.day) || 1).padStart(2, "0");
+    return String(date.year) + "-" + month + "-" + day;
+}
+
+function anilist_media_kind(country_code) {
+    if (country_code === "KR") return "Manhwa";
+    if (country_code === "CN" || country_code === "TW") return "Manhua";
+    if (country_code === "JP") return "Manga";
+    return "Other";
+}
+
+function clean_anilist_description(value) {
+    return String(value || "")
+        .replace(/<br\s*\/?\s*>/gi, "\n")
+        .replace(/<[^>]*>/g, "")
+        .replace(/~!/g, "")
+        .replace(/!~/g, "")
+        .trim();
+}
+
+exports.searchAniListManga = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError("unauthenticated", "You must be logged in.");
+    }
+
+    const search = String(request.data?.query || "").trim();
+    if (search.length < 2) return {results: []};
+    if (search.length > 120) {
+        throw new HttpsError("invalid-argument", "Search is too long.");
+    }
+
+    const query_text = [
+        "query ($search: String!, $perPage: Int!) {",
+        "  Page(page: 1, perPage: $perPage) {",
+        "    media(search: $search, type: MANGA, isAdult: false) {",
+        "      id",
+        "      title { romaji english native userPreferred }",
+        "      synonyms",
+        "      countryOfOrigin",
+        "      format",
+        "      status",
+        "      chapters",
+        "      volumes",
+        "      averageScore",
+        "      description(asHtml: false)",
+        "      genres",
+        "      siteUrl",
+        "      coverImage { extraLarge large }",
+        "      bannerImage",
+        "      startDate { year month day }",
+        "      endDate { year month day }",
+        "    }",
+        "  }",
+        "}"
+    ].join("\n");
+
+    const response = await fetch("https://graphql.anilist.co", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        },
+        body: JSON.stringify({
+            query: query_text,
+            variables: {search, perPage: 12},
+        }),
+    });
+
+    if (!response.ok) {
+        logger.error("AniList manga search failed.", {
+            status: response.status,
+        });
+        throw new HttpsError("internal", "AniList search failed.");
+    }
+
+    const payload = await response.json();
+    if (Array.isArray(payload.errors) && payload.errors.length) {
+        logger.error("AniList GraphQL search failed.", {
+            errors: payload.errors.map((error) => error.message),
+        });
+        throw new HttpsError("internal", "AniList search failed.");
+    }
+
+    const media = payload.data?.Page?.media || [];
+
+    return {
+        results: media
+            .filter((item) => item.format !== "NOVEL")
+            .map((item) => ({
+                anilist_id: Number(item.id),
+                title: item.title?.english ||
+                    item.title?.userPreferred ||
+                    item.title?.romaji ||
+                    item.title?.native ||
+                    "Untitled",
+                title_romaji: item.title?.romaji || null,
+                title_native: item.title?.native || null,
+                synonyms: Array.isArray(item.synonyms) ?
+                    item.synonyms.filter(Boolean).slice(0, 20) : [],
+                country_of_origin: item.countryOfOrigin || null,
+                media_kind: anilist_media_kind(item.countryOfOrigin),
+                format: item.format || null,
+                publication_status: item.status || null,
+                total_chapters: Number(item.chapters || 0) || null,
+                total_volumes: Number(item.volumes || 0) || null,
+                anilist_score: Number(item.averageScore || 0) || null,
+                poster_url: item.coverImage?.extraLarge ||
+                    item.coverImage?.large || null,
+                banner_url: item.bannerImage || null,
+                description: clean_anilist_description(item.description),
+                genres: Array.isArray(item.genres) ? item.genres : [],
+                site_url: item.siteUrl || null,
+                start_date: anilist_date_to_iso(item.startDate),
+                end_date: anilist_date_to_iso(item.endDate),
+            })),
+    };
+});
+//#endregion
+
+
 //? ------------------------------
 //* ----- Plex Connection --------
 //? ------------------------------
