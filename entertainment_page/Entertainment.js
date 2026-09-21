@@ -2298,6 +2298,457 @@ library_remove_form.addEventListener("submit", async (event) => {
 
 
 
+
+
+//? ---------------------------------
+//* ----- Manga / Manhwa Library ----
+//? ---------------------------------
+//#region
+const manga_count = document.getElementById("manga_count");
+const manga_library_count = document.getElementById("manga_library_count");
+const manga_grid = document.getElementById("manga_grid");
+const manga_filters = document.getElementById("manga_filters");
+const manga_type_filter = document.getElementById("manga_type_filter");
+const manga_status_filter = document.getElementById("manga_status_filter");
+const manga_sort = document.getElementById("manga_sort");
+const manga_search = document.getElementById("manga_search");
+const manga_filter_clear = document.getElementById("manga_filter_clear");
+const manga_library_toggle = document.getElementById("manga_library_toggle");
+const manga_add_button = document.getElementById("manga_add_button");
+const manga_add_dialog = document.getElementById("manga_add_dialog");
+const manga_add_close = document.getElementById("manga_add_close");
+const manga_add_search_form = document.getElementById("manga_add_search_form");
+const manga_add_search = document.getElementById("manga_add_search");
+const manga_add_results = document.getElementById("manga_add_results");
+const manga_edit_dialog = document.getElementById("manga_edit_dialog");
+const manga_edit_close = document.getElementById("manga_edit_close");
+const manga_edit_cover = document.getElementById("manga_edit_cover");
+const manga_edit_title = document.getElementById("manga_edit_title");
+const manga_detail_type = document.getElementById("manga_detail_type");
+const manga_detail_meta = document.getElementById("manga_detail_meta");
+const manga_detail_description = document.getElementById("manga_detail_description");
+const manga_detail_facts = document.getElementById("manga_detail_facts");
+const manga_edit_form = document.getElementById("manga_edit_form");
+const manga_edit_status = document.getElementById("manga_edit_status");
+const manga_edit_chapters = document.getElementById("manga_edit_chapters");
+const manga_edit_score = document.getElementById("manga_edit_score");
+const manga_edit_save = document.getElementById("manga_edit_save");
+const manga_remove_button = document.getElementById("manga_remove_button");
+
+let manga_library = [];
+let manga_add_candidates = [];
+let active_manga = null;
+
+function manga_escape(value) {
+    return String(value ?? "").replace(/[&<>"']/g, (character) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+    })[character]);
+}
+
+function manga_status_label(status) {
+    return ({
+        reading: "Reading",
+        completed: "Completed",
+        on_hold: "On hold",
+        dropped: "Dropped",
+        plan_to_read: "Plan to read"
+    })[status] || status || "Reading";
+}
+
+function render_manga_library() {
+    const query = manga_search.value.trim().toLowerCase();
+    const type = manga_type_filter.value;
+    const status = manga_status_filter.value;
+
+    let visible = manga_library.filter((item) => {
+        const aliases = [
+            item.title,
+            item.title_romaji,
+            item.title_native,
+            ...(item.synonyms || [])
+        ].filter(Boolean).join(" ").toLowerCase();
+
+        return (!query || aliases.includes(query)) &&
+            (!type || item.media_kind === type) &&
+            (!status || item.user_status === status);
+    });
+
+    if (manga_sort.value === "title-desc") {
+        visible.sort((a, b) => b.title.localeCompare(a.title));
+    } else if (manga_sort.value === "title-asc") {
+        visible.sort((a, b) => a.title.localeCompare(b.title));
+    } else if (manga_sort.value === "anilist-desc") {
+        visible.sort((a, b) =>
+            Number(b.anilist_score || 0) - Number(a.anilist_score || 0) ||
+            a.title.localeCompare(b.title));
+    } else if (manga_sort.value === "newest-desc") {
+        visible.sort((a, b) =>
+            String(b.start_date || "").localeCompare(String(a.start_date || "")) ||
+            a.title.localeCompare(b.title));
+    } else {
+        visible.sort((a, b) =>
+            Number(b.my_rating || 0) - Number(a.my_rating || 0) ||
+            Number(b.anilist_score || 0) - Number(a.anilist_score || 0) ||
+            a.title.localeCompare(b.title));
+    }
+
+    manga_grid.classList.remove("expanded");
+    manga_grid.innerHTML = visible.length ? visible.map((item, index) => {
+        const title = manga_escape(item.title);
+        const poster = item.poster_url
+            ? '<img class="movie-poster" src="' + manga_escape(item.poster_url) +
+                '" alt="" loading="lazy">'
+            : '<div class="movie-poster-placeholder">READ</div>';
+        const chapters = item.total_chapters
+            ? Number(item.chapters_read || 0) + "/" + Number(item.total_chapters) + " ch"
+            : Number(item.chapters_read || 0) + " ch";
+        const anilist_score = item.anilist_score
+            ? "AniList: " + Number(item.anilist_score) + "%"
+            : "AniList: —";
+        const personal_score = item.my_rating
+            ? " · ★ " + Number(item.my_rating).toFixed(1) + "/10"
+            : " · ★ —";
+        const extra_class = index >= get_collapsed_movie_count()
+            ? " library-extra"
+            : "";
+
+        return '<article class="movie-card manga-card' + extra_class + '">' +
+            '<div class="movie-poster-wrap manga-open" data-manga-id="' +
+            item.id + '" tabindex="0" role="button" title="Open ' + title + '">' +
+            poster +
+            '<span class="manga-type-badge">' + manga_escape(item.media_kind) + '</span>' +
+            '</div>' +
+            '<h3 class="manga-open" data-manga-id="' + item.id +
+            '" tabindex="0" role="button" title="Open ' + title + '">' +
+            title + '</h3>' +
+            '<p>' + chapters + " · " + anilist_score + personal_score + '</p>' +
+            '</article>';
+    }).join("") : '<p class="library-loading">No matching manga or manhwa.</p>';
+
+    const has_hidden = visible.length > get_collapsed_movie_count();
+    manga_library_toggle.hidden = !has_hidden;
+    manga_library_toggle.textContent = "Show all manga";
+}
+
+async function load_manga_library() {
+    try {
+        const {data, error} = await supabase
+            .from("manga_library")
+            .select("*")
+            .order("title");
+        if (error) throw error;
+
+        manga_library = data || [];
+        const completed = manga_library.filter(
+            (item) => item.user_status === "completed"
+        );
+
+        manga_count.textContent = completed.length;
+        manga_library_count.textContent =
+            manga_library.length + (manga_library.length === 1 ? " TITLE" : " TITLES");
+        manga_filters.hidden = manga_library.length === 0;
+
+        if (manga_library.length === 0) {
+            manga_grid.innerHTML =
+                '<p class="library-loading">No manga or manhwa added yet. Use “Add manga / manhwa” to search AniList.</p>';
+            manga_library_toggle.hidden = true;
+            return;
+        }
+
+        render_manga_library();
+    } catch (error) {
+        console.error("Unable to load manga / manhwa library:", error);
+        manga_count.textContent = "Error";
+        manga_library_count.textContent = "ERROR";
+        manga_grid.innerHTML =
+            '<p class="library-loading">Unable to load your manga and manhwa.</p>';
+    }
+}
+
+function open_manga_editor(manga_id) {
+    active_manga = manga_library.find((item) => item.id === manga_id);
+    if (!active_manga) return;
+
+    manga_edit_title.textContent = active_manga.title;
+    manga_detail_type.textContent = active_manga.media_kind || "MANGA";
+    manga_detail_meta.textContent = [
+        active_manga.publication_status
+            ? active_manga.publication_status.replaceAll("_", " ")
+            : null,
+        active_manga.anilist_score
+            ? "★ " + Number(active_manga.anilist_score) + "% AniList"
+            : null
+    ].filter(Boolean).join(" · ");
+    manga_detail_description.textContent =
+        active_manga.description || "No description available.";
+
+    const facts = [
+        active_manga.total_chapters
+            ? "Chapters: " + active_manga.total_chapters
+            : "Chapters: ongoing / unknown",
+        active_manga.total_volumes
+            ? "Volumes: " + active_manga.total_volumes
+            : null,
+        active_manga.start_date
+            ? "Started: " + active_manga.start_date
+            : null,
+        active_manga.genres?.length
+            ? active_manga.genres.slice(0, 5).join(" · ")
+            : null
+    ].filter(Boolean);
+    manga_detail_facts.innerHTML =
+        facts.map((fact) => "<span>" + manga_escape(fact) + "</span>").join("");
+
+    manga_edit_cover.src = active_manga.poster_url || "";
+    manga_edit_cover.hidden = !active_manga.poster_url;
+    manga_edit_status.value = active_manga.user_status || "reading";
+    manga_edit_chapters.value = Number(active_manga.chapters_read || 0);
+
+    if (Number(active_manga.total_chapters || 0) > 0) {
+        manga_edit_chapters.max = String(active_manga.total_chapters);
+    } else {
+        manga_edit_chapters.removeAttribute("max");
+    }
+
+    manga_edit_score.value = active_manga.my_rating
+        ? String(Math.round(Number(active_manga.my_rating)))
+        : "";
+    manga_edit_dialog.showModal();
+}
+
+manga_grid.addEventListener("click", (event) => {
+    const target = event.target.closest("[data-manga-id]");
+    if (!target) return;
+    open_manga_editor(Number(target.dataset.mangaId));
+});
+
+manga_grid.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    const target = event.target.closest("[data-manga-id]");
+    if (!target) return;
+    event.preventDefault();
+    open_manga_editor(Number(target.dataset.mangaId));
+});
+
+manga_edit_close.addEventListener("click", () => manga_edit_dialog.close());
+
+manga_edit_form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!active_manga) return;
+
+    manga_edit_save.disabled = true;
+    manga_edit_save.textContent = "Saving...";
+
+    try {
+        let chapters_read = Math.max(
+            0,
+            Math.floor(Number(manga_edit_chapters.value || 0))
+        );
+        const total_chapters = Number(active_manga.total_chapters || 0);
+        const user_status = manga_edit_status.value;
+
+        if (total_chapters > 0) {
+            chapters_read = Math.min(chapters_read, total_chapters);
+            if (user_status === "completed") chapters_read = total_chapters;
+        }
+
+        const rating_value = manga_edit_score.value === ""
+            ? null
+            : Number(manga_edit_score.value);
+
+        const {error} = await supabase
+            .from("manga_library")
+            .update({
+                user_status,
+                chapters_read,
+                my_rating: rating_value,
+                updated_at: new Date().toISOString()
+            })
+            .eq("id", active_manga.id);
+        if (error) throw error;
+
+        manga_edit_dialog.close();
+        await load_manga_library();
+        show_toast("Reading progress saved.");
+    } catch (error) {
+        console.error("Unable to save manga progress:", error);
+        alert("Unable to save your reading progress. Please try again.");
+    } finally {
+        manga_edit_save.disabled = false;
+        manga_edit_save.textContent = "Save progress";
+    }
+});
+
+manga_remove_button.addEventListener("click", async () => {
+    if (!active_manga) return;
+    if (!window.confirm("Remove " + active_manga.title + " from your library?")) return;
+
+    manga_remove_button.disabled = true;
+    try {
+        const title = active_manga.title;
+        const {error} = await supabase
+            .from("manga_library")
+            .delete()
+            .eq("id", active_manga.id);
+        if (error) throw error;
+
+        manga_edit_dialog.close();
+        active_manga = null;
+        await load_manga_library();
+        show_toast(title + " removed.");
+    } catch (error) {
+        console.error("Unable to remove manga:", error);
+        alert("Unable to remove that title. Please try again.");
+    } finally {
+        manga_remove_button.disabled = false;
+    }
+});
+
+manga_add_button.addEventListener("click", () => {
+    manga_add_search.value = "";
+    manga_add_results.innerHTML = "";
+    manga_add_candidates = [];
+    manga_add_dialog.showModal();
+    manga_add_search.focus();
+});
+
+manga_add_close.addEventListener("click", () => manga_add_dialog.close());
+
+manga_add_search_form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const query = manga_add_search.value.trim();
+    if (query.length < 2) return;
+
+    manga_add_results.innerHTML =
+        '<p class="recommendation-loading">Searching AniList...</p>';
+
+    try {
+        const search_anilist = httpsCallable(functions, "searchAniListManga");
+        const result = await search_anilist({query});
+        manga_add_candidates = result.data.results || [];
+
+        manga_add_results.innerHTML = manga_add_candidates.length
+            ? manga_add_candidates.map((item) => {
+                const meta = [
+                    item.media_kind,
+                    item.total_chapters
+                        ? item.total_chapters + " chapters"
+                        : "chapter count unknown",
+                    item.anilist_score
+                        ? "★ " + item.anilist_score + "%"
+                        : null
+                ].filter(Boolean).join(" · ");
+
+                return '<button class="anime-add-result" type="button" ' +
+                    'data-anilist-add-id="' + item.anilist_id + '">' +
+                    (item.poster_url
+                        ? '<img src="' + manga_escape(item.poster_url) + '" alt="">'
+                        : "") +
+                    '<span><strong>' + manga_escape(item.title) + '</strong>' +
+                    '<small>' + manga_escape(meta) + '</small></span>' +
+                    '<b>＋ Add</b></button>';
+            }).join("")
+            : '<p class="recommendation-loading">No manga or manhwa found.</p>';
+    } catch (error) {
+        console.error("Unable to search AniList:", error);
+        manga_add_results.innerHTML =
+            '<p class="recommendation-loading">Unable to search AniList.</p>';
+    }
+});
+
+manga_add_results.addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-anilist-add-id]");
+    if (!button) return;
+
+    const item = manga_add_candidates.find(
+        (entry) => entry.anilist_id === Number(button.dataset.anilistAddId)
+    );
+    if (!item) return;
+
+    button.disabled = true;
+    try {
+        const {data: existing, error: existing_error} = await supabase
+            .from("manga_library")
+            .select("id")
+            .eq("anilist_id", item.anilist_id)
+            .limit(1);
+        if (existing_error) throw existing_error;
+
+        if (existing?.length) {
+            show_toast(item.title + " is already in your library.");
+            button.disabled = false;
+            return;
+        }
+
+        const {error} = await supabase.from("manga_library").insert({
+            anilist_id: item.anilist_id,
+            title: item.title,
+            title_romaji: item.title_romaji,
+            title_native: item.title_native,
+            synonyms: item.synonyms || [],
+            country_of_origin: item.country_of_origin,
+            media_kind: item.media_kind,
+            format: item.format,
+            publication_status: item.publication_status,
+            user_status: "reading",
+            chapters_read: 0,
+            total_chapters: item.total_chapters,
+            volumes_read: 0,
+            total_volumes: item.total_volumes,
+            anilist_score: item.anilist_score,
+            poster_url: item.poster_url,
+            banner_url: item.banner_url,
+            description: item.description,
+            genres: item.genres || [],
+            site_url: item.site_url,
+            start_date: item.start_date,
+            end_date: item.end_date
+        });
+        if (error) throw error;
+
+        manga_add_dialog.close();
+        await load_manga_library();
+        show_toast(item.title + " added to your reading library.");
+    } catch (error) {
+        console.error("Unable to add AniList manga:", error);
+        alert("Unable to add this title. Please try again.");
+        button.disabled = false;
+    }
+});
+
+manga_search.addEventListener("input", render_manga_library);
+manga_type_filter.addEventListener("change", render_manga_library);
+manga_status_filter.addEventListener("change", render_manga_library);
+manga_sort.addEventListener("change", render_manga_library);
+
+manga_filter_clear.addEventListener("click", () => {
+    manga_search.value = "";
+    manga_type_filter.value = "";
+    manga_status_filter.value = "";
+    manga_sort.value = "mine-desc";
+    render_manga_library();
+});
+
+manga_library_toggle.addEventListener("click", () => {
+    const expanded = manga_grid.classList.toggle("expanded");
+    manga_library_toggle.textContent = expanded
+        ? "Show less"
+        : "Show all manga";
+
+    if (!expanded) {
+        document.getElementById("manga_library").scrollIntoView({
+            behavior: "smooth",
+            block: "start"
+        });
+    }
+});
+//#endregion
+
+
 //? ---------------------------------
 //* ----- MyAnimeList Connection ----
 //? ---------------------------------
@@ -3565,7 +4016,8 @@ onAuthStateChanged(auth, async (user) => {
         // Anime/MAL startup is independent from Plex.
         await Promise.allSettled([
             load_mal_connection_status(),
-            load_anime_library()
+            load_anime_library(),
+            load_manga_library()
         ]);
         await finish_mal_connection();
 
@@ -3591,11 +4043,16 @@ const toast = document.getElementById("toast");
 const movie_library_panel = document.getElementById("movie_library");
 const show_library_panel = document.getElementById("show_library");
 const anime_library_panel = document.getElementById("anime_library");
+const manga_library_panel = document.getElementById("manga_library");
+const recommendations_panel = document.getElementById("recommendations_panel");
+const new_release_panel = document.getElementById("new_release_panel");
+const upcoming_release_panel = document.getElementById("upcoming_release_panel");
 
 function show_entertainment_category(category) {
     const showing_movies = category === "Movies";
     const showing_shows = category === "TV Shows";
     const showing_anime = category === "Anime";
+    const showing_manga = category === "Manga / Manhwa";
 
     document.documentElement.classList.toggle(
         "anime-category-active",
@@ -3605,6 +4062,12 @@ function show_entertainment_category(category) {
     movie_library_panel.classList.toggle("category-panel-hidden", !showing_movies);
     show_library_panel.classList.toggle("category-panel-hidden", !showing_shows);
     anime_library_panel.classList.toggle("category-panel-hidden", !showing_anime);
+    manga_library_panel.classList.toggle("category-panel-hidden", !showing_manga);
+
+    [recommendations_panel, new_release_panel, upcoming_release_panel]
+        .forEach((panel) =>
+            panel.classList.toggle("category-panel-hidden", showing_manga)
+        );
 
     if (showing_movies) {
         load_movie_recommendations(movie_library);
@@ -3622,7 +4085,8 @@ library_cards.forEach((card) => {
     card.addEventListener("click", (event) => {
         if (card.dataset.library === "Movies" ||
             card.dataset.library === "TV Shows" ||
-            card.dataset.library === "Anime") {
+            card.dataset.library === "Anime" ||
+            card.dataset.library === "Manga / Manhwa") {
             event.preventDefault();
             show_entertainment_category(card.dataset.library);
             return;
