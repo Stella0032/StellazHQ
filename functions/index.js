@@ -769,6 +769,155 @@ exports.syncMALAnimeList = onCall(
         return {anime, count: anime.length};
     }
 );
+
+function normalize_mal_manga_date(value) {
+    const date = String(value || "").trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
+    if (/^\d{4}-\d{2}$/.test(date)) return date + "-01";
+    if (/^\d{4}$/.test(date)) return date + "-01-01";
+    return null;
+}
+
+function mal_manga_media_kind(media_type) {
+    if (media_type === "manhwa") return "Manhwa";
+    if (media_type === "manhua") return "Manhua";
+    if (["manga", "one_shot", "doujinshi"].includes(media_type)) {
+        return "Manga";
+    }
+    return "Other";
+}
+
+exports.syncMALMangaList = onCall(
+    {secrets: [mal_client_id, mal_client_secret], timeoutSeconds: 120},
+    async (request) => {
+        if (!request.auth) {
+            throw new HttpsError("unauthenticated", "You must be logged in.");
+        }
+
+        const access_token =
+            await get_valid_mal_access_token(request.auth.uid);
+        const fields = [
+            "list_status",
+            "main_picture",
+            "alternative_titles",
+            "start_date",
+            "end_date",
+            "synopsis",
+            "mean",
+            "genres",
+            "media_type",
+            "status",
+            "num_volumes",
+            "num_chapters",
+        ].join(",");
+
+        let url = new URL(
+            "https://api.myanimelist.net/v2/users/@me/mangalist"
+        );
+        url.searchParams.set("limit", "1000");
+        url.searchParams.set("sort", "list_updated_at");
+        url.searchParams.set("fields", fields);
+
+        const manga = [];
+
+        while (url) {
+            const response = await fetch(url, {
+                headers: {Authorization: "Bearer " + access_token},
+            });
+
+            if (!response.ok) {
+                logger.error("MAL manga list request failed.", {
+                    status: response.status,
+                });
+                throw new HttpsError(
+                    "internal",
+                    "MyAnimeList manga sync failed."
+                );
+            }
+
+            const data = await response.json();
+
+            for (const item of data.data || []) {
+                const node = item.node || {};
+                const list_status = item.list_status || {};
+                const media_type = String(node.media_type || "unknown");
+
+                // Stellaz's Manga / Manhwa library intentionally excludes
+                // novels/light novels. Those can get their own library later.
+                if (media_type === "novel" ||
+                    media_type === "light_novel") {
+                    continue;
+                }
+
+                const alternative_titles =
+                    node.alternative_titles || {};
+                const synonyms = [
+                    alternative_titles.en,
+                    ...(alternative_titles.synonyms || []),
+                ].filter(Boolean);
+
+                manga.push({
+                    mal_id: Number(node.id),
+                    anilist_id: null,
+                    title:
+                        alternative_titles.en ||
+                        node.title ||
+                        "Untitled",
+                    title_romaji: node.title || null,
+                    title_native: alternative_titles.ja || null,
+                    synonyms,
+                    country_of_origin:
+                        media_type === "manhwa" ? "KR" :
+                            media_type === "manhua" ? "CN" :
+                                media_type === "manga" ? "JP" : null,
+                    media_kind:
+                        mal_manga_media_kind(media_type),
+                    format: media_type || null,
+                    publication_status: node.status || null,
+                    user_status:
+                        list_status.status || "plan_to_read",
+                    chapters_read:
+                        Number(list_status.num_chapters_read || 0),
+                    total_chapters:
+                        Number(node.num_chapters || 0) || null,
+                    volumes_read:
+                        Number(list_status.num_volumes_read || 0),
+                    total_volumes:
+                        Number(node.num_volumes || 0) || null,
+                    my_rating:
+                        Number(list_status.score || 0) || null,
+                    mal_score:
+                        Number(node.mean || 0) || null,
+                    anilist_score: null,
+                    poster_url:
+                        node.main_picture?.large ||
+                        node.main_picture?.medium ||
+                        null,
+                    banner_url: null,
+                    description: node.synopsis || null,
+                    genres: (node.genres || [])
+                        .map((genre) => genre.name)
+                        .filter(Boolean),
+                    site_url: node.id ?
+                        "https://myanimelist.net/manga/" +
+                            Number(node.id) :
+                        null,
+                    start_date:
+                        normalize_mal_manga_date(node.start_date),
+                    end_date:
+                        normalize_mal_manga_date(node.end_date),
+                    updated_at: new Date().toISOString(),
+                });
+            }
+
+            url = data.paging?.next ?
+                new URL(data.paging.next) :
+                null;
+        }
+
+        return {manga, count: manga.length};
+    }
+);
 //#endregion
 
 
