@@ -3654,3 +3654,49 @@ html.anime-category-active .anime-library-panel .movie-filter-clear {
     }
 }
 /*#endregion*/
+
+
+/* AniList account connection */
+.anilist-connect-card {
+    margin: 0 0 18px;
+    padding: 18px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    border: 1px solid rgba(102, 229, 179, 0.25);
+    border-radius: 16px;
+    background: rgba(15, 22, 36, 0.5);
+}
+
+.anilist-connect-card h3 {
+    margin: 0 0 5px;
+    font-size: 18px;
+}
+
+.anilist-connect-card p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.anilist-connect-card[hidden] {
+    display: none;
+}
+
+.anilist-connection-badge {
+    background: linear-gradient(135deg, #2b2d42, #02a9ff);
+    color: #fff;
+    font-size: 9px;
+}
+
+@media (max-width: 700px) {
+    .anilist-connect-card {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .anilist-connect-card .library-add-button {
+        width: 100%;
+    }
+}
