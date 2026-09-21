@@ -2744,7 +2744,8 @@ html[data-theme="flurple"] .nav-links {
         minmax(110px, 0.7fr)
         minmax(145px, 0.9fr)
         minmax(190px, 1.2fr)
-        86px;
+        86px
+        minmax(130px, auto);
 }
 
 .watch-later-complete {
