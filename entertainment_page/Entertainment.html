@@ -183,7 +183,7 @@
                 </select>
                 <select class="movie-filter" id="manga_sort" aria-label="Sort manga and manhwa">
                     <option value="mine-desc" selected>Best rated by me</option>
-                    <option value="anilist-desc">Best rated by AniList</option>
+                    <option value="external-desc">Best rated externally</option>
                     <option value="newest-desc">Newest first</option>
                     <option value="title-asc">Title A–Z</option>
                     <option value="title-desc">Title Z–A</option>
@@ -540,10 +540,11 @@
                             <span class="connected-service-status" id="mal_connection_label">Not connected</span>
                         </div>
                     </div>
-                    <p id="mal_connect_description">Import your anime list, ratings, statuses, and watched episode progress.</p>
+                    <p id="mal_connect_description">Import both your anime and manga/manhwa lists, including ratings, statuses, and progress.</p>
                     <div class="connected-service-actions">
                         <button class="library-add-button" id="mal_connect_button" type="button">Connect MyAnimeList</button>
-                        <button class="connected-service-import" id="mal_sync_header_button" type="button" hidden>Sync now</button>
+                        <button class="connected-service-import" id="mal_sync_header_button" type="button" hidden>Sync anime</button>
+                        <button class="connected-service-import" id="mal_manga_sync_button" type="button" hidden>Import manga</button>
                     </div>
                 </article>
 
@@ -580,7 +581,7 @@
     </dialog>
 
     <div class="toast" id="toast" role="status"></div>
-    <script type="module" src="Entertainment.js?v=72"></script>
+    <script type="module" src="Entertainment.js?v=73"></script>
     <script type="module" src="../firebase/profile_widget.js"></script>
 </body>
 </html>
