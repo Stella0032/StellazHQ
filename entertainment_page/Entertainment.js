@@ -4021,6 +4021,17 @@ async function start_anime_library_backgrounds() {
     }
 }
 
+function anime_episode_duration_seconds(item) {
+    const raw = Number(item?.average_episode_duration_ms || 0);
+    if (raw <= 0) return 0;
+
+    // The original MAL implementation stored seconds in this legacy column.
+    // Older AniList/Kitsu imports briefly stored milliseconds instead.
+    // Values above 100,000 cannot be a realistic episode duration in seconds,
+    // so normalize those legacy millisecond rows defensively.
+    return raw >= 100000 ? raw / 1000 : raw;
+}
+
 async function load_anime_library() {
     const {data, error} = await supabase.from("anime").select("*").order("title");
     if (error) throw error;
@@ -4028,15 +4039,15 @@ async function load_anime_library() {
     anime_library = data || [];
     const watched_anime =
         anime_library.filter((item) => item.status === "completed");
-    const watched_ms = anime_library.reduce((total, item) => {
-        const episode_ms = Number(item.average_episode_duration_ms || 0);
+    const watched_seconds = anime_library.reduce((total, item) => {
+        const episode_seconds = anime_episode_duration_seconds(item);
         const watched_episodes = Number(item.episodes_watched || 0);
-        return total + (episode_ms * watched_episodes);
+        return total + (episode_seconds * watched_episodes);
     }, 0);
 
     anime_count.textContent = watched_anime.length;
-    anime_watch_time.textContent = watched_ms > 0
-        ? Math.round(watched_ms / 3600) + "h"
+    anime_watch_time.textContent = watched_seconds > 0
+        ? Math.round(watched_seconds / 3600) + "h"
         : "—";
 
     render_anime_library();
@@ -4110,7 +4121,7 @@ async function open_anime_editor(anime_id) {
             `Episodes: ${active_anime.total_episodes}` : null,
         active_anime.average_episode_duration_ms ?
             `Episode runtime: ~${Math.round(
-                Number(active_anime.average_episode_duration_ms) / 60
+                anime_episode_duration_seconds(active_anime) / 60
             )} min` : null,
         active_anime.start_date ? `Started: ${active_anime.start_date}` : null,
         active_anime.finish_date ? `Finished: ${active_anime.finish_date}` : null
