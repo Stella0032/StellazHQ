@@ -556,10 +556,11 @@
                             <span class="connected-service-status" id="anilist_connection_label">Not connected</span>
                         </div>
                     </div>
-                    <p id="anilist_connect_description">Import manga, manhwa and manhua progress, statuses, and ratings.</p>
+                    <p id="anilist_connect_description">Import both your anime and manga/manhwa lists, including ratings, statuses, and progress.</p>
                     <div class="connected-service-actions">
                         <button class="library-add-button" id="anilist_connect_button" type="button">Connect AniList</button>
-                        <button class="connected-service-import" id="anilist_sync_header_button" type="button" hidden>Import now</button>
+                        <button class="connected-service-import" id="anilist_anime_sync_button" type="button" hidden>Import anime</button>
+                        <button class="connected-service-import" id="anilist_sync_header_button" type="button" hidden>Import manga</button>
                     </div>
                 </article>
             </div>
@@ -581,7 +582,7 @@
     </dialog>
 
     <div class="toast" id="toast" role="status"></div>
-    <script type="module" src="Entertainment.js?v=73"></script>
+    <script type="module" src="Entertainment.js?v=74"></script>
     <script type="module" src="../firebase/profile_widget.js"></script>
 </body>
 </html>
