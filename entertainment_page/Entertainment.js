@@ -3535,7 +3535,12 @@ onAuthStateChanged(auth, async (user) => {
         const set_supabase_role = httpsCallable(functions, "setSupabaseRole");
         const result = await set_supabase_role();
 
+        // setSupabaseRole changes Firebase custom claims. Force-refresh the
+        // Firebase token before Supabase is allowed to make its first request.
+        // On a brand-new login the old token can otherwise briefly remain
+        // cached and Supabase sees the first library request as unauthorized.
         await user.getIdToken(true);
+        await user.getIdToken(false);
 
         console.log("Supabase role added successfully!");
         console.log(result.data.message);
