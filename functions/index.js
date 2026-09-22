@@ -5379,3 +5379,105 @@ exports.getPlexImportPreview = onCall(async (request) => {
 });
 
 //#endregion
+
+
+//? ------------------------------
+//* ----- Seerr Connection -------
+//? ------------------------------
+//#region
+// Each user connects their own self-hosted Seerr (the unified successor to
+// Overseerr/Jellyseerr) server with an API key, same pattern as the Plex
+// connection above. Seerr's request API (mediaType/mediaId/seasons, the
+// X-Api-Key header, and a 409 on a duplicate request) has been stable across
+// Overseerr, Jellyseerr, and Seerr, so this also works against an
+// Overseerr/Jellyseerr server without changes.
+function normalize_seerr_base_url(raw_url) {
+    const value = String(raw_url || "").trim();
+    if (!/^https?:\/\/\S+$/i.test(value)) return null;
+    return value.replace(/\/+$/, "");
+}
+
+async function seerr_request(base_url, path, api_key, options = {}) {
+    const response = await fetch(base_url + path, {
+        ...options,
+        headers: {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "X-Api-Key": api_key,
+            ...(options.headers || {}),
+        },
+    });
+    if (!response.ok) {
+        const error = new Error(`Seerr request failed (${response.status}).`);
+        error.status = response.status;
+        throw error;
+    }
+    return response.status === 204 ? null : response.json();
+}
+
+exports.connectSeerrServer = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError("unauthenticated", "You must be logged in.");
+    }
+
+    const base_url = normalize_seerr_base_url(request.data?.base_url);
+    const api_key = String(request.data?.api_key || "").trim();
+
+    if (!base_url) {
+        throw new HttpsError(
+            "invalid-argument",
+            "Enter your Seerr server's full URL, including https:// or http://."
+        );
+    }
+    if (!api_key) {
+        throw new HttpsError("invalid-argument", "Enter your Seerr API key.");
+    }
+
+    let user;
+    try {
+        user = await seerr_request(base_url, "/api/v1/auth/me", api_key);
+    } catch (error) {
+        logger.warn("Seerr connection check failed.", {
+            base_url,
+            status: error?.status || null,
+            error: error?.message || String(error),
+        });
+        throw new HttpsError(
+            "failed-precondition",
+            "Stellaz could not reach that Seerr server with this API key. " +
+            "Check the URL and key, and make sure the server is reachable " +
+            "from the internet (Stellaz calls it from Google's servers, " +
+            "not from your home network)."
+        );
+    }
+
+    const display_name = user?.username || user?.plexUsername || user?.email || null;
+
+    await db.collection("seerr_connections").doc(request.auth.uid).set({
+        base_url,
+        api_key,
+        display_name,
+        connected_at: new Date(),
+    }, {merge: true});
+
+    return {connected: true, display_name};
+});
+
+exports.getSeerrConnectionStatus = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError("unauthenticated", "You must be logged in.");
+    }
+
+    const connection = await db.collection("seerr_connections")
+        .doc(request.auth.uid).get();
+    if (!connection.exists) return {connected: false};
+
+    const data = connection.data();
+    return {
+        connected: true,
+        display_name: data.display_name || null,
+        base_url: data.base_url || null,
+    };
+});
+
+//#endregion

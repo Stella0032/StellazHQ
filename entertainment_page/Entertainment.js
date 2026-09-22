@@ -2626,6 +2626,100 @@ kitsu_username_input.addEventListener("keydown", (event) => {
 
 
 //? ---------------------------------
+//* ----- Seerr Connection ----------
+//? ---------------------------------
+//#region
+const seerr_connection_label = document.getElementById("seerr_connection_label");
+const seerr_connect_description = document.getElementById("seerr_connect_description");
+const seerr_connect_button = document.getElementById("seerr_connect_button");
+const seerr_url_input = document.getElementById("seerr_url_input");
+const seerr_api_key_input = document.getElementById("seerr_api_key_input");
+
+async function load_seerr_connection_status() {
+    try {
+        const get_status = httpsCallable(functions, "getSeerrConnectionStatus");
+        const result = await get_status();
+
+        if (result.data.connected) {
+            document.getElementById("seerr_connection_badge")
+                ?.removeAttribute("hidden");
+            seerr_connection_label.textContent = result.data.display_name
+                ? "Connected as " + result.data.display_name
+                : "Connected";
+            seerr_connect_description.textContent =
+                "Connected to Stellaz. You can request a movie or show " +
+                "straight from its details.";
+            seerr_url_input.hidden = true;
+            seerr_api_key_input.hidden = true;
+            seerr_connect_button.textContent = "Reconnect Seerr";
+            return;
+        }
+
+        document.getElementById("seerr_connection_badge")
+            ?.setAttribute("hidden", "");
+        seerr_connection_label.textContent = "Not connected";
+        seerr_connect_description.textContent =
+            "Connect your Seerr server so you can request a movie or " +
+            "show straight from its details.";
+        seerr_url_input.hidden = false;
+        seerr_api_key_input.hidden = false;
+        seerr_connect_button.textContent = "Connect Seerr";
+    } catch (error) {
+        console.error("Unable to check Seerr connection:", error);
+    }
+}
+
+async function connect_seerr_server() {
+    const base_url = seerr_url_input.value.trim();
+    const api_key = seerr_api_key_input.value.trim();
+
+    if (!base_url) {
+        seerr_url_input.focus();
+        return;
+    }
+    if (!api_key) {
+        seerr_api_key_input.focus();
+        return;
+    }
+
+    seerr_connect_button.disabled = true;
+    seerr_connect_button.textContent = "Connecting...";
+
+    try {
+        const connect = httpsCallable(functions, "connectSeerrServer");
+        const result = await connect({base_url, api_key});
+
+        seerr_api_key_input.value = "";
+        show_toast(
+            "Seerr connected" +
+            (result.data.display_name ? " as " + result.data.display_name : "") +
+            "."
+        );
+    } catch (error) {
+        console.error("Unable to connect Seerr:", error);
+        alert(
+            error?.message ||
+            "Unable to connect to that Seerr server. Check the URL and API key."
+        );
+    } finally {
+        seerr_connect_button.disabled = false;
+        await load_seerr_connection_status();
+    }
+}
+
+seerr_connect_button.addEventListener("click", connect_seerr_server);
+[seerr_url_input, seerr_api_key_input].forEach((input) => {
+    input.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            connect_seerr_server();
+        }
+    });
+});
+//#endregion
+
+
+//? ---------------------------------
 //* ----- Manga / Manhwa Library ----
 //? ---------------------------------
 //#region
@@ -5450,6 +5544,7 @@ onAuthStateChanged(auth, async (user) => {
             load_anilist_connection_status(),
             load_kitsu_connection_status(),
             load_tmdb_connection_status(),
+            load_seerr_connection_status(),
             load_anime_library(),
             load_manga_library()
         ]);

@@ -33,6 +33,7 @@
                 <span class="connection-badge kitsu-connection-badge" id="kitsu_connection_badge" title="Kitsu connected" hidden>K</span>
                 <span class="connection-badge tmdb-connection-badge" id="tmdb_connection_badge" title="TMDB connected" hidden>TM</span>
                 <span class="connection-badge plex-connection-badge" id="plex_connection_badge" title="Plex connected" hidden>P</span>
+                <span class="connection-badge seerr-connection-badge" id="seerr_connection_badge" title="Seerr connected" hidden>S</span>
             </div>
             <div class="profile-widget" data-profile-widget>
             <button class="profile-trigger" type="button" aria-label="Open profile menu" aria-expanded="false">
@@ -604,6 +605,29 @@
                         <button class="library-add-button" id="kitsu_connect_button" type="button">Connect Kitsu</button>
                         <button class="connected-service-import" id="kitsu_anime_sync_button" type="button" hidden>Import anime</button>
                         <button class="connected-service-import" id="kitsu_manga_sync_button" type="button" hidden>Import manga</button>
+                    </div>
+                </article>
+
+                <article class="connected-service-card" id="seerr_connect_card">
+                    <div class="connected-service-brand">
+                        <span class="connected-service-logo seerr-service-logo">S</span>
+                        <div>
+                            <h3 id="seerr_connect_title">Seerr</h3>
+                            <span class="connected-service-status" id="seerr_connection_label">Not connected</span>
+                        </div>
+                    </div>
+                    <div class="connected-service-copy">
+                        <p id="seerr_connect_description">Connect your Seerr server so you can request a movie or show straight from its details.</p>
+                        <p class="connected-service-note">Stellaz calls your Seerr server directly from its backend, so the server needs to be reachable from the internet (a domain, reverse proxy, or Cloudflare Tunnel — not just your home network).</p>
+                    </div>
+                    <div class="connected-service-actions">
+                        <input class="seerr-server-input" id="seerr_url_input" type="url"
+                               placeholder="https://seerr.example.com" autocomplete="off" maxlength="300"
+                               aria-label="Seerr server URL">
+                        <input class="seerr-server-input" id="seerr_api_key_input" type="password"
+                               placeholder="Seerr API key" autocomplete="off" maxlength="200"
+                               aria-label="Seerr API key">
+                        <button class="library-add-button" id="seerr_connect_button" type="button">Connect Seerr</button>
                     </div>
                 </article>
             </div>
