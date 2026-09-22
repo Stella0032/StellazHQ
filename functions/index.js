@@ -4819,6 +4819,733 @@ exports.searchAniListManga = onCall(async (request) => {
 
 
 //? ------------------------------
+//* ----- Stellaz Friends -------
+//? ------------------------------
+//#region
+function normalize_stellaz_username(value) {
+    const display_name = String(value || "")
+        .normalize("NFKC")
+        .trim()
+        .replace(/\s+/g, " ");
+
+    if (display_name.length < 2 ||
+        display_name.length > 24) {
+        throw new HttpsError(
+            "invalid-argument",
+            "Username must be between 2 and 24 characters."
+        );
+    }
+
+    if (!/^[\p{L}\p{N}_. -]+$/u.test(display_name)) {
+        throw new HttpsError(
+            "invalid-argument",
+            "Username can use letters, numbers, spaces, periods, underscores, and hyphens."
+        );
+    }
+
+    const username_key =
+        display_name.toLocaleLowerCase("en-US");
+
+    return {
+        display_name,
+        username_key,
+        index_id: crypto
+            .createHash("sha256")
+            .update(username_key)
+            .digest("hex"),
+    };
+}
+
+function friend_pair_id(uid_a, uid_b) {
+    return crypto
+        .createHash("sha256")
+        .update(
+            [String(uid_a), String(uid_b)]
+                .sort()
+                .join(":")
+        )
+        .digest("hex");
+}
+
+function public_friend_profile(uid, data = {}) {
+    return {
+        uid,
+        username:
+            data.display_name || "Stellaz user",
+        profile_avatar:
+            data.profile_avatar || null,
+    };
+}
+
+async function reserve_stellaz_username(
+    uid,
+    username,
+    profile_patch = {}
+) {
+    const normalized =
+        normalize_stellaz_username(username);
+    const user_ref =
+        db.collection("users").doc(uid);
+    const index_ref =
+        db.collection("usernames")
+            .doc(normalized.index_id);
+
+    await db.runTransaction(async (transaction) => {
+        const user_snapshot =
+            await transaction.get(user_ref);
+        const user_data =
+            user_snapshot.exists
+                ? user_snapshot.data()
+                : {};
+
+        const old_index_id =
+            user_data.username_index_id || null;
+        const new_index_snapshot =
+            await transaction.get(index_ref);
+
+        let old_index_ref = null;
+        let old_index_snapshot = null;
+
+        if (old_index_id &&
+            old_index_id !== normalized.index_id) {
+            old_index_ref =
+                db.collection("usernames")
+                    .doc(old_index_id);
+            old_index_snapshot =
+                await transaction.get(
+                    old_index_ref
+                );
+        }
+
+        if (new_index_snapshot.exists &&
+            new_index_snapshot.data()?.uid !== uid) {
+            throw new HttpsError(
+                "already-exists",
+                "That username is already taken."
+            );
+        }
+
+        transaction.set(
+            index_ref,
+            {
+                uid,
+                display_name:
+                    normalized.display_name,
+                username_key:
+                    normalized.username_key,
+                updated_at:
+                    new Date(),
+            },
+            {merge: true}
+        );
+
+        if (old_index_ref &&
+            old_index_snapshot?.exists &&
+            old_index_snapshot.data()?.uid === uid) {
+            transaction.delete(old_index_ref);
+        }
+
+        transaction.set(
+            user_ref,
+            {
+                display_name:
+                    normalized.display_name,
+                username_key:
+                    normalized.username_key,
+                username_index_id:
+                    normalized.index_id,
+                ...profile_patch,
+                profile_updated_at:
+                    new Date(),
+            },
+            {merge: true}
+        );
+    });
+
+    return normalized;
+}
+
+exports.saveStellazProfile =
+    onCall(async (request) => {
+        if (!request.auth) {
+            throw new HttpsError(
+                "unauthenticated",
+                "You must be logged in."
+            );
+        }
+
+        const profile_avatar =
+            String(
+                request.data?.profile_avatar || ""
+            ).trim()
+                .slice(0, 300) || null;
+
+        const normalized =
+            await reserve_stellaz_username(
+                request.auth.uid,
+                request.data?.username,
+                {profile_avatar}
+            );
+
+        return {
+            username:
+                normalized.display_name,
+            profile_avatar,
+        };
+    });
+
+exports.ensureStellazUsernameIndex =
+    onCall(async (request) => {
+        if (!request.auth) {
+            throw new HttpsError(
+                "unauthenticated",
+                "You must be logged in."
+            );
+        }
+
+        const user_ref =
+            db.collection("users")
+                .doc(request.auth.uid);
+        const snapshot =
+            await user_ref.get();
+        const data =
+            snapshot.exists
+                ? snapshot.data()
+                : {};
+
+        const email =
+            String(
+                request.auth.token?.email || ""
+            );
+        const fallback =
+            email.includes("@")
+                ? email.split("@")[0]
+                : "";
+
+        const candidate =
+            data.display_name || fallback;
+
+        if (!candidate) {
+            return {
+                indexed: false,
+                needs_username: true,
+            };
+        }
+
+        try {
+            const normalized =
+                await reserve_stellaz_username(
+                    request.auth.uid,
+                    candidate
+                );
+
+            return {
+                indexed: true,
+                username:
+                    normalized.display_name,
+            };
+        } catch (error) {
+            if (error instanceof HttpsError &&
+                error.code ===
+                    "already-exists") {
+                return {
+                    indexed: false,
+                    needs_username_change: true,
+                    username:
+                        String(candidate),
+                };
+            }
+
+            throw error;
+        }
+    });
+
+async function find_stellaz_user_by_username(
+    username
+) {
+    const normalized =
+        normalize_stellaz_username(username);
+    const index_ref =
+        db.collection("usernames")
+            .doc(normalized.index_id);
+    const index_snapshot =
+        await index_ref.get();
+
+    if (index_snapshot.exists &&
+        index_snapshot.data()?.uid) {
+        return {
+            uid: index_snapshot.data().uid,
+            username:
+                index_snapshot.data()
+                    .display_name ||
+                normalized.display_name,
+        };
+    }
+
+    // Temporary compatibility path for profiles created before the
+    // username index existed. It self-heals the match into the index.
+    const legacy_snapshot =
+        await db.collection("users")
+            .limit(500)
+            .get();
+
+    const matches =
+        legacy_snapshot.docs.filter((doc_snapshot) => {
+            const existing =
+                doc_snapshot.data()
+                    ?.display_name;
+            if (!existing) return false;
+
+            try {
+                return normalize_stellaz_username(
+                    existing
+                ).username_key ===
+                    normalized.username_key;
+            } catch (_) {
+                return false;
+            }
+        });
+
+    if (matches.length > 1) {
+        throw new HttpsError(
+            "failed-precondition",
+            "More than one older account uses that username. The other person needs to choose a unique username first."
+        );
+    }
+
+    if (matches.length === 1) {
+        const target =
+            matches[0];
+        const target_name =
+            target.data().display_name;
+
+        try {
+            await reserve_stellaz_username(
+                target.id,
+                target_name
+            );
+        } catch (_) {
+            // Another request may have indexed it first.
+        }
+
+        return {
+            uid: target.id,
+            username: target_name,
+        };
+    }
+
+    throw new HttpsError(
+        "not-found",
+        "No Stellaz account was found with that username."
+    );
+}
+
+exports.sendFriendRequest =
+    onCall(async (request) => {
+        if (!request.auth) {
+            throw new HttpsError(
+                "unauthenticated",
+                "You must be logged in."
+            );
+        }
+
+        const sender_uid =
+            request.auth.uid;
+        const target =
+            await find_stellaz_user_by_username(
+                request.data?.username
+            );
+        const receiver_uid =
+            target.uid;
+
+        if (receiver_uid === sender_uid) {
+            throw new HttpsError(
+                "invalid-argument",
+                "You cannot send a friend request to yourself."
+            );
+        }
+
+        const request_id =
+            friend_pair_id(
+                sender_uid,
+                receiver_uid
+            );
+        const request_ref =
+            db.collection("friend_requests")
+                .doc(request_id);
+        const friendship_ref =
+            db.collection("friendships")
+                .doc(request_id);
+
+        await db.runTransaction(async (transaction) => {
+            const [
+                friendship_snapshot,
+                request_snapshot,
+            ] = await Promise.all([
+                transaction.get(
+                    friendship_ref
+                ),
+                transaction.get(
+                    request_ref
+                ),
+            ]);
+
+            if (friendship_snapshot.exists) {
+                throw new HttpsError(
+                    "already-exists",
+                    "You are already friends."
+                );
+            }
+
+            if (request_snapshot.exists &&
+                request_snapshot.data()
+                    ?.status === "pending") {
+                const existing =
+                    request_snapshot.data();
+
+                if (existing.receiver_uid ===
+                    sender_uid) {
+                    throw new HttpsError(
+                        "failed-precondition",
+                        "That person already sent you a friend request. Open Friends to accept it."
+                    );
+                }
+
+                throw new HttpsError(
+                    "already-exists",
+                    "Friend request already sent."
+                );
+            }
+
+            transaction.set(
+                request_ref,
+                {
+                    sender_uid,
+                    receiver_uid,
+                    status: "pending",
+                    created_at:
+                        new Date(),
+                    updated_at:
+                        new Date(),
+                }
+            );
+        });
+
+        return {
+            sent: true,
+            request_id,
+            username:
+                target.username,
+        };
+    });
+
+exports.respondToFriendRequest =
+    onCall(async (request) => {
+        if (!request.auth) {
+            throw new HttpsError(
+                "unauthenticated",
+                "You must be logged in."
+            );
+        }
+
+        const request_id =
+            String(
+                request.data?.request_id || ""
+            );
+        const action =
+            String(
+                request.data?.action || ""
+            );
+
+        if (!/^[a-f0-9]{64}$/.test(
+            request_id
+        ) ||
+            !["accept", "decline"].includes(
+                action
+            )) {
+            throw new HttpsError(
+                "invalid-argument",
+                "A valid friend request action is required."
+            );
+        }
+
+        const request_ref =
+            db.collection("friend_requests")
+                .doc(request_id);
+        const friendship_ref =
+            db.collection("friendships")
+                .doc(request_id);
+
+        await db.runTransaction(async (transaction) => {
+            const request_snapshot =
+                await transaction.get(
+                    request_ref
+                );
+
+            if (!request_snapshot.exists) {
+                throw new HttpsError(
+                    "not-found",
+                    "Friend request not found."
+                );
+            }
+
+            const data =
+                request_snapshot.data();
+
+            if (data.receiver_uid !==
+                request.auth.uid) {
+                throw new HttpsError(
+                    "permission-denied",
+                    "That friend request does not belong to you."
+                );
+            }
+
+            if (data.status !== "pending") {
+                throw new HttpsError(
+                    "failed-precondition",
+                    "That friend request has already been answered."
+                );
+            }
+
+            if (action === "decline") {
+                transaction.update(
+                    request_ref,
+                    {
+                        status: "declined",
+                        responded_at:
+                            new Date(),
+                        updated_at:
+                            new Date(),
+                    }
+                );
+                return;
+            }
+
+            transaction.set(
+                friendship_ref,
+                {
+                    members: [
+                        data.sender_uid,
+                        data.receiver_uid,
+                    ].sort(),
+                    created_at:
+                        new Date(),
+                    accepted_request_id:
+                        request_id,
+                }
+            );
+
+            transaction.update(
+                request_ref,
+                {
+                    status: "accepted",
+                    responded_at:
+                        new Date(),
+                    updated_at:
+                        new Date(),
+                }
+            );
+        });
+
+        return {
+            accepted:
+                action === "accept",
+        };
+    });
+
+exports.getFriendOverview =
+    onCall(async (request) => {
+        if (!request.auth) {
+            throw new HttpsError(
+                "unauthenticated",
+                "You must be logged in."
+            );
+        }
+
+        const uid =
+            request.auth.uid;
+
+        const [
+            friendship_snapshot,
+            incoming_snapshot,
+            outgoing_snapshot,
+        ] = await Promise.all([
+            db.collection("friendships")
+                .where(
+                    "members",
+                    "array-contains",
+                    uid
+                )
+                .get(),
+            db.collection("friend_requests")
+                .where(
+                    "receiver_uid",
+                    "==",
+                    uid
+                )
+                .get(),
+            db.collection("friend_requests")
+                .where(
+                    "sender_uid",
+                    "==",
+                    uid
+                )
+                .get(),
+        ]);
+
+        const friendships =
+            friendship_snapshot.docs
+                .map((doc_snapshot) => ({
+                    id: doc_snapshot.id,
+                    ...doc_snapshot.data(),
+                }));
+
+        const incoming =
+            incoming_snapshot.docs
+                .map((doc_snapshot) => ({
+                    id: doc_snapshot.id,
+                    ...doc_snapshot.data(),
+                }))
+                .filter((item) =>
+                    item.status === "pending"
+                );
+
+        const outgoing =
+            outgoing_snapshot.docs
+                .map((doc_snapshot) => ({
+                    id: doc_snapshot.id,
+                    ...doc_snapshot.data(),
+                }))
+                .filter((item) =>
+                    item.status === "pending"
+                );
+
+        const profile_uids =
+            new Set();
+
+        friendships.forEach((item) => {
+            (item.members || [])
+                .filter((member_uid) =>
+                    member_uid !== uid
+                )
+                .forEach((member_uid) =>
+                    profile_uids.add(
+                        member_uid
+                    )
+                );
+        });
+
+        incoming.forEach((item) =>
+            profile_uids.add(
+                item.sender_uid
+            )
+        );
+        outgoing.forEach((item) =>
+            profile_uids.add(
+                item.receiver_uid
+            )
+        );
+
+        const profile_refs =
+            [...profile_uids].map(
+                (profile_uid) =>
+                    db.collection("users")
+                        .doc(profile_uid)
+            );
+
+        const profile_snapshots =
+            profile_refs.length
+                ? await db.getAll(
+                    ...profile_refs
+                )
+                : [];
+
+        const profiles =
+            new Map(
+                profile_snapshots.map(
+                    (snapshot) => [
+                        snapshot.id,
+                        public_friend_profile(
+                            snapshot.id,
+                            snapshot.exists
+                                ? snapshot.data()
+                                : {}
+                        ),
+                    ]
+                )
+            );
+
+        const fallback_profile =
+            (profile_uid) =>
+                profiles.get(profile_uid) ||
+                public_friend_profile(
+                    profile_uid
+                );
+
+        const friends =
+            friendships.map((item) => {
+                const friend_uid =
+                    (item.members || [])
+                        .find(
+                            (member_uid) =>
+                                member_uid !== uid
+                        );
+
+                return {
+                    friendship_id:
+                        item.id,
+                    ...fallback_profile(
+                        friend_uid
+                    ),
+                };
+            });
+
+        const incoming_requests =
+            incoming.map((item) => ({
+                request_id:
+                    item.id,
+                ...fallback_profile(
+                    item.sender_uid
+                ),
+            }));
+
+        const outgoing_requests =
+            outgoing.map((item) => ({
+                request_id:
+                    item.id,
+                ...fallback_profile(
+                    item.receiver_uid
+                ),
+            }));
+
+        const by_username =
+            (a, b) =>
+                String(a.username)
+                    .localeCompare(
+                        String(b.username)
+                    );
+
+        friends.sort(by_username);
+        incoming_requests.sort(
+            by_username
+        );
+        outgoing_requests.sort(
+            by_username
+        );
+
+        return {
+            friends,
+            incoming:
+                incoming_requests,
+            outgoing:
+                outgoing_requests,
+        };
+    });
+//#endregion
+
+
+
+//? ------------------------------
 //* ----- Seerr Connection ------
 //? ------------------------------
 //#region

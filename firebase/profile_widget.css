@@ -496,3 +496,152 @@ html[data-theme="flurple"] .notification-panel{
         width:auto;
     }
 }
+
+
+/* Stellaz friends */
+.friends-dialog{
+    width:min(560px,calc(100% - 28px));
+}
+.friends-shell{
+    display:grid;
+    gap:18px;
+}
+.friend-add-form{
+    display:flex;
+    gap:9px;
+}
+.friend-add-form input{
+    min-width:0;
+    flex:1;
+    padding:12px 13px;
+    border:1px solid rgba(255,255,255,.13);
+    border-radius:10px;
+    outline:0;
+    color:#fff;
+    background:rgba(1,6,18,.72);
+    font:inherit;
+}
+.friend-add-form input:focus{
+    border-color:rgba(75,211,255,.55);
+}
+.friend-add-form button,
+.friend-actions button{
+    border:1px solid rgba(92,205,255,.38);
+    border-radius:10px;
+    color:#fff;
+    background:rgba(75,211,255,.11);
+    cursor:pointer;
+    font:inherit;
+    font-weight:700;
+}
+.friend-add-form button{
+    padding:0 15px;
+}
+.friend-message{
+    min-height:18px;
+    margin:-8px 0 0!important;
+    color:#91a9bd!important;
+    font-size:11px!important;
+}
+.friend-section{
+    display:grid;
+    gap:9px;
+}
+.friend-section-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    color:#b9cddd;
+    font-size:11px;
+    letter-spacing:.7px;
+    text-transform:uppercase;
+}
+.friend-section-head span{
+    min-width:24px;
+    padding:3px 7px;
+    border-radius:999px;
+    text-align:center;
+    background:rgba(255,255,255,.06);
+}
+.friend-list{
+    display:grid;
+    gap:7px;
+}
+.friend-row{
+    min-height:54px;
+    padding:8px 10px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    border:1px solid rgba(255,255,255,.09);
+    border-radius:12px;
+    background:rgba(255,255,255,.035);
+}
+.friend-identity{
+    min-width:0;
+    display:flex;
+    align-items:center;
+    gap:10px;
+}
+.friend-identity strong{
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    font-size:13px;
+}
+.friend-avatar{
+    width:38px;
+    height:38px;
+    flex:0 0 38px;
+    object-fit:cover;
+    border-radius:50%;
+    border:1px solid rgba(255,255,255,.14);
+}
+.friend-actions{
+    display:flex;
+    gap:7px;
+}
+.friend-actions button{
+    padding:7px 10px;
+    font-size:11px;
+}
+.friend-actions .friend-decline{
+    border-color:rgba(255,255,255,.12);
+    color:#b9c8d7;
+    background:rgba(255,255,255,.045);
+}
+.friend-pending{
+    color:#91a9bd;
+    font-size:11px;
+}
+.friend-empty{
+    margin:0!important;
+    padding:12px;
+    border:1px dashed rgba(255,255,255,.09);
+    border-radius:11px;
+    color:#7890a4!important;
+    text-align:center;
+    font-size:11px!important;
+}
+html[data-theme="neon"] .friend-add-form button,
+html[data-theme="neon"] .friend-actions .friend-accept{
+    border-color:rgba(72,255,111,.5);
+    background:rgba(43,255,88,.1);
+}
+html[data-theme="flurple"] .friend-add-form button,
+html[data-theme="flurple"] .friend-actions .friend-accept{
+    border-color:rgba(244,199,94,.5);
+    background:rgba(180,92,255,.11);
+}
+@media(max-width:600px){
+    .friend-add-form{
+        display:grid;
+    }
+    .friend-add-form button{
+        min-height:42px;
+    }
+    .friend-row{
+        align-items:flex-start;
+    }
+}

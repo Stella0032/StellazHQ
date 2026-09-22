@@ -171,6 +171,309 @@ if(!services_button){
     const logout_button=widget.querySelector("[data-profile-logout]");
     menu.insertBefore(services_button,logout_button);
 }
+
+let friends_button=widget.querySelector("[data-profile-friends]");
+if(!friends_button){
+    friends_button=document.createElement("button");
+    friends_button.type="button";
+    friends_button.dataset.profileFriends="";
+    friends_button.textContent="Friends";
+    menu.insertBefore(friends_button,services_button);
+}
+
+const friends_dialog=document.createElement("dialog");
+friends_dialog.className="profile-dialog friends-dialog";
+friends_dialog.innerHTML=`
+    <div class="profile-form friends-shell">
+        <div class="profile-dialog-head">
+            <div>
+                <h2>Friends</h2>
+                <p>Send requests by Stellaz username and keep your friends together.</p>
+            </div>
+            <button class="profile-close" type="button">×</button>
+        </div>
+        <form class="friend-add-form">
+            <input id="friend_username_input" maxlength="24"
+                   autocomplete="off" placeholder="Enter a username"
+                   aria-label="Friend username" required>
+            <button type="submit">Send request</button>
+        </form>
+        <p class="friend-message" aria-live="polite"></p>
+        <section class="friend-section">
+            <div class="friend-section-head">
+                <strong>Requests</strong>
+                <span data-friend-request-count>0</span>
+            </div>
+            <div class="friend-list" data-friend-requests>
+                <p class="friend-empty">No pending requests.</p>
+            </div>
+        </section>
+        <section class="friend-section">
+            <div class="friend-section-head">
+                <strong>Friends</strong>
+                <span data-friend-count>0</span>
+            </div>
+            <div class="friend-list" data-friend-list>
+                <p class="friend-empty">No friends yet.</p>
+            </div>
+        </section>
+        <section class="friend-section friend-sent-section">
+            <div class="friend-section-head">
+                <strong>Sent</strong>
+                <span data-friend-sent-count>0</span>
+            </div>
+            <div class="friend-list" data-friend-sent>
+                <p class="friend-empty">No outgoing requests.</p>
+            </div>
+        </section>
+    </div>
+`;
+document.body.appendChild(friends_dialog);
+
+const friend_username_input=
+    friends_dialog.querySelector("#friend_username_input");
+const friend_message=
+    friends_dialog.querySelector(".friend-message");
+const friend_request_list=
+    friends_dialog.querySelector("[data-friend-requests]");
+const friend_list=
+    friends_dialog.querySelector("[data-friend-list]");
+const friend_sent_list=
+    friends_dialog.querySelector("[data-friend-sent]");
+const friend_request_count=
+    friends_dialog.querySelector("[data-friend-request-count]");
+const friend_count=
+    friends_dialog.querySelector("[data-friend-count]");
+const friend_sent_count=
+    friends_dialog.querySelector("[data-friend-sent-count]");
+
+let friend_overview={
+    friends:[],
+    incoming:[],
+    outgoing:[]
+};
+
+function friend_avatar_src(profile){
+    return avatars.includes(profile?.profile_avatar)
+        ? profile.profile_avatar
+        : default_avatar;
+}
+
+function friend_identity(profile){
+    const identity=document.createElement("div");
+    identity.className="friend-identity";
+
+    const avatar=document.createElement("img");
+    avatar.className="friend-avatar";
+    avatar.src=friend_avatar_src(profile);
+    avatar.alt="";
+
+    const username=document.createElement("strong");
+    username.textContent=profile?.username||"Stellaz user";
+
+    identity.append(avatar,username);
+    return identity;
+}
+
+function friend_empty(text){
+    const empty=document.createElement("p");
+    empty.className="friend-empty";
+    empty.textContent=text;
+    return empty;
+}
+
+function render_friend_overview(){
+    const friends=friend_overview.friends||[];
+    const incoming=friend_overview.incoming||[];
+    const outgoing=friend_overview.outgoing||[];
+
+    friend_count.textContent=String(friends.length);
+    friend_request_count.textContent=String(incoming.length);
+    friend_sent_count.textContent=String(outgoing.length);
+    friends_button.textContent=incoming.length
+        ? "Friends ("+incoming.length+")"
+        : "Friends";
+
+    friend_list.replaceChildren();
+    friend_request_list.replaceChildren();
+    friend_sent_list.replaceChildren();
+
+    if(!friends.length){
+        friend_list.appendChild(friend_empty("No friends yet."));
+    }else{
+        friends.forEach(profile=>{
+            const row=document.createElement("div");
+            row.className="friend-row";
+            row.appendChild(friend_identity(profile));
+            friend_list.appendChild(row);
+        });
+    }
+
+    if(!incoming.length){
+        friend_request_list.appendChild(
+            friend_empty("No pending requests.")
+        );
+    }else{
+        incoming.forEach(profile=>{
+            const row=document.createElement("div");
+            row.className="friend-row";
+
+            const actions=document.createElement("div");
+            actions.className="friend-actions";
+
+            const accept=document.createElement("button");
+            accept.type="button";
+            accept.className="friend-accept";
+            accept.dataset.friendRequestId=profile.request_id;
+            accept.dataset.friendAction="accept";
+            accept.textContent="Accept";
+
+            const decline=document.createElement("button");
+            decline.type="button";
+            decline.className="friend-decline";
+            decline.dataset.friendRequestId=profile.request_id;
+            decline.dataset.friendAction="decline";
+            decline.textContent="Decline";
+
+            actions.append(accept,decline);
+            row.append(friend_identity(profile),actions);
+            friend_request_list.appendChild(row);
+        });
+    }
+
+    if(!outgoing.length){
+        friend_sent_list.appendChild(
+            friend_empty("No outgoing requests.")
+        );
+    }else{
+        outgoing.forEach(profile=>{
+            const row=document.createElement("div");
+            row.className="friend-row";
+
+            const pending=document.createElement("span");
+            pending.className="friend-pending";
+            pending.textContent="Pending";
+
+            row.append(friend_identity(profile),pending);
+            friend_sent_list.appendChild(row);
+        });
+    }
+}
+
+async function load_friend_overview(){
+    if(!current_user)return;
+
+    try{
+        const get_overview=
+            httpsCallable(functions,"getFriendOverview");
+        const result=await get_overview();
+        friend_overview=result.data||{
+            friends:[],
+            incoming:[],
+            outgoing:[]
+        };
+        render_friend_overview();
+    }catch(error){
+        console.error("Unable to load friends:",error);
+        friend_message.textContent=
+            "Unable to load friends right now.";
+    }
+}
+
+async function ensure_friend_username(){
+    if(!current_user)return false;
+
+    try{
+        const ensure_index=
+            httpsCallable(functions,"ensureStellazUsernameIndex");
+        const result=await ensure_index();
+
+        if(result.data?.indexed){
+            return true;
+        }
+
+        if(result.data?.needs_username_change){
+            friend_message.textContent=
+                "Your username is already used by another older account. Open Edit profile and choose a unique username.";
+        }else{
+            friend_message.textContent=
+                "Set a username in Edit profile before using Friends.";
+        }
+
+        return false;
+    }catch(error){
+        console.error("Unable to prepare friend username:",error);
+        return false;
+    }
+}
+
+friends_button.addEventListener("click",async()=>{
+    menu.hidden=true;
+    trigger.setAttribute("aria-expanded","false");
+    friend_message.textContent="";
+    friends_dialog.showModal();
+    await ensure_friend_username();
+    await load_friend_overview();
+});
+
+friends_dialog.querySelector(".profile-close")
+    .addEventListener("click",()=>friends_dialog.close());
+
+friends_dialog.querySelector(".friend-add-form")
+    .addEventListener("submit",async event=>{
+        event.preventDefault();
+
+        const username=friend_username_input.value.trim();
+        if(!username)return;
+
+        friend_message.textContent="Sending request...";
+
+        try{
+            const send_request=
+                httpsCallable(functions,"sendFriendRequest");
+            const result=await send_request({username});
+            friend_username_input.value="";
+            friend_message.textContent=
+                "Friend request sent to "+
+                (result.data?.username||username)+".";
+            await load_friend_overview();
+        }catch(error){
+            console.error("Unable to send friend request:",error);
+            friend_message.textContent=
+                error?.message||
+                "Unable to send that friend request.";
+        }
+    });
+
+friend_request_list.addEventListener("click",async event=>{
+    const button=event.target.closest("[data-friend-action]");
+    if(!button)return;
+
+    const request_id=button.dataset.friendRequestId;
+    const action=button.dataset.friendAction;
+    button.disabled=true;
+    friend_message.textContent=
+        action==="accept"
+            ?"Accepting friend request..."
+            :"Declining friend request...";
+
+    try{
+        const respond=
+            httpsCallable(functions,"respondToFriendRequest");
+        await respond({request_id,action});
+        friend_message.textContent=
+            action==="accept"
+                ?"Friend request accepted."
+                :"Friend request declined.";
+        await load_friend_overview();
+    }catch(error){
+        console.error("Unable to answer friend request:",error);
+        friend_message.textContent=
+            error?.message||
+            "Unable to answer that friend request.";
+        button.disabled=false;
+    }
+});
 const theme_dialog=document.createElement("dialog");theme_dialog.className="profile-dialog theme-dialog";theme_dialog.innerHTML=`<div class="profile-form"><div class="profile-dialog-head"><div><h2>Theme</h2><p>Choose how Stellaz looks for your account.</p></div><button class="profile-close" type="button">×</button></div><div class="theme-options">${themes.map(t=>`<button class="theme-choice" type="button" data-theme="${t.id}"><strong>${t.name}</strong><span>${t.description}</span></button>`).join("")}</div></div>`;document.body.appendChild(theme_dialog);
 function apply_theme(theme){selected_theme=themes.some(t=>t.id===theme)?theme:"stellaz";document.documentElement.dataset.theme=selected_theme;theme_dialog.querySelectorAll(".theme-choice").forEach(b=>b.classList.toggle("selected",b.dataset.theme===selected_theme))}
 
@@ -178,6 +481,6 @@ function render(n,a){name_el.textContent=n||"Account";const avatar=avatars.inclu
 trigger.addEventListener("click",e=>{e.stopPropagation();notification_panel.hidden=true;notification_button.setAttribute("aria-expanded","false");menu.hidden=!menu.hidden;trigger.setAttribute("aria-expanded",String(!menu.hidden))});document.addEventListener("click",e=>{if(!widget.contains(e.target)){menu.hidden=true;notification_panel.hidden=true;trigger.setAttribute("aria-expanded","false");notification_button.setAttribute("aria-expanded","false")}});
 widget.querySelector("[data-profile-edit]").addEventListener("click",()=>{menu.hidden=true;message.textContent="";dialog.showModal()});widget.querySelector("[data-profile-theme]")?.addEventListener("click",()=>{menu.hidden=true;apply_theme(selected_theme);theme_dialog.showModal()});services_button.addEventListener("click",()=>{menu.hidden=true;trigger.setAttribute("aria-expanded","false");const services_dialog=document.getElementById("connected_services_dialog");if(services_dialog){if(!services_dialog.open)services_dialog.showModal();return}window.location.href="../entertainment_page/Entertainment.html?services=1"});widget.querySelector("[data-profile-logout]").addEventListener("click",async()=>{await signOut(auth);window.location.href="../index.html"});
 dialog.querySelector(".profile-close").addEventListener("click",()=>dialog.close());theme_dialog.querySelector(".profile-close").addEventListener("click",()=>theme_dialog.close());theme_dialog.querySelectorAll(".theme-choice").forEach(b=>b.addEventListener("click",async()=>{if(!current_user)return;const theme=b.dataset.theme;apply_theme(theme);try{await setDoc(doc(db,"users",current_user.uid),{theme},{merge:true});theme_dialog.close()}catch(error){console.error(error)}}));dialog.querySelectorAll(".avatar-choice").forEach(b=>b.addEventListener("click",()=>select(b.dataset.avatar)));
-dialog.querySelector(".profile-form").addEventListener("submit",async e=>{e.preventDefault();if(!current_user)return;const display_name=input.value.trim();if(!display_name)return;message.textContent="Saving...";try{await setDoc(doc(db,"users",current_user.uid),{display_name,profile_avatar:selected_avatar},{merge:true});render(display_name,selected_avatar);message.textContent="Profile saved.";setTimeout(()=>dialog.close(),450)}catch(error){console.error(error);message.textContent="Unable to save profile."}});
-onAuthStateChanged(auth,async user=>{if(!user){window.location.href="../index.html";return}current_user=user;const fallback=user.email?.split("@")[0]||"Account";try{const snap=await getDoc(doc(db,"users",user.uid)),profile=snap.exists()?snap.data():{};const display_name=profile.display_name||fallback;selected_avatar=avatars.includes(profile.profile_avatar)?profile.profile_avatar:default_avatar;selected_theme=profile.theme||"stellaz";apply_theme(selected_theme);input.value=display_name;select(selected_avatar);render(display_name,selected_avatar)}catch(error){console.error(error);apply_theme("stellaz");input.value=fallback;render(fallback,default_avatar)}await load_notifications();if(notification_timer)clearInterval(notification_timer);notification_timer=setInterval(()=>load_notifications({mark_seen:!notification_panel.hidden}),60000)});
+dialog.querySelector(".profile-form").addEventListener("submit",async e=>{e.preventDefault();if(!current_user)return;const display_name=input.value.trim();if(!display_name)return;message.textContent="Saving...";try{const save_profile=httpsCallable(functions,"saveStellazProfile");const result=await save_profile({username:display_name,profile_avatar:selected_avatar});const saved_name=result.data?.username||display_name;input.value=saved_name;render(saved_name,selected_avatar);message.textContent="Profile saved.";await load_friend_overview();setTimeout(()=>dialog.close(),450)}catch(error){console.error(error);message.textContent=error?.code==="functions/already-exists"?"That username is already taken.":(error?.message||"Unable to save profile.");}});
+onAuthStateChanged(auth,async user=>{if(!user){window.location.href="../index.html";return}current_user=user;const fallback=user.email?.split("@")[0]||"Account";try{const snap=await getDoc(doc(db,"users",user.uid)),profile=snap.exists()?snap.data():{};const display_name=profile.display_name||fallback;selected_avatar=avatars.includes(profile.profile_avatar)?profile.profile_avatar:default_avatar;selected_theme=profile.theme||"stellaz";apply_theme(selected_theme);input.value=display_name;select(selected_avatar);render(display_name,selected_avatar)}catch(error){console.error(error);apply_theme("stellaz");input.value=fallback;render(fallback,default_avatar)}await ensure_friend_username();await Promise.allSettled([load_notifications(),load_friend_overview()]);if(notification_timer)clearInterval(notification_timer);notification_timer=setInterval(()=>load_notifications({mark_seen:!notification_panel.hidden}),60000)});
 }
