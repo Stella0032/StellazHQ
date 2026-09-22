@@ -8,11 +8,10 @@
  */
 
 const {setGlobalOptions} = require("firebase-functions");
-const {defineSecret} = require("firebase-functions/params");
+const {defineSecret, defineString} = require("firebase-functions/params");
 const {onRequest, onCall, HttpsError} = require("firebase-functions/https");
 const {onSchedule} = require("firebase-functions/v2/scheduler");
 const logger = require("firebase-functions/logger");
-const crypto = require("crypto");
 const dns = require("dns");
 const https = require("https");
 const net = require("net");
@@ -5546,90 +5545,22 @@ exports.getFriendOverview =
 
 
 //? ------------------------------
-//* ----- Seerr Connection ------
+//* ----- Seerr (via Plex) -------
 //? ------------------------------
 //#region
-const seerr_credential_encryption_key =
-    defineSecret("SEERR_CREDENTIAL_ENCRYPTION_KEY");
-
-function seerr_get_encryption_key() {
-    const raw = String(
-        seerr_credential_encryption_key.value() || ""
-    ).trim();
-
-    if (/^[0-9a-fA-F]{64}$/.test(raw)) {
-        return Buffer.from(raw, "hex");
-    }
-
-    let decoded;
-    try {
-        decoded = Buffer.from(raw, "base64");
-    } catch (_) {
-        decoded = null;
-    }
-
-    if (decoded?.length === 32) {
-        return decoded;
-    }
-
-    throw new Error(
-        "SEERR_CREDENTIAL_ENCRYPTION_KEY must be a 32-byte key encoded as 64 hex characters or base64."
-    );
-}
-
-function encrypt_seerr_api_key(api_key) {
-    const key = seerr_get_encryption_key();
-    const iv = crypto.randomBytes(12);
-    const cipher = crypto.createCipheriv(
-        "aes-256-gcm",
-        key,
-        iv
-    );
-
-    const ciphertext = Buffer.concat([
-        cipher.update(api_key, "utf8"),
-        cipher.final(),
-    ]);
-    const tag = cipher.getAuthTag();
-
-    return {
-        ciphertext: ciphertext.toString("base64"),
-        iv: iv.toString("base64"),
-        tag: tag.toString("base64"),
-        version: 1,
-    };
-}
-
-// Kept here for the follow-up Request button. Decryption stays entirely
-// server-side; the browser never receives a stored Seerr API key.
-function decrypt_seerr_api_key(encrypted) {
-    if (!encrypted?.ciphertext ||
-        !encrypted?.iv ||
-        !encrypted?.tag) {
-        throw new Error(
-            "Stored Seerr credentials are incomplete."
-        );
-    }
-
-    const decipher = crypto.createDecipheriv(
-        "aes-256-gcm",
-        seerr_get_encryption_key(),
-        Buffer.from(encrypted.iv, "base64")
-    );
-    decipher.setAuthTag(
-        Buffer.from(encrypted.tag, "base64")
-    );
-
-    return Buffer.concat([
-        decipher.update(
-            Buffer.from(
-                encrypted.ciphertext,
-                "base64"
-            )
-        ),
-        decipher.final(),
-    ]).toString("utf8");
-}
+// Every Seerr user on this server signs in with their Plex account, so
+// Stellaz reuses the Plex account token it already has (from the Plex
+// connection above) to authenticate to Seerr directly — POST
+// /api/v1/auth/plex, the same endpoint Seerr's own "Sign in with Plex"
+// button uses. There is no separate Seerr URL/API key for a user to
+// find and paste in: no Plex connection means no Seerr features, full
+// stop, and there is exactly one Seerr server for the whole app,
+// configured once via the SEERR_BASE_URL parameter, not per user.
+//
+// This also means every request Stellaz sends to Seerr is correctly
+// attributed to whichever real person clicked the button, instead of
+// always looking like it came from a single shared account.
+const seerr_base_url_param = defineString("SEERR_BASE_URL");
 
 function seerr_is_private_ipv4(address) {
     const parts = address
@@ -5765,32 +5696,15 @@ function normalize_seerr_base_url(value) {
         );
     } catch (_) {
         throw new HttpsError(
-            "invalid-argument",
-            "Enter a valid Seerr URL."
+            "failed-precondition",
+            "SEERR_BASE_URL is not a valid URL."
         );
     }
 
     if (parsed.protocol !== "https:") {
         throw new HttpsError(
-            "invalid-argument",
-            "Seerr must use an HTTPS URL."
-        );
-    }
-
-    if (parsed.username ||
-        parsed.password ||
-        parsed.search ||
-        parsed.hash) {
-        throw new HttpsError(
-            "invalid-argument",
-            "Enter only the base HTTPS URL for Seerr."
-        );
-    }
-
-    if (parsed.href.length > 300) {
-        throw new HttpsError(
-            "invalid-argument",
-            "The Seerr URL is too long."
+            "failed-precondition",
+            "SEERR_BASE_URL must use HTTPS."
         );
     }
 
@@ -5800,11 +5714,18 @@ function normalize_seerr_base_url(value) {
     return parsed.toString().replace(/\/$/, "");
 }
 
-async function seerr_https_json(
-    endpoint,
-    api_key,
-    request_options = {}
-) {
+function get_seerr_base_url() {
+    return normalize_seerr_base_url(seerr_base_url_param.value());
+}
+
+// SSRF-safe HTTPS request: resolves the hostname server-side and pins the
+// connection to the resolved IP (so a later DNS change mid-request can't
+// redirect it), rejects private/LAN addresses, and never follows
+// redirects. SEERR_BASE_URL is a fixed, admin-configured value rather
+// than per-request user input, but keeping this hardening costs nothing
+// and still guards against e.g. a misconfigured or later-repointed DNS
+// record silently pointing Seerr traffic somewhere it shouldn't go.
+async function seerr_https_json(endpoint, request_options = {}) {
     const method =
         request_options.method || "GET";
     const request_body =
@@ -5839,9 +5760,9 @@ async function seerr_https_json(
                 rejectUnauthorized: true,
                 headers: {
                     Accept: "application/json",
-                    "X-Api-Key": api_key,
                     "User-Agent":
                         "StellazHQ/1.0",
+                    ...(request_options.headers || {}),
                     ...(request_body ? {
                         "Content-Type": "application/json",
                         "Content-Length": request_body.length,
@@ -5889,6 +5810,8 @@ async function seerr_https_json(
                                 response.statusCode || 0
                             ),
                         payload,
+                        set_cookie:
+                            response.headers["set-cookie"] || null,
                     });
                 });
             }
@@ -5908,168 +5831,47 @@ async function seerr_https_json(
     });
 }
 
-exports.connectSeerrServer = onCall(
-    {
-        secrets: [
-            seerr_credential_encryption_key,
-        ],
-        timeoutSeconds: 30,
-    },
-    async (request) => {
-        if (!request.auth) {
-            throw new HttpsError(
-                "unauthenticated",
-                "You must be logged in."
-            );
-        }
+// Logs a Plex account into Seerr (server-wide, single-instance) and
+// returns the resulting session cookie, or null if this Plex account
+// isn't recognized/allowed on that Seerr instance (Seerr answers 403 for
+// a Plex user without server access, same as its own login page would).
+async function seerr_login_with_plex(base_url, plex_token) {
+    const result = await seerr_https_json(
+        `${base_url}/api/v1/auth/plex`,
+        {method: "POST", body: {authToken: plex_token}}
+    );
 
-        const base_url =
-            normalize_seerr_base_url(
-                request.data?.base_url
-            );
-        const api_key =
-            String(
-                request.data?.api_key || ""
-            ).trim();
-
-        if (!api_key ||
-            api_key.length > 500) {
-            throw new HttpsError(
-                "invalid-argument",
-                "Enter a valid Seerr API key."
-            );
-        }
-
-        let result;
-        try {
-            result = await seerr_https_json(
-                base_url +
-                    "/api/v1/auth/me",
-                api_key
-            );
-        } catch (error) {
-            logger.warn(
-                "Unable to reach Seerr server.",
-                {
-                    uid: request.auth.uid,
-                    base_url,
-                    error:
-                        error?.message ||
-                        "Connection failed",
-                }
-            );
-
-            throw new HttpsError(
-                "failed-precondition",
-                "Stellaz could not securely reach that Seerr server."
-            );
-        }
-
-        if (result.status === 401 ||
-            result.status === 403) {
-            throw new HttpsError(
-                "failed-precondition",
-                "Seerr rejected that API key."
-            );
-        }
-
-        if (result.status < 200 ||
-            result.status >= 300 ||
-            !result.payload?.id) {
-            throw new HttpsError(
-                "failed-precondition",
-                "That server did not respond like a valid Seerr instance."
-            );
-        }
-
-        const encrypted =
-            encrypt_seerr_api_key(api_key);
-        const display_name =
-            result.payload.displayName ||
-            result.payload.username ||
-            result.payload.plexUsername ||
-            result.payload.jellyfinUsername ||
-            result.payload.email ||
-            "Seerr user";
-
-        await db
-            .collection("seerr_connections")
-            .doc(request.auth.uid)
-            .set({
-                base_url,
-                display_name:
-                    String(display_name)
-                        .slice(0, 160),
-                seerr_user_id:
-                    String(
-                        result.payload.id
-                    ),
-                credential: {
-                    ciphertext:
-                        encrypted.ciphertext,
-                    iv: encrypted.iv,
-                    tag: encrypted.tag,
-                    version:
-                        encrypted.version,
-                },
-                connected_at:
-                    new Date(),
-                updated_at:
-                    new Date(),
-            }, {merge: true});
-
-        return {
-            connected: true,
-            display_name:
-                String(display_name)
-                    .slice(0, 160),
-            base_url,
-        };
+    if (result.status < 200 || result.status >= 300) {
+        return null;
     }
-);
 
-exports.getSeerrConnectionStatus =
-    onCall(async (request) => {
-        if (!request.auth) {
-            throw new HttpsError(
-                "unauthenticated",
-                "You must be logged in."
-            );
-        }
+    const cookies = result.set_cookie || [];
+    if (!cookies.length) return null;
 
-        const snapshot = await db
-            .collection("seerr_connections")
-            .doc(request.auth.uid)
-            .get();
+    return cookies
+        .map((entry) => entry.split(";")[0])
+        .join("; ");
+}
 
-        if (!snapshot.exists) {
-            return {
-                connected: false,
-            };
-        }
+// Resolves a Stellaz user straight to a logged-in Seerr session, using
+// whatever Plex account they already connected to Stellaz. Returns null
+// (never throws) whenever Seerr isn't usable for this user yet — no Plex
+// connection, or Plex connected but not recognized by Seerr — so callers
+// can degrade gracefully instead of surfacing a raw error.
+async function seerr_session_for_uid(uid) {
+    const plex_snapshot = await db
+        .collection("plex_connections")
+        .doc(uid)
+        .get();
+    const plex_token = plex_snapshot.data()?.access_token;
+    if (!plex_token) return null;
 
-        const data = snapshot.data();
+    const base_url = get_seerr_base_url();
+    const cookie = await seerr_login_with_plex(base_url, plex_token);
+    if (!cookie) return null;
 
-        return {
-            connected:
-                Boolean(
-                    data.base_url &&
-                    data.credential?.ciphertext &&
-                    data.credential?.iv &&
-                    data.credential?.tag
-                ),
-            display_name:
-                data.display_name || null,
-            base_url:
-                data.base_url || null,
-        };
-    });
-
-// Everything below is the actual friction-reduction feature: show whether
-// a title is already on the user's Plex (via Seerr, since Seerr already
-// tracks Plex availability for whatever server it's paired with — no need
-// for Stellaz to talk to Plex directly), and let the user either watch it
-// or request it straight from its details in Stellaz.
+    return {base_url, cookie};
+}
 
 // Seerr's GET /api/v1/movie|tv/{id} embeds a `mediaInfo` object once
 // anything has happened with that title (requested, downloading, or
@@ -6078,15 +5880,10 @@ exports.getSeerrConnectionStatus =
 // itself computes from its own configured Plex server, so it's both the
 // "is this on Plex" signal and the destination for a Watch button in one
 // field — see the `setPlexUrls()` hook in Seerr's Media entity.
-async function seerr_fetch_media_info(
-    base_url,
-    api_key,
-    media_type,
-    tmdb_id
-) {
+async function seerr_fetch_media_info(base_url, cookie, media_type, tmdb_id) {
     const result = await seerr_https_json(
         `${base_url}/api/v1/${media_type}/${tmdb_id}`,
-        api_key
+        {headers: {Cookie: cookie}}
     );
 
     if (result.status < 200 || result.status >= 300) {
@@ -6112,32 +5909,8 @@ function seerr_status_label(status_code, watch_url) {
     return "idle";
 }
 
-async function seerr_connection_for(uid) {
-    const snapshot = await db
-        .collection("seerr_connections")
-        .doc(uid)
-        .get();
-    const data = snapshot.data();
-
-    if (!snapshot.exists ||
-        !data?.base_url ||
-        !data?.credential?.ciphertext) {
-        return null;
-    }
-
-    return {
-        base_url: data.base_url,
-        api_key: decrypt_seerr_api_key(data.credential),
-    };
-}
-
 exports.getSeerrMediaStatus = onCall(
-    {
-        secrets: [
-            seerr_credential_encryption_key,
-        ],
-        timeoutSeconds: 30,
-    },
+    {timeoutSeconds: 30},
     async (request) => {
         if (!request.auth) {
             throw new HttpsError(
@@ -6159,15 +5932,15 @@ exports.getSeerrMediaStatus = onCall(
             );
         }
 
-        const connection = await seerr_connection_for(request.auth.uid);
-        if (!connection) {
-            return {connected: false, status: "idle", watch_url: null};
-        }
-
         try {
+            const session = await seerr_session_for_uid(request.auth.uid);
+            if (!session) {
+                return {connected: false, status: "idle", watch_url: null};
+            }
+
             const {status_code, watch_url} = await seerr_fetch_media_info(
-                connection.base_url,
-                connection.api_key,
+                session.base_url,
+                session.cookie,
                 media_type,
                 tmdb_id
             );
@@ -6199,12 +5972,7 @@ exports.getSeerrMediaStatus = onCall(
 );
 
 exports.requestMediaOnSeerr = onCall(
-    {
-        secrets: [
-            seerr_credential_encryption_key,
-        ],
-        timeoutSeconds: 30,
-    },
+    {timeoutSeconds: 30},
     async (request) => {
         if (!request.auth) {
             throw new HttpsError(
@@ -6226,23 +5994,35 @@ exports.requestMediaOnSeerr = onCall(
             );
         }
 
-        const connection = await seerr_connection_for(request.auth.uid);
-        if (!connection) {
+        const plex_snapshot = await db
+            .collection("plex_connections")
+            .doc(request.auth.uid)
+            .get();
+        const plex_token = plex_snapshot.data()?.access_token;
+
+        if (!plex_token) {
             throw new HttpsError(
                 "failed-precondition",
-                "Connect your Seerr server first."
+                "Connect your Plex account first."
             );
         }
 
-        // Defense in depth: the frontend already hides the Request button
-        // once something is on Plex, but the dialog could have been open
-        // for a while — re-check right before requesting rather than
-        // trust a possibly-stale render.
+        const base_url = get_seerr_base_url();
+        const cookie = await seerr_login_with_plex(base_url, plex_token);
+
+        if (!cookie) {
+            throw new HttpsError(
+                "failed-precondition",
+                "Your Plex account doesn't have access to Seerr."
+            );
+        }
+
+        // Defense in depth: the frontend already hides Request once
+        // something's on Plex, but the dialog could have been open a
+        // while — re-check right before requesting rather than trust a
+        // possibly-stale render.
         const {watch_url} = await seerr_fetch_media_info(
-            connection.base_url,
-            connection.api_key,
-            media_type,
-            tmdb_id
+            base_url, cookie, media_type, tmdb_id
         );
         if (watch_url) {
             throw new HttpsError(
@@ -6264,9 +6044,8 @@ exports.requestMediaOnSeerr = onCall(
         let result;
         try {
             result = await seerr_https_json(
-                connection.base_url + "/api/v1/request",
-                connection.api_key,
-                {method: "POST", body: request_body}
+                `${base_url}/api/v1/request`,
+                {method: "POST", body: request_body, headers: {Cookie: cookie}}
             );
         } catch (error) {
             logger.warn(
@@ -6294,14 +6073,6 @@ exports.requestMediaOnSeerr = onCall(
                 requested: true,
                 already_requested: true,
             };
-        }
-
-        if (result.status === 401 ||
-            result.status === 403) {
-            throw new HttpsError(
-                "failed-precondition",
-                "Seerr rejected that API key."
-            );
         }
 
         if (result.status < 200 ||
