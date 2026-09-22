@@ -5769,13 +5769,26 @@ async function seerr_https_json(endpoint, request_options = {}) {
                     } : {}),
                 },
                 timeout: 12000,
+                // Node's Happy Eyeballs (dual-stack) connection logic calls
+                // a custom `lookup` with `options.all: true` and expects an
+                // *array* of addresses back in that case — the older
+                // single (address, family) callback form below is only for
+                // the non-Happy-Eyeballs path. Handling only the old form
+                // made every request here fail with a cryptic
+                // "Invalid IP address: undefined" once Node actually took
+                // the dual-stack path, which it does by default.
                 lookup:
-                    (_hostname, _options, callback) =>
-                        callback(
-                            null,
-                            target.address,
-                            target.family
-                        ),
+                    (_hostname, options, callback) =>
+                        options.all
+                            ? callback(null, [{
+                                address: target.address,
+                                family: target.family,
+                            }])
+                            : callback(
+                                null,
+                                target.address,
+                                target.family
+                            ),
             },
             (response) => {
                 let body = "";
