@@ -2890,6 +2890,168 @@ async function notification_supabase_select(table, select_fields) {
     return await response.json();
 }
 
+async function friend_library_supabase_select(
+    table,
+    select_fields,
+    friend_uid
+) {
+    const endpoint = new URL(
+        supabase_url + "/rest/v1/" + table
+    );
+    endpoint.searchParams.set(
+        "select",
+        select_fields
+    );
+    endpoint.searchParams.set(
+        "user_id",
+        "eq." + friend_uid
+    );
+    endpoint.searchParams.set(
+        "order",
+        "title.asc"
+    );
+
+    const response = await fetch(endpoint, {
+        headers: {
+            apikey:
+                supabase_secret_key.value(),
+            Authorization:
+                "Bearer " +
+                supabase_secret_key.value(),
+            Accept: "application/json",
+        },
+    });
+
+    if (!response.ok) {
+        const error_text =
+            await response.text();
+
+        logger.error(
+            "Friend library Supabase read failed.",
+            {
+                table,
+                status: response.status,
+                error: error_text,
+            }
+        );
+
+        throw new HttpsError(
+            "internal",
+            "Unable to load that friend's library."
+        );
+    }
+
+    const rows = await response.json();
+    return Array.isArray(rows) ? rows : [];
+}
+
+exports.getFriendEntertainmentLibrary =
+    onCall(
+        {
+            secrets: [
+                supabase_secret_key,
+            ],
+        },
+        async (request) => {
+            if (!request.auth) {
+                throw new HttpsError(
+                    "unauthenticated",
+                    "You must be logged in."
+                );
+            }
+
+            const viewer_uid =
+                request.auth.uid;
+            const friend_uid =
+                String(
+                    request.data?.friend_uid || ""
+                ).trim();
+
+            if (!friend_uid ||
+                friend_uid === viewer_uid) {
+                throw new HttpsError(
+                    "invalid-argument",
+                    "Choose a friend to view."
+                );
+            }
+
+            const friendship_id =
+                friend_pair_id(
+                    viewer_uid,
+                    friend_uid
+                );
+            const friendship_snapshot =
+                await db
+                    .collection("friendships")
+                    .doc(friendship_id)
+                    .get();
+
+            const members =
+                friendship_snapshot.exists
+                    ? friendship_snapshot
+                        .data()?.members || []
+                    : [];
+
+            if (!friendship_snapshot.exists ||
+                !members.includes(viewer_uid) ||
+                !members.includes(friend_uid)) {
+                throw new HttpsError(
+                    "permission-denied",
+                    "You can only view the library of an accepted friend."
+                );
+            }
+
+            const profile_snapshot =
+                await db
+                    .collection("users")
+                    .doc(friend_uid)
+                    .get();
+            const profile =
+                public_friend_profile(
+                    friend_uid,
+                    profile_snapshot.exists
+                        ? profile_snapshot.data()
+                        : {}
+                );
+
+            const [
+                movies,
+                shows,
+                anime,
+                manga,
+            ] = await Promise.all([
+                friend_library_supabase_select(
+                    "movies",
+                    "id,title,year,status,my_rating,poster_url,tmdb_rating",
+                    friend_uid
+                ),
+                friend_library_supabase_select(
+                    "tv_shows",
+                    "id,title,year,status,my_rating,poster_url,tmdb_rating",
+                    friend_uid
+                ),
+                friend_library_supabase_select(
+                    "anime",
+                    "id,title,status,episodes_watched,total_episodes,my_rating,poster_url,media_type,anilist_score,mal_score,kitsu_score",
+                    friend_uid
+                ),
+                friend_library_supabase_select(
+                    "manga_library",
+                    "id,title,user_status,chapters_read,total_chapters,my_rating,poster_url,media_kind,anilist_score,mal_score,kitsu_score",
+                    friend_uid
+                ),
+            ]);
+
+            return {
+                friend: profile,
+                movies,
+                shows,
+                anime,
+                manga,
+            };
+        }
+    );
+
 function notification_normalize_title(value) {
     return String(value || "")
         .normalize("NFKD")

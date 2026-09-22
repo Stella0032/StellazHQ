@@ -230,6 +230,210 @@ friends_dialog.innerHTML=`
 `;
 document.body.appendChild(friends_dialog);
 
+const friend_library_dialog=document.createElement("dialog");
+friend_library_dialog.className="profile-dialog friend-library-dialog";
+friend_library_dialog.innerHTML=`
+    <div class="profile-form friend-library-shell">
+        <div class="profile-dialog-head friend-library-head">
+            <div class="friend-library-person">
+                <img data-friend-library-avatar alt="">
+                <div>
+                    <span>FRIEND LIBRARY</span>
+                    <h2 data-friend-library-name>Library</h2>
+                </div>
+            </div>
+            <button class="profile-close" type="button">×</button>
+        </div>
+        <div class="friend-library-tabs" role="tablist">
+            <button type="button" data-friend-library-tab="movies">Movies <span>0</span></button>
+            <button type="button" data-friend-library-tab="shows">TV Shows <span>0</span></button>
+            <button type="button" data-friend-library-tab="anime">Anime <span>0</span></button>
+            <button type="button" data-friend-library-tab="manga">Manga <span>0</span></button>
+        </div>
+        <div class="friend-library-grid" data-friend-library-grid>
+            <p class="friend-library-loading">Loading library…</p>
+        </div>
+    </div>
+`;
+document.body.appendChild(friend_library_dialog);
+
+const friend_library_name=
+    friend_library_dialog.querySelector("[data-friend-library-name]");
+const friend_library_avatar=
+    friend_library_dialog.querySelector("[data-friend-library-avatar]");
+const friend_library_grid=
+    friend_library_dialog.querySelector("[data-friend-library-grid]");
+const friend_library_tabs=
+    [...friend_library_dialog.querySelectorAll("[data-friend-library-tab]")];
+
+let friend_library_data=null;
+let friend_library_active="movies";
+let friend_library_return_to_friends=false;
+
+function friend_library_status_label(value){
+    return String(value||"")
+        .replaceAll("_"," ")
+        .replace(/\b\w/g,letter=>letter.toUpperCase());
+}
+
+function friend_library_meta(item,type){
+    const parts=[];
+
+    if(type==="movies"||type==="shows"){
+        if(item.year)parts.push(String(item.year));
+        if(item.status)parts.push(friend_library_status_label(item.status));
+    }else if(type==="anime"){
+        if(item.status)parts.push(friend_library_status_label(item.status));
+        const watched=Number(item.episodes_watched||0);
+        const total=Number(item.total_episodes||0);
+        if(total>0)parts.push(watched+"/"+total+" eps");
+        else if(watched>0)parts.push(watched+" eps");
+    }else{
+        if(item.user_status)parts.push(friend_library_status_label(item.user_status));
+        const read=Number(item.chapters_read||0);
+        const total=Number(item.total_chapters||0);
+        if(total>0)parts.push(read+"/"+total+" ch");
+        else if(read>0)parts.push(read+" ch");
+    }
+
+    if(item.my_rating!==null&&item.my_rating!==undefined){
+        parts.push("★ "+Number(item.my_rating)+"/10");
+    }
+
+    return parts.join(" · ");
+}
+
+function render_friend_library(){
+    if(!friend_library_data)return;
+
+    const rows=friend_library_data[friend_library_active]||[];
+
+    friend_library_tabs.forEach(button=>{
+        const type=button.dataset.friendLibraryTab;
+        const count=(friend_library_data[type]||[]).length;
+        const count_el=button.querySelector("span");
+        if(count_el)count_el.textContent=String(count);
+        button.classList.toggle("active",type===friend_library_active);
+        button.setAttribute(
+            "aria-selected",
+            String(type===friend_library_active)
+        );
+    });
+
+    friend_library_grid.replaceChildren();
+
+    if(!rows.length){
+        const empty=document.createElement("p");
+        empty.className="friend-library-empty";
+        empty.textContent="Nothing in this library yet.";
+        friend_library_grid.appendChild(empty);
+        return;
+    }
+
+    rows.forEach(item=>{
+        const card=document.createElement("article");
+        card.className="friend-library-card";
+
+        if(item.poster_url){
+            const image=document.createElement("img");
+            image.src=item.poster_url;
+            image.alt="";
+            image.loading="lazy";
+            card.appendChild(image);
+        }else{
+            const placeholder=document.createElement("div");
+            placeholder.className="friend-library-poster-placeholder";
+            placeholder.textContent=String(item.title||"?").slice(0,1);
+            card.appendChild(placeholder);
+        }
+
+        const copy=document.createElement("div");
+        copy.className="friend-library-card-copy";
+
+        const title=document.createElement("strong");
+        title.textContent=item.title||"Untitled";
+
+        const meta=document.createElement("span");
+        meta.textContent=friend_library_meta(
+            item,
+            friend_library_active
+        );
+
+        copy.append(title,meta);
+        card.appendChild(copy);
+        friend_library_grid.appendChild(card);
+    });
+}
+
+async function open_friend_library(friend_uid){
+    const friend=(friend_overview.friends||[])
+        .find(item=>item.uid===friend_uid);
+
+    friend_library_return_to_friends=friends_dialog.open;
+    if(friends_dialog.open)friends_dialog.close();
+
+    friend_library_data=null;
+    friend_library_active="movies";
+    friend_library_name.textContent=friend?.username||"Friend";
+    friend_library_avatar.src=friend_avatar_src(friend);
+    friend_library_grid.innerHTML=
+        '<p class="friend-library-loading">Loading library…</p>';
+
+    if(!friend_library_dialog.open){
+        friend_library_dialog.showModal();
+    }
+
+    try{
+        const get_library=
+            httpsCallable(functions,"getFriendEntertainmentLibrary");
+        const result=await get_library({friend_uid});
+        friend_library_data=result.data||{
+            movies:[],
+            shows:[],
+            anime:[],
+            manga:[]
+        };
+
+        const profile=friend_library_data.friend||friend;
+        friend_library_name.textContent=
+            profile?.username||"Friend";
+        friend_library_avatar.src=
+            friend_avatar_src(profile);
+
+        const preferred=["movies","shows","anime","manga"]
+            .find(type=>(friend_library_data[type]||[]).length);
+        friend_library_active=preferred||"movies";
+        render_friend_library();
+    }catch(error){
+        console.error("Unable to load friend library:",error);
+        friend_library_grid.replaceChildren();
+        const failed=document.createElement("p");
+        failed.className="friend-library-empty";
+        failed.textContent=
+            error?.message||
+            "Unable to load this friend's library.";
+        friend_library_grid.appendChild(failed);
+    }
+}
+
+friend_library_tabs.forEach(button=>{
+    button.addEventListener("click",()=>{
+        friend_library_active=
+            button.dataset.friendLibraryTab;
+        render_friend_library();
+    });
+});
+
+friend_library_dialog.querySelector(".profile-close")
+    .addEventListener("click",()=>friend_library_dialog.close());
+
+friend_library_dialog.addEventListener("close",()=>{
+    if(friend_library_return_to_friends){
+        friend_library_return_to_friends=false;
+        if(!friends_dialog.open)friends_dialog.showModal();
+    }
+});
+
 const friend_username_input=
     friends_dialog.querySelector("#friend_username_input");
 const friend_message=
@@ -304,7 +508,18 @@ function render_friend_overview(){
         friends.forEach(profile=>{
             const row=document.createElement("div");
             row.className="friend-row";
-            row.appendChild(friend_identity(profile));
+
+            const actions=document.createElement("div");
+            actions.className="friend-actions";
+
+            const view_library=document.createElement("button");
+            view_library.type="button";
+            view_library.className="friend-view-library";
+            view_library.dataset.friendLibraryUid=profile.uid;
+            view_library.textContent="View library";
+
+            actions.appendChild(view_library);
+            row.append(friend_identity(profile),actions);
             friend_list.appendChild(row);
         });
     }
@@ -444,6 +659,20 @@ friends_dialog.querySelector(".friend-add-form")
                 "Unable to send that friend request.";
         }
     });
+
+friend_list.addEventListener("click",async event=>{
+    const button=event.target.closest("[data-friend-library-uid]");
+    if(!button)return;
+
+    button.disabled=true;
+    try{
+        await open_friend_library(
+            button.dataset.friendLibraryUid
+        );
+    }finally{
+        button.disabled=false;
+    }
+});
 
 friend_request_list.addEventListener("click",async event=>{
     const button=event.target.closest("[data-friend-action]");
