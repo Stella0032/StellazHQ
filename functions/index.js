@@ -15,7 +15,7 @@ const logger = require("firebase-functions/logger");
 const dns = require("dns");
 const https = require("https");
 const net = require("net");
-const crypto = require("crypto");
+const {createHash} = require("node:crypto");
 
 
 const {initializeApp} = require("firebase-admin/app");
@@ -5020,16 +5020,14 @@ function normalize_stellaz_username(value) {
     return {
         display_name,
         username_key,
-        index_id: crypto
-            .createHash("sha256")
+        index_id: createHash("sha256")
             .update(username_key)
             .digest("hex"),
     };
 }
 
 function friend_pair_id(uid_a, uid_b) {
-    return crypto
-        .createHash("sha256")
+    return createHash("sha256")
         .update(
             [String(uid_a), String(uid_b)]
                 .sort()
