@@ -1250,6 +1250,29 @@ async function enrich_missing_show_metadata(shows) {
     }
 }
 
+async function load_all_watched_tv_episodes() {
+    const page_size = 1000;
+    const rows = [];
+
+    for (let from = 0; ; from += page_size) {
+        const {data, error} = await supabase
+            .from("tv_episode_progress")
+            .select("id,tv_show_id,season_number,episode_number,watched")
+            .eq("watched", true)
+            .order("id", {ascending: true})
+            .range(from, from + page_size - 1);
+
+        if (error) throw error;
+
+        const page = data || [];
+        rows.push(...page);
+
+        if (page.length < page_size) break;
+    }
+
+    return rows;
+}
+
 async function load_show_library() {
     try {
         const {data: shows, error} = await supabase
@@ -1272,12 +1295,8 @@ async function load_show_library() {
 
         await enrich_missing_show_metadata(shows);
 
-        const {data: watched_episodes, error: progress_error} =
-            await supabase.from("tv_episode_progress")
-                .select("tv_show_id, episode_number, watched")
-                .eq("watched", true);
-
-        if (progress_error) throw progress_error;
+        const watched_episodes =
+            await load_all_watched_tv_episodes();
 
         const show_by_id = new Map(
             shows.map((show) => [show.id, show])
@@ -2212,6 +2231,83 @@ async function mark_library_item_watched(type, id, button) {
         if (type === "movie") {
             await load_movie_library();
         } else {
+            const show = show_library.find((item) => item.id === id);
+
+            if (show) {
+                try {
+                    const get_seasons =
+                        httpsCallable(functions, "getTVShowSeasons");
+                    const result = await get_seasons({
+                        title: show.title,
+                        year: show.year
+                    });
+
+                    const seasons = (result.data.seasons || []).filter(
+                        (season) =>
+                            Number(season.season_number) > 0
+                    );
+
+                    if (seasons.length) {
+                        const season_rows = seasons.map((season) => ({
+                            tv_show_id: id,
+                            season_number:
+                                Number(season.season_number),
+                            watched: true
+                        }));
+
+                        const episode_rows = seasons.flatMap(
+                            (season) =>
+                                Array.from(
+                                    {
+                                        length: Number(
+                                            season.episode_count || 0
+                                        )
+                                    },
+                                    (_, index) => ({
+                                        tv_show_id: id,
+                                        season_number:
+                                            Number(
+                                                season.season_number
+                                            ),
+                                        episode_number: index + 1,
+                                        watched: true
+                                    })
+                                )
+                        );
+
+                        const {error: season_error} =
+                            await supabase
+                                .from("tv_season_progress")
+                                .upsert(season_rows, {
+                                    onConflict:
+                                        "user_id,tv_show_id,season_number"
+                                });
+                        if (season_error) throw season_error;
+
+                        for (let start = 0;
+                            start < episode_rows.length;
+                            start += 400) {
+                            const chunk =
+                                episode_rows.slice(start, start + 400);
+                            const {error: episode_error} =
+                                await supabase
+                                    .from("tv_episode_progress")
+                                    .upsert(chunk, {
+                                        onConflict:
+                                            "user_id,tv_show_id,season_number,episode_number"
+                                    });
+                            if (episode_error) throw episode_error;
+                        }
+                    }
+                } catch (progress_error) {
+                    console.error(
+                        "Unable to populate watched TV progress:",
+                        show.title,
+                        progress_error
+                    );
+                }
+            }
+
             await load_show_library();
         }
 
