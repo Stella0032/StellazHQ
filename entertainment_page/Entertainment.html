@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Entertainment | Stellaz HQ</title>
     <link rel="icon" type="image/png" href="../images/stellaz_favicon.png">
-    <link rel="stylesheet" href="EntertainmentStyles.css?v=41">
+    <link rel="stylesheet" href="EntertainmentStyles.css?v=42">
     <link rel="stylesheet" href="../firebase/profile_widget.css?v=5">
 </head>
 <body>
@@ -33,6 +33,7 @@
                 <span class="connection-badge kitsu-connection-badge" id="kitsu_connection_badge" title="Kitsu connected" hidden>K</span>
                 <span class="connection-badge tmdb-connection-badge" id="tmdb_connection_badge" title="TMDB connected" hidden>TM</span>
                 <span class="connection-badge plex-connection-badge" id="plex_connection_badge" title="Plex connected" hidden>P</span>
+                <span class="connection-badge seerr-connection-badge" id="seerr_connection_badge" title="Seerr connected" hidden>S</span>
             </div>
             <div class="profile-widget" data-profile-widget>
             <button class="profile-trigger" type="button" aria-label="Open profile menu" aria-expanded="false">
@@ -606,6 +607,29 @@
                         <button class="connected-service-import" id="kitsu_manga_sync_button" type="button" hidden>Import manga</button>
                     </div>
                 </article>
+
+                <article class="connected-service-card" id="seerr_connect_card">
+                    <div class="connected-service-brand">
+                        <span class="connected-service-logo seerr-service-logo">S</span>
+                        <div>
+                            <h3 id="seerr_connect_title">Seerr</h3>
+                            <span class="connected-service-status" id="seerr_connection_label">Not connected</span>
+                        </div>
+                    </div>
+                    <div class="connected-service-copy">
+                        <p id="seerr_connect_description">Connect your own Seerr server so Stellaz can request movies and TV shows from it.</p>
+                        <p class="connected-service-note">Use an internet-reachable HTTPS Seerr URL. Your API key is sent only to Stellaz's server, encrypted before storage, and never returned to the browser.</p>
+                    </div>
+                    <div class="connected-service-actions seerr-service-actions">
+                        <input class="seerr-server-input" id="seerr_server_input" type="url"
+                               placeholder="https://seerr.example.com" autocomplete="off" maxlength="300"
+                               aria-label="Seerr server URL" spellcheck="false">
+                        <input class="seerr-server-input seerr-api-key-input" id="seerr_api_key_input" type="password"
+                               placeholder="Seerr API key" autocomplete="new-password" maxlength="500"
+                               aria-label="Seerr API key" spellcheck="false">
+                        <button class="library-add-button" id="seerr_connect_button" type="button">Connect Seerr</button>
+                    </div>
+                </article>
             </div>
 
             <p class="connected-services-note">
@@ -640,7 +664,7 @@
     </dialog>
 
     <div class="toast" id="toast" role="status"></div>
-    <script type="module" src="Entertainment.js?v=82"></script>
+    <script type="module" src="Entertainment.js?v=83"></script>
     <script type="module" src="../firebase/profile_widget.js?v=3"></script>
 </body>
 </html>
