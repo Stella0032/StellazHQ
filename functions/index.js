@@ -6533,6 +6533,18 @@ function plex_guids(item) {
     return (item.Guid || []).map((entry) => entry.id).filter(Boolean);
 }
 
+// Same signal as the Seerr anime routing above (Animation genre + Japanese
+// origin) so a Plex show classifies the same way whether it's being
+// imported or requested. Country isn't persisted on existing library rows,
+// so this only runs against live Plex metadata at import time.
+function plex_show_is_anime(item) {
+    const genres = (item.Genre || [])
+        .map((genre) => String(genre.tag || "").toLowerCase());
+    const countries = (item.Country || [])
+        .map((country) => String(country.tag || "").toLowerCase());
+    return genres.includes("animation") && countries.includes("japan");
+}
+
 exports.getPlexMetadataFallback = onCall(async (request) => {
     if (!request.auth) throw new HttpsError("unauthenticated", "You must be logged in.");
     const title = String(request.data?.title || "").trim();
@@ -6970,6 +6982,7 @@ exports.getPlexImportPreview = onCall(async (request) => {
                     rating,
                     watched_episodes,
                     total_episodes: Number(item.leafCount || 0),
+                    is_anime: plex_show_is_anime(item),
                     guids: plex_guids(item),
                     tmdb_id: (() => {
                         const guid = plex_guids(item).find((id) => id.startsWith("tmdb://"));
