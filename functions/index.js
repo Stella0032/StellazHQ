@@ -5075,8 +5075,18 @@ function normalize_seerr_base_url(value) {
 
 async function seerr_https_json(
     endpoint,
-    api_key
+    api_key,
+    request_options = {}
 ) {
+    const method =
+        request_options.method || "GET";
+    const request_body =
+        request_options.body != null
+            ? Buffer.from(
+                JSON.stringify(request_options.body)
+            )
+            : null;
+
     const parsed = new URL(endpoint);
     const addresses =
         await seerr_resolve_public_host(
@@ -5097,7 +5107,7 @@ async function seerr_https_json(
                 path:
                     parsed.pathname +
                     parsed.search,
-                method: "GET",
+                method,
                 servername: parsed.hostname,
                 rejectUnauthorized: true,
                 headers: {
@@ -5105,6 +5115,10 @@ async function seerr_https_json(
                     "X-Api-Key": api_key,
                     "User-Agent":
                         "StellazHQ/1.0",
+                    ...(request_body ? {
+                        "Content-Type": "application/json",
+                        "Content-Length": request_body.length,
+                    } : {}),
                 },
                 timeout: 12000,
                 lookup:
@@ -5162,6 +5176,7 @@ async function seerr_https_json(
         });
 
         request.on("error", reject);
+        if (request_body) request.write(request_body);
         request.end();
     });
 }
@@ -5322,6 +5337,131 @@ exports.getSeerrConnectionStatus =
                 data.base_url || null,
         };
     });
+
+// The actual friction-reduction feature: request a title on the calling
+// user's own Seerr server straight from its details in Stellaz. Reuses
+// seerr_https_json's SSRF-safe request path (public-host resolution, IP
+// pinning, HTTPS-only) with a POST body instead of the plain GET used to
+// verify a connection above.
+exports.requestMediaOnSeerr = onCall(
+    {
+        secrets: [
+            seerr_credential_encryption_key,
+        ],
+        timeoutSeconds: 30,
+    },
+    async (request) => {
+        if (!request.auth) {
+            throw new HttpsError(
+                "unauthenticated",
+                "You must be logged in."
+            );
+        }
+
+        const media_type =
+            request.data?.media_type === "tv"
+                ? "tv" : "movie";
+        const tmdb_id =
+            Number(request.data?.tmdb_id);
+
+        if (!tmdb_id) {
+            throw new HttpsError(
+                "invalid-argument",
+                "A TMDB ID is required to request this title."
+            );
+        }
+
+        const snapshot = await db
+            .collection("seerr_connections")
+            .doc(request.auth.uid)
+            .get();
+        const data = snapshot.data();
+
+        if (!snapshot.exists ||
+            !data?.base_url ||
+            !data?.credential?.ciphertext) {
+            throw new HttpsError(
+                "failed-precondition",
+                "Connect your Seerr server first."
+            );
+        }
+
+        const api_key =
+            decrypt_seerr_api_key(data.credential);
+        const request_body = {
+            mediaType: media_type,
+            mediaId: tmdb_id,
+        };
+        // Seerr accepts the literal string "all" here to request every
+        // season of a show in one call.
+        if (media_type === "tv") {
+            request_body.seasons = "all";
+        }
+
+        let result;
+        try {
+            result = await seerr_https_json(
+                data.base_url + "/api/v1/request",
+                api_key,
+                {method: "POST", body: request_body}
+            );
+        } catch (error) {
+            logger.warn(
+                "Unable to reach Seerr server for a request.",
+                {
+                    uid: request.auth.uid,
+                    tmdb_id,
+                    media_type,
+                    error:
+                        error?.message ||
+                        "Connection failed",
+                }
+            );
+
+            throw new HttpsError(
+                "internal",
+                "Stellaz could not securely reach your Seerr server."
+            );
+        }
+
+        // A 409 means this title has already been requested — treat that
+        // as a successful outcome from the user's side, not an error.
+        if (result.status === 409) {
+            return {
+                requested: true,
+                already_requested: true,
+            };
+        }
+
+        if (result.status === 401 ||
+            result.status === 403) {
+            throw new HttpsError(
+                "failed-precondition",
+                "Seerr rejected that API key."
+            );
+        }
+
+        if (result.status < 200 ||
+            result.status >= 300) {
+            logger.warn(
+                "Seerr request failed.",
+                {
+                    uid: request.auth.uid,
+                    tmdb_id,
+                    media_type,
+                    status: result.status,
+                }
+            );
+
+            throw new HttpsError(
+                "internal",
+                "Stellaz could not send that request to your Seerr server."
+            );
+        }
+
+        return {requested: true};
+    }
+);
 //#endregion
 
 
