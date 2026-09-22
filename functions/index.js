@@ -2860,6 +2860,27 @@ const openai_api_key = defineSecret("OPENAI_API_KEY");
 const supabase_secret_key = defineSecret("SUPABASE_SECRET_KEY");
 const supabase_url = "https://xmycfxwapejnbpareaxc.supabase.co";
 
+function supabase_service_headers() {
+    const key = String(
+        supabase_secret_key.value() || ""
+    ).trim();
+
+    const headers = {
+        apikey: key,
+        Accept: "application/json",
+    };
+
+    // Modern Supabase sb_secret_* keys are opaque API keys, not JWTs.
+    // Sending them as a Bearer token makes PostgREST reject the request.
+    // Legacy service_role keys are JWTs and still use Authorization.
+    if (!key.startsWith("sb_secret_")) {
+        headers.Authorization =
+            "Bearer " + key;
+    }
+
+    return headers;
+}
+
 async function notification_supabase_select(table, select_fields) {
     const endpoint = new URL(
         supabase_url + "/rest/v1/" + table
@@ -2867,12 +2888,7 @@ async function notification_supabase_select(table, select_fields) {
     endpoint.searchParams.set("select", select_fields);
 
     const response = await fetch(endpoint, {
-        headers: {
-            apikey: supabase_secret_key.value(),
-            Authorization:
-                "Bearer " + supabase_secret_key.value(),
-            Accept: "application/json",
-        },
+        headers: supabase_service_headers(),
     });
 
     if (!response.ok) {
@@ -2912,14 +2928,7 @@ async function friend_library_supabase_select(
     );
 
     const response = await fetch(endpoint, {
-        headers: {
-            apikey:
-                supabase_secret_key.value(),
-            Authorization:
-                "Bearer " +
-                supabase_secret_key.value(),
-            Accept: "application/json",
-        },
+        headers: supabase_service_headers(),
     });
 
     if (!response.ok) {
