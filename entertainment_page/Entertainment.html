@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Entertainment | Stellaz HQ</title>
     <link rel="icon" type="image/png" href="../images/stellaz_favicon.png">
-    <link rel="stylesheet" href="EntertainmentStyles.css?v=42">
-    <link rel="stylesheet" href="../firebase/profile_widget.css?v=7">
+    <link rel="stylesheet" href="EntertainmentStyles.css?v=43">
+    <link rel="stylesheet" href="../firebase/profile_widget.css?v=8">
 </head>
 <body>
     <div class="ambient-background" aria-hidden="true"></div>
@@ -400,7 +400,10 @@
                         <p class="anime-edit-section-label">Episodes watched</p>
                         <div class="anime-episode-picker" id="anime_episode_picker"></div>
                     </div>
-                    <button class="library-add-button anime-detail-save" id="anime_edit_save" type="submit">Save to MyAnimeList</button>
+                    <div class="anime-detail-actions">
+                        <button class="library-remove-confirm anime-detail-delete" id="anime_edit_delete" type="button">Remove from library</button>
+                        <button class="library-add-button anime-detail-save" id="anime_edit_save" type="submit">Save to MyAnimeList</button>
+                    </div>
                 </form>
             </div>
         </div>
@@ -528,8 +531,10 @@
                             <span class="connected-service-status" id="plex_connection_label">Not connected</span>
                         </div>
                     </div>
-                    <p id="plex_connect_description">Import movie and TV ratings, watched titles, and episode progress from Plex.</p>
-                    <p class="connected-service-note">Connecting Plex also unlocks Request and Watch on Plex on movie/show details, using the same Plex login you use for Seerr — there's nothing separate to connect for that.</p>
+                    <div class="connected-service-copy">
+                        <p id="plex_connect_description">Import movie and TV ratings, watched titles, and episode progress from Plex.</p>
+                        <p class="connected-service-note">Connecting Plex also unlocks Request and Watch on Plex on movie/show details, using the same Plex login you use for Seerr — there's nothing separate to connect for that.</p>
+                    </div>
                     <div class="connected-service-actions">
                         <button class="library-add-button" id="plex_connect_button" type="button">Connect Plex</button>
                         <button class="connected-service-import plex-import-button" id="plex_import_button" type="button" hidden>Import now</button>
