@@ -713,3 +713,17 @@ dialog.querySelector(".profile-close").addEventListener("click",()=>dialog.close
 dialog.querySelector(".profile-form").addEventListener("submit",async e=>{e.preventDefault();if(!current_user)return;const display_name=input.value.trim();if(!display_name)return;message.textContent="Saving...";try{const save_profile=httpsCallable(functions,"saveStellazProfile");const result=await save_profile({username:display_name,profile_avatar:selected_avatar});const saved_name=result.data?.username||display_name;input.value=saved_name;render(saved_name,selected_avatar);message.textContent="Profile saved.";await load_friend_overview();setTimeout(()=>dialog.close(),450)}catch(error){console.error(error);message.textContent=error?.code==="functions/already-exists"?"That username is already taken.":(error?.message||"Unable to save profile.");}});
 onAuthStateChanged(auth,async user=>{if(!user){window.location.href="../index.html";return}current_user=user;const fallback=user.email?.split("@")[0]||"Account";try{const snap=await getDoc(doc(db,"users",user.uid)),profile=snap.exists()?snap.data():{};const display_name=profile.display_name||fallback;selected_avatar=avatars.includes(profile.profile_avatar)?profile.profile_avatar:default_avatar;selected_theme=profile.theme||"stellaz";apply_theme(selected_theme);input.value=display_name;select(selected_avatar);render(display_name,selected_avatar)}catch(error){console.error(error);apply_theme("stellaz");input.value=fallback;render(fallback,default_avatar)}await ensure_friend_username();await Promise.allSettled([load_notifications(),load_friend_overview()]);if(notification_timer)clearInterval(notification_timer);notification_timer=setInterval(()=>load_notifications({mark_seen:!notification_panel.hidden}),60000)});
 }
+// Profile, Friends, and Friend Library dialogs can all be dismissed
+// by clicking the backdrop as well as their close button.
+function enable_profile_dialog_backdrop_close(dialog){
+    if(!dialog||dialog.dataset.backdropCloseReady==="true")return;
+    dialog.dataset.backdropCloseReady="true";
+    dialog.addEventListener("click",event=>{
+        if(!dialog.open)return;
+        const bounds=dialog.getBoundingClientRect();
+        const outside=event.clientX<bounds.left||event.clientX>bounds.right||
+            event.clientY<bounds.top||event.clientY>bounds.bottom;
+        if(outside)dialog.close();
+    });
+}
+document.querySelectorAll("dialog.profile-dialog").forEach(enable_profile_dialog_backdrop_close);
