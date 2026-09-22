@@ -2928,21 +2928,33 @@ async function friend_library_supabase_select(
         "title.asc"
     );
 
-    const response = await fetch(endpoint, {
-        headers: supabase_service_headers(),
-    });
+    let response;
+
+    try {
+        response = await fetch(endpoint, {
+            headers: supabase_service_headers(),
+        });
+    } catch (error) {
+        console.error(
+            "[friend-library] Supabase fetch threw",
+            table,
+            String(error?.message || error)
+        );
+        throw new HttpsError(
+            "internal",
+            "Unable to load that friend's library."
+        );
+    }
 
     if (!response.ok) {
         const error_text =
             await response.text();
 
-        logger.error(
-            "Friend library Supabase read failed.",
-            {
-                table,
-                status: response.status,
-                error: error_text,
-            }
+        console.error(
+            "[friend-library] Supabase returned",
+            table,
+            response.status,
+            error_text
         );
 
         throw new HttpsError(
@@ -2951,7 +2963,28 @@ async function friend_library_supabase_select(
         );
     }
 
-    const rows = await response.json();
+    let rows;
+
+    try {
+        rows = await response.json();
+    } catch (error) {
+        console.error(
+            "[friend-library] Invalid Supabase JSON",
+            table,
+            String(error?.message || error)
+        );
+        throw new HttpsError(
+            "internal",
+            "Unable to load that friend's library."
+        );
+    }
+
+    console.log(
+        "[friend-library] Loaded",
+        table,
+        Array.isArray(rows) ? rows.length : "non-array"
+    );
+
     return Array.isArray(rows) ? rows : [];
 }
 
@@ -2990,11 +3023,20 @@ exports.getFriendEntertainmentLibrary =
                     viewer_uid,
                     friend_uid
                 );
+            console.log(
+                "[friend-library] Looking up friendship"
+            );
+
             const friendship_snapshot =
                 await db
                     .collection("friendships")
                     .doc(friendship_id)
                     .get();
+
+            console.log(
+                "[friend-library] Friendship lookup complete",
+                friendship_snapshot.exists
+            );
 
             const members =
                 friendship_snapshot.exists
@@ -3024,6 +3066,10 @@ exports.getFriendEntertainmentLibrary =
                         : {}
                 );
 
+            console.log(
+                "[friend-library] Starting Supabase reads"
+            );
+
             const [
                 movies,
                 shows,
@@ -3051,6 +3097,16 @@ exports.getFriendEntertainmentLibrary =
                     friend_uid
                 ),
             ]);
+
+            console.log(
+                "[friend-library] Supabase reads complete",
+                {
+                    movies: movies.length,
+                    shows: shows.length,
+                    anime: anime.length,
+                    manga: manga.length,
+                }
+            );
 
             return {
                 friend: profile,
