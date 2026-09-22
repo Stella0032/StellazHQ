@@ -54,6 +54,9 @@ function create_release_card(item) {
         ? ` · ⭐ ${Number(item.rating).toFixed(1)}`
         : "";
     const controls = release_rows_type === "anime" ? "" : `
+        <button class="recommendation-watched" type="button"
+                data-release-action="watched" title="Add as watched"
+                aria-label="Add ${item.title} as watched">✓</button>
         <button class="recommendation-dismiss" type="button"
                 data-release-action="not_interested" title="Not interested"
                 aria-label="Not interested in ${item.title}">×</button>
@@ -295,6 +298,9 @@ function create_recommendation_card(item) {
         item.tmdb_rating !== undefined
         ? ` · ⭐ ${Number(item.tmdb_rating).toFixed(1)}` : "";
     const controls = active_recommendation_type === "anime" ? "" : `
+        <button class="recommendation-watched" type="button"
+                data-rec-action="watched" title="Add as watched"
+                aria-label="Add ${item.title} as watched">✓</button>
         <button class="recommendation-dismiss" type="button"
                 data-rec-action="not_interested" title="Not interested"
                 aria-label="Not interested in ${item.title}">×</button>
@@ -3919,6 +3925,7 @@ let selected_anime_episode = 0;
 const anime_edit_score = document.getElementById("anime_edit_score");
 const anime_edit_close = document.getElementById("anime_edit_close");
 const anime_edit_save = document.getElementById("anime_edit_save");
+const anime_edit_delete = document.getElementById("anime_edit_delete");
 const anime_view_seasons = document.getElementById("anime_view_seasons");
 const mal_connect_card = document.getElementById("mal_connect_card");
 const mal_sync_header_button = document.getElementById("mal_sync_header_button");
