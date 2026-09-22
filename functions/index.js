@@ -5914,6 +5914,10 @@ async function seerr_session_for_uid(uid) {
 // itself computes from its own configured Plex server, so it's both the
 // "is this on Plex" signal and the destination for a Watch button in one
 // field — see the `setPlexUrls()` hook in Seerr's Media entity.
+// Fetches Seerr's GET /api/v1/movie|tv/{id}, which is also a plain TMDB
+// details proxy — its `genres`/`originalLanguage` fields double as the
+// input to the French-audio and anime detection below, so no separate
+// TMDB lookup is needed just to make that call.
 async function seerr_fetch_media_info(base_url, cookie, media_type, tmdb_id) {
     const result = await seerr_https_json(
         `${base_url}/api/v1/${media_type}/${tmdb_id}`,
@@ -5921,13 +5925,20 @@ async function seerr_fetch_media_info(base_url, cookie, media_type, tmdb_id) {
     );
 
     if (result.status < 200 || result.status >= 300) {
-        return {status_code: 1, watch_url: null};
+        return {
+            status_code: 1,
+            watch_url: null,
+            genres: [],
+            original_language: null,
+        };
     }
 
     const media_info = result.payload?.mediaInfo || null;
     return {
         status_code: Number(media_info?.status || 1),
         watch_url: media_info?.mediaUrl || null,
+        genres: result.payload?.genres || [],
+        original_language: result.payload?.originalLanguage || null,
     };
 }
 
@@ -5941,6 +5952,92 @@ function seerr_status_label(status_code, watch_url) {
     if (status_code === 3) return "processing";
     if (status_code === 2) return "requested";
     return "idle";
+}
+
+// TMDB genre id 16 is "Animation" — same id this codebase already keys
+// off of in Entertainment.js's own movie/show genre maps.
+const seerr_animation_genre_id = 16;
+
+function seerr_media_is_french(media_details) {
+    return media_details?.original_language === "fr";
+}
+
+function seerr_media_is_anime(media_details) {
+    const has_animation_genre = (media_details?.genres || []).some(
+        (genre) => genre.id === seerr_animation_genre_id
+    );
+    return has_animation_genre &&
+        media_details?.original_language === "ja";
+}
+
+// Resolves a quality profile by name to the (serverId, profileId) pair
+// Seerr's request API actually needs, by searching every configured
+// Radarr/Sonarr server's own profile list for a match. Rémy's rules
+// below are written against profile *names* (matching what he sees in
+// Seerr's own settings page) rather than hardcoded numeric ids, which
+// would silently break if a server were ever removed and re-added.
+// This also doubles as how an anime title ends up routed to a
+// dedicated Anime Sonarr server: whichever server actually has the
+// requested anime profile name is the one that gets used, with no
+// separate "which server is the anime one" flag needed anywhere.
+async function seerr_find_profile(base_url, cookie, service, profile_name) {
+    const list_result = await seerr_https_json(
+        `${base_url}/api/v1/service/${service}`,
+        {headers: {Cookie: cookie}}
+    );
+    const servers = Array.isArray(list_result.payload)
+        ? list_result.payload : [];
+
+    for (const server of servers) {
+        if (server?.id == null) continue;
+
+        const detail_result = await seerr_https_json(
+            `${base_url}/api/v1/service/${service}/${server.id}`,
+            {headers: {Cookie: cookie}}
+        );
+        const profiles = detail_result.payload?.profiles || [];
+        const profile = profiles.find((p) => p.name === profile_name);
+
+        if (profile) {
+            return {serverId: server.id, profileId: profile.id};
+        }
+    }
+
+    return null;
+}
+
+// Rémy's actual rules, in profile *names* as they appear in Seerr's own
+// settings page:
+// - Movies: French-language titles get a choice (dual FR/EN track or
+//   the plain default); everything else just gets the default.
+// - TV: anime (Animation genre + Japanese original language) is routed
+//   to whichever Sonarr server has the anime profiles, with a Dub/Sub
+//   choice; anything else gets the regular default.
+const seerr_movie_default_profile = "1080p";
+const seerr_movie_french_profile = "1080p FR/EN";
+const seerr_tv_default_profile = "1080p";
+const seerr_anime_dub_profile = "HD - 720p/1080p DUAL";
+const seerr_anime_sub_profile = "HD - 1080p SUB";
+
+// Picks the profile name for this request given what was detected about
+// the title and (for French movies / anime) the choice the user made in
+// the frontend's prompt. Recomputes is_french/is_anime itself rather
+// than trusting a client-supplied flag, same reasoning as re-checking
+// availability before requesting.
+function seerr_resolve_profile_name(media_type, media_details, choice) {
+    if (media_type === "tv") {
+        if (seerr_media_is_anime(media_details)) {
+            return choice === "dub"
+                ? seerr_anime_dub_profile
+                : seerr_anime_sub_profile;
+        }
+        return seerr_tv_default_profile;
+    }
+
+    if (seerr_media_is_french(media_details) && choice === "fr") {
+        return seerr_movie_french_profile;
+    }
+    return seerr_movie_default_profile;
 }
 
 exports.getSeerrMediaStatus = onCall(
@@ -5969,10 +6066,16 @@ exports.getSeerrMediaStatus = onCall(
         try {
             const session = await seerr_session_for_uid(request.auth.uid);
             if (!session) {
-                return {connected: false, status: "idle", watch_url: null};
+                return {
+                    connected: false,
+                    status: "idle",
+                    watch_url: null,
+                    is_french: false,
+                    is_anime: false,
+                };
             }
 
-            const {status_code, watch_url} = await seerr_fetch_media_info(
+            const media_details = await seerr_fetch_media_info(
                 session.base_url,
                 session.cookie,
                 media_type,
@@ -5981,8 +6084,17 @@ exports.getSeerrMediaStatus = onCall(
 
             return {
                 connected: true,
-                status: seerr_status_label(status_code, watch_url),
-                watch_url,
+                status: seerr_status_label(
+                    media_details.status_code, media_details.watch_url
+                ),
+                watch_url: media_details.watch_url,
+                // Only meaningful for the frontend to act on when the
+                // status above is "idle" (nothing requested/available
+                // yet) — surfaced either way for simplicity.
+                is_french: media_type === "movie" &&
+                    seerr_media_is_french(media_details),
+                is_anime: media_type === "tv" &&
+                    seerr_media_is_anime(media_details),
             };
         } catch (error) {
             // A failed status check shouldn't block the details dialog from
@@ -6000,7 +6112,13 @@ exports.getSeerrMediaStatus = onCall(
                 }
             );
 
-            return {connected: true, status: "idle", watch_url: null};
+            return {
+                connected: true,
+                status: "idle",
+                watch_url: null,
+                is_french: false,
+                is_anime: false,
+            };
         }
     }
 );
@@ -6060,11 +6178,13 @@ exports.requestMediaOnSeerr = onCall(
             // Defense in depth: the frontend already hides Request once
             // something's on Plex, but the dialog could have been open a
             // while — re-check right before requesting rather than trust
-            // a possibly-stale render.
-            const {watch_url} = await seerr_fetch_media_info(
+            // a possibly-stale render. Also doubles as the genre/language
+            // lookup for profile selection below, so this isn't an extra
+            // network round trip on top of what was already happening.
+            const media_details = await seerr_fetch_media_info(
                 base_url, cookie, media_type, tmdb_id
             );
-            if (watch_url) {
+            if (media_details.watch_url) {
                 throw new HttpsError(
                     "failed-precondition",
                     "This is already on your Plex server."
@@ -6079,6 +6199,33 @@ exports.requestMediaOnSeerr = onCall(
             // every season of a show in one call.
             if (media_type === "tv") {
                 request_body.seasons = "all";
+            }
+
+            // choice is the frontend's answer to the French-audio prompt
+            // ("fr"/"default") or the Dub/Sub prompt ("dub"/"sub") —
+            // whichever one applies. Re-derives is_french/is_anime itself
+            // from media_details rather than trusting a client-supplied
+            // flag for which prompt this answers.
+            const choice = String(request.data?.choice || "");
+            const service = media_type === "tv" ? "sonarr" : "radarr";
+            const profile_name = seerr_resolve_profile_name(
+                media_type, media_details, choice
+            );
+            const profile_match = await seerr_find_profile(
+                base_url, cookie, service, profile_name
+            );
+
+            if (profile_match) {
+                request_body.serverId = profile_match.serverId;
+                request_body.profileId = profile_match.profileId;
+            } else {
+                // Don't block the request over a missing/renamed profile —
+                // fall through to Seerr's own configured default instead,
+                // just log it so a renamed profile doesn't fail silently.
+                logger.warn(
+                    "Seerr profile not found by name; using Seerr's default.",
+                    {uid: request.auth.uid, tmdb_id, media_type, profile_name}
+                );
             }
 
             const result = await seerr_https_json(

@@ -542,8 +542,10 @@ async function open_recommendation_details(item) {
             recommendation_dialog_actions,
             item.tmdb_id,
             active_recommendation_type,
-            `<button type="button" class="recommendation-action" data-seerr-slot
-                     data-dialog-action="request_seerr">📥 Request</button>`,
+            (state) => `<button type="button" class="recommendation-action" data-seerr-slot
+                     data-dialog-action="request_seerr"
+                     data-seerr-french="${state.is_french}"
+                     data-seerr-anime="${state.is_anime}">📥 Request</button>`,
             () => active_recommendation_detail === item
         );
     }
@@ -598,6 +600,27 @@ async function open_recommendation_details(item) {
 }
 
 async function request_media_on_seerr(item, media_type, button) {
+    let choice = "";
+
+    if (media_type !== "show" && button.dataset.seerrFrench === "true") {
+        choice = await ask_seerr_choice(
+            "French media detected",
+            `${item.title} appears to be a French-language title. ` +
+            "Download the French audio track?",
+            {label: "No", value: "default"},
+            {label: "Yes", value: "fr"}
+        );
+        if (choice === null) return;
+    } else if (media_type === "show" && button.dataset.seerrAnime === "true") {
+        choice = await ask_seerr_choice(
+            "Anime detected",
+            `${item.title} looks like anime. Dubbed or Sub?`,
+            {label: "Sub", value: "sub"},
+            {label: "Dubbed", value: "dub"}
+        );
+        if (choice === null) return;
+    }
+
     const original_text = button.textContent;
     button.disabled = true;
     button.textContent = "Requesting...";
@@ -605,7 +628,8 @@ async function request_media_on_seerr(item, media_type, button) {
         const request_media = httpsCallable(functions, "requestMediaOnSeerr");
         const result = await request_media({
             tmdb_id: Number(item.tmdb_id),
-            media_type: media_type === "show" ? "tv" : "movie"
+            media_type: media_type === "show" ? "tv" : "movie",
+            choice
         });
         show_toast(result.data.already_requested
             ? `${item.title} was already requested on your Seerr server.`
@@ -634,7 +658,10 @@ async function request_media_on_seerr(item, media_type, button) {
 // details, they just differ in what "idle" (nothing requested/available
 // yet) should offer — recommendations always offer Request, a Watch
 // Later library item does too, but e.g. an already-watched item doesn't.
-function seerr_status_slot_markup(state, idle_markup) {
+// idle_markup_fn receives the fetched state so the idle Request button
+// can carry is_french/is_anime through as data attributes for
+// request_media_on_seerr to read when it's actually clicked.
+function seerr_status_slot_markup(state, idle_markup_fn) {
     if (state.watch_url) {
         return `<a class="recommendation-action primary" data-seerr-slot
                    href="${state.watch_url}" target="_blank"
@@ -648,13 +675,13 @@ function seerr_status_slot_markup(state, idle_markup) {
         return '<span class="recommendation-action muted" ' +
             'data-seerr-slot>✓ Requested on Seerr</span>';
     }
-    return idle_markup;
+    return idle_markup_fn(state);
 }
 
 async function refresh_seerr_status_slot(
-    container, tmdb_id, media_type, idle_markup, still_open
+    container, tmdb_id, media_type, idle_markup_fn, still_open
 ) {
-    let state = {status: "idle", watch_url: null};
+    let state = {status: "idle", watch_url: null, is_french: false, is_anime: false};
     try {
         const get_status = httpsCallable(functions, "getSeerrMediaStatus");
         const result = await get_status({
@@ -667,7 +694,7 @@ async function refresh_seerr_status_slot(
     }
     if (!still_open()) return;
     const slot = container.querySelector("[data-seerr-slot]");
-    if (slot) slot.outerHTML = seerr_status_slot_markup(state, idle_markup);
+    if (slot) slot.outerHTML = seerr_status_slot_markup(state, idle_markup_fn);
 }
 
 async function run_recommendation_action(item, action, button) {
@@ -1949,10 +1976,12 @@ async function open_library_detail(type, item) {
             // Only offer to request something not yet on Plex if it's
             // sitting in Watch Later — an already-watched item you added
             // manually isn't necessarily something to re-request.
-            item.status === "watch_later" ? `
+            (state) => item.status === "watch_later" ? `
                 <button class="recommendation-action" type="button" data-seerr-slot
                         data-library-dialog-request="${type}"
-                        data-library-dialog-id="${item.id}">
+                        data-library-dialog-id="${item.id}"
+                        data-seerr-french="${state.is_french}"
+                        data-seerr-anime="${state.is_anime}">
                     📥 Request
                 </button>` : "",
             () => active_library_detail?.item.id === item.id &&
@@ -2647,6 +2676,55 @@ service_import_cancel.addEventListener("click", () =>
 service_import_approve.addEventListener("click", () =>
     settle_service_import_confirmation(true)
 );
+
+// Generic two-option prompt, reused for the French-audio and anime
+// Dub/Sub choices before a Seerr request goes out. Resolves with
+// whichever option's `value` was picked, or null if the dialog was
+// dismissed (Escape, clicking outside) without choosing either —
+// callers should treat null as "cancel the request".
+const seerr_choice_dialog = document.getElementById("seerr_choice_dialog");
+const seerr_choice_title = document.getElementById("seerr_choice_title");
+const seerr_choice_message = document.getElementById("seerr_choice_message");
+const seerr_choice_option_a = document.getElementById("seerr_choice_option_a");
+const seerr_choice_option_b = document.getElementById("seerr_choice_option_b");
+
+let seerr_choice_resolve = null;
+
+function settle_seerr_choice(value) {
+    const resolve = seerr_choice_resolve;
+    seerr_choice_resolve = null;
+
+    if (seerr_choice_dialog.open) seerr_choice_dialog.close();
+
+    if (resolve) resolve(value);
+}
+
+function ask_seerr_choice(title, message, option_a, option_b) {
+    seerr_choice_title.textContent = title;
+    seerr_choice_message.textContent = message;
+    seerr_choice_option_a.textContent = option_a.label;
+    seerr_choice_option_a.dataset.value = option_a.value;
+    seerr_choice_option_b.textContent = option_b.label;
+    seerr_choice_option_b.dataset.value = option_b.value;
+
+    seerr_choice_dialog.showModal();
+
+    return new Promise((resolve) => {
+        seerr_choice_resolve = resolve;
+    });
+}
+
+seerr_choice_option_a.addEventListener("click", () =>
+    settle_seerr_choice(seerr_choice_option_a.dataset.value)
+);
+
+seerr_choice_option_b.addEventListener("click", () =>
+    settle_seerr_choice(seerr_choice_option_b.dataset.value)
+);
+
+seerr_choice_dialog.addEventListener("close", () => {
+    if (seerr_choice_resolve) settle_seerr_choice(null);
+});
 
 service_import_confirm_dialog.addEventListener("cancel", (event) => {
     event.preventDefault();
