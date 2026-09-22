@@ -5842,11 +5842,21 @@ async function seerr_login_with_plex(base_url, plex_token) {
     );
 
     if (result.status < 200 || result.status >= 300) {
+        logger.info(
+            "Seerr /auth/plex login rejected.",
+            {base_url, status: result.status}
+        );
         return null;
     }
 
     const cookies = result.set_cookie || [];
-    if (!cookies.length) return null;
+    if (!cookies.length) {
+        logger.warn(
+            "Seerr /auth/plex login succeeded but returned no session cookie.",
+            {base_url, status: result.status}
+        );
+        return null;
+    }
 
     return cookies
         .map((entry) => entry.split(";")[0])
@@ -5857,18 +5867,29 @@ async function seerr_login_with_plex(base_url, plex_token) {
 // whatever Plex account they already connected to Stellaz. Returns null
 // (never throws) whenever Seerr isn't usable for this user yet — no Plex
 // connection, or Plex connected but not recognized by Seerr — so callers
-// can degrade gracefully instead of surfacing a raw error.
+// can degrade gracefully instead of surfacing a raw error. Logs *why*
+// either way, since "not usable yet" would otherwise look identical for
+// two very different underlying reasons in the logs.
 async function seerr_session_for_uid(uid) {
     const plex_snapshot = await db
         .collection("plex_connections")
         .doc(uid)
         .get();
     const plex_token = plex_snapshot.data()?.access_token;
-    if (!plex_token) return null;
+    if (!plex_token) {
+        logger.info("Seerr session skipped: Plex not connected.", {uid});
+        return null;
+    }
 
     const base_url = get_seerr_base_url();
     const cookie = await seerr_login_with_plex(base_url, plex_token);
-    if (!cookie) return null;
+    if (!cookie) {
+        logger.warn(
+            "Seerr login with this Plex account failed.",
+            {uid, base_url}
+        );
+        return null;
+    }
 
     return {base_url, cookie};
 }
@@ -6007,56 +6028,88 @@ exports.requestMediaOnSeerr = onCall(
             );
         }
 
-        const base_url = get_seerr_base_url();
-        const cookie = await seerr_login_with_plex(base_url, plex_token);
-
-        if (!cookie) {
-            throw new HttpsError(
-                "failed-precondition",
-                "Your Plex account doesn't have access to Seerr."
-            );
-        }
-
-        // Defense in depth: the frontend already hides Request once
-        // something's on Plex, but the dialog could have been open a
-        // while — re-check right before requesting rather than trust a
-        // possibly-stale render.
-        const {watch_url} = await seerr_fetch_media_info(
-            base_url, cookie, media_type, tmdb_id
-        );
-        if (watch_url) {
-            throw new HttpsError(
-                "failed-precondition",
-                "This is already on your Plex server."
-            );
-        }
-
-        const request_body = {
-            mediaType: media_type,
-            mediaId: tmdb_id,
-        };
-        // Seerr accepts the literal string "all" here to request every
-        // season of a show in one call.
-        if (media_type === "tv") {
-            request_body.seasons = "all";
-        }
-
-        let result;
+        // Everything from here on talks to Seerr over the network — wrap
+        // the whole thing so an unexpected failure (DNS hiccup, timeout,
+        // TLS error, etc.) surfaces as a clear message instead of leaking
+        // out as a raw error, which Cloud Functions sanitizes down to an
+        // opaque "internal"/"INTERNAL" with no detail on the client side.
         try {
-            result = await seerr_https_json(
+            const base_url = get_seerr_base_url();
+            const cookie = await seerr_login_with_plex(base_url, plex_token);
+
+            if (!cookie) {
+                throw new HttpsError(
+                    "failed-precondition",
+                    "Your Plex account doesn't have access to Seerr."
+                );
+            }
+
+            // Defense in depth: the frontend already hides Request once
+            // something's on Plex, but the dialog could have been open a
+            // while — re-check right before requesting rather than trust
+            // a possibly-stale render.
+            const {watch_url} = await seerr_fetch_media_info(
+                base_url, cookie, media_type, tmdb_id
+            );
+            if (watch_url) {
+                throw new HttpsError(
+                    "failed-precondition",
+                    "This is already on your Plex server."
+                );
+            }
+
+            const request_body = {
+                mediaType: media_type,
+                mediaId: tmdb_id,
+            };
+            // Seerr accepts the literal string "all" here to request
+            // every season of a show in one call.
+            if (media_type === "tv") {
+                request_body.seasons = "all";
+            }
+
+            const result = await seerr_https_json(
                 `${base_url}/api/v1/request`,
                 {method: "POST", body: request_body, headers: {Cookie: cookie}}
             );
+
+            // A 409 means this title has already been requested — treat
+            // that as a successful outcome from the user's side, not an
+            // error.
+            if (result.status === 409) {
+                return {requested: true, already_requested: true};
+            }
+
+            if (result.status < 200 || result.status >= 300) {
+                logger.warn(
+                    "Seerr request failed.",
+                    {
+                        uid: request.auth.uid,
+                        tmdb_id,
+                        media_type,
+                        status: result.status,
+                    }
+                );
+
+                throw new HttpsError(
+                    "internal",
+                    "Stellaz could not send that request to your Seerr server."
+                );
+            }
+
+            return {requested: true};
         } catch (error) {
+            if (error instanceof HttpsError) throw error;
+
             logger.warn(
-                "Unable to reach Seerr server for a request.",
+                "Unable to complete a Seerr request.",
                 {
                     uid: request.auth.uid,
                     tmdb_id,
                     media_type,
                     error:
                         error?.message ||
-                        "Connection failed",
+                        String(error),
                 }
             );
 
@@ -6065,35 +6118,6 @@ exports.requestMediaOnSeerr = onCall(
                 "Stellaz could not securely reach your Seerr server."
             );
         }
-
-        // A 409 means this title has already been requested — treat that
-        // as a successful outcome from the user's side, not an error.
-        if (result.status === 409) {
-            return {
-                requested: true,
-                already_requested: true,
-            };
-        }
-
-        if (result.status < 200 ||
-            result.status >= 300) {
-            logger.warn(
-                "Seerr request failed.",
-                {
-                    uid: request.auth.uid,
-                    tmdb_id,
-                    media_type,
-                    status: result.status,
-                }
-            );
-
-            throw new HttpsError(
-                "internal",
-                "Stellaz could not send that request to your Seerr server."
-            );
-        }
-
-        return {requested: true};
     }
 );
 //#endregion
