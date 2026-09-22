@@ -4641,6 +4641,40 @@ anime_grid.addEventListener("keydown", (event) => {
 
 anime_edit_close.addEventListener("click", () => anime_edit_dialog.close());
 
+anime_edit_delete?.addEventListener("click", async () => {
+    if (!active_anime) return;
+
+    const title = active_anime.title;
+    const confirmed = confirm(
+        "Remove " + title + " from your Stellaz anime library? " +
+        "This does not remove it from MyAnimeList, AniList, or Kitsu."
+    );
+    if (!confirmed) return;
+
+    const original_text = anime_edit_delete.textContent;
+    anime_edit_delete.disabled = true;
+    anime_edit_delete.textContent = "Removing...";
+
+    try {
+        const {error} = await supabase
+            .from("anime")
+            .delete()
+            .eq("id", active_anime.id);
+        if (error) throw error;
+
+        anime_edit_dialog.close();
+        active_anime = null;
+        await load_anime_library();
+        show_toast(title + " removed from your anime library.");
+    } catch (error) {
+        console.error("Unable to remove anime:", error);
+        alert("Unable to remove this anime. Please try again.");
+    } finally {
+        anime_edit_delete.disabled = false;
+        anime_edit_delete.textContent = original_text;
+    }
+});
+
 anime_view_seasons.addEventListener("click", () => {
     if (!active_anime) return;
 
@@ -6072,3 +6106,24 @@ stellaz_ai_form.addEventListener("submit", async (event) => {
     }
 });
 //#endregion
+
+// Close modal dialogs by clicking the backdrop, while preserving clicks
+// anywhere inside the dialog itself.
+function enable_dialog_backdrop_close(dialog) {
+    if (!dialog || dialog.dataset.backdropCloseReady === "true") return;
+    dialog.dataset.backdropCloseReady = "true";
+
+    dialog.addEventListener("click", (event) => {
+        if (!dialog.open) return;
+        const bounds = dialog.getBoundingClientRect();
+        const clicked_outside =
+            event.clientX < bounds.left ||
+            event.clientX > bounds.right ||
+            event.clientY < bounds.top ||
+            event.clientY > bounds.bottom;
+
+        if (clicked_outside) dialog.close();
+    });
+}
+
+document.querySelectorAll("dialog").forEach(enable_dialog_backdrop_close);
