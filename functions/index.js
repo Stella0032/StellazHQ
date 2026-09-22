@@ -12,6 +12,10 @@ const {defineSecret} = require("firebase-functions/params");
 const {onRequest, onCall, HttpsError} = require("firebase-functions/https");
 const {onSchedule} = require("firebase-functions/v2/scheduler");
 const logger = require("firebase-functions/logger");
+const crypto = require("crypto");
+const dns = require("dns");
+const https = require("https");
+const net = require("net");
 
 
 const {initializeApp} = require("firebase-admin/app");
@@ -4810,6 +4814,510 @@ exports.searchAniListManga = onCall(async (request) => {
             })),
     };
 });
+//#endregion
+
+
+
+//? ------------------------------
+//* ----- Seerr Connection ------
+//? ------------------------------
+//#region
+const seerr_credential_encryption_key =
+    defineSecret("SEERR_CREDENTIAL_ENCRYPTION_KEY");
+
+function seerr_get_encryption_key() {
+    const raw = String(
+        seerr_credential_encryption_key.value() || ""
+    ).trim();
+
+    if (/^[0-9a-fA-F]{64}$/.test(raw)) {
+        return Buffer.from(raw, "hex");
+    }
+
+    let decoded;
+    try {
+        decoded = Buffer.from(raw, "base64");
+    } catch (_) {
+        decoded = null;
+    }
+
+    if (decoded?.length === 32) {
+        return decoded;
+    }
+
+    throw new Error(
+        "SEERR_CREDENTIAL_ENCRYPTION_KEY must be a 32-byte key encoded as 64 hex characters or base64."
+    );
+}
+
+function encrypt_seerr_api_key(api_key) {
+    const key = seerr_get_encryption_key();
+    const iv = crypto.randomBytes(12);
+    const cipher = crypto.createCipheriv(
+        "aes-256-gcm",
+        key,
+        iv
+    );
+
+    const ciphertext = Buffer.concat([
+        cipher.update(api_key, "utf8"),
+        cipher.final(),
+    ]);
+    const tag = cipher.getAuthTag();
+
+    return {
+        ciphertext: ciphertext.toString("base64"),
+        iv: iv.toString("base64"),
+        tag: tag.toString("base64"),
+        version: 1,
+    };
+}
+
+// Kept here for the follow-up Request button. Decryption stays entirely
+// server-side; the browser never receives a stored Seerr API key.
+function decrypt_seerr_api_key(encrypted) {
+    if (!encrypted?.ciphertext ||
+        !encrypted?.iv ||
+        !encrypted?.tag) {
+        throw new Error(
+            "Stored Seerr credentials are incomplete."
+        );
+    }
+
+    const decipher = crypto.createDecipheriv(
+        "aes-256-gcm",
+        seerr_get_encryption_key(),
+        Buffer.from(encrypted.iv, "base64")
+    );
+    decipher.setAuthTag(
+        Buffer.from(encrypted.tag, "base64")
+    );
+
+    return Buffer.concat([
+        decipher.update(
+            Buffer.from(
+                encrypted.ciphertext,
+                "base64"
+            )
+        ),
+        decipher.final(),
+    ]).toString("utf8");
+}
+
+function seerr_is_private_ipv4(address) {
+    const parts = address
+        .split(".")
+        .map((value) => Number(value));
+
+    if (parts.length !== 4 ||
+        parts.some((value) =>
+            !Number.isInteger(value) ||
+            value < 0 ||
+            value > 255
+        )) {
+        return true;
+    }
+
+    const [a, b] = parts;
+
+    return (
+        a === 0 ||
+        a === 10 ||
+        a === 127 ||
+        (a === 100 && b >= 64 && b <= 127) ||
+        (a === 169 && b === 254) ||
+        (a === 172 && b >= 16 && b <= 31) ||
+        (a === 192 && b === 0) ||
+        (a === 192 && b === 168) ||
+        (a === 198 && (b === 18 || b === 19)) ||
+        a >= 224
+    );
+}
+
+function seerr_is_private_ip(address) {
+    const family = net.isIP(address);
+
+    if (family === 4) {
+        return seerr_is_private_ipv4(address);
+    }
+
+    if (family !== 6) {
+        return true;
+    }
+
+    const normalized =
+        address.toLowerCase();
+
+    if (normalized === "::1" ||
+        normalized === "::" ||
+        normalized.startsWith("fc") ||
+        normalized.startsWith("fd") ||
+        normalized.startsWith("fe8") ||
+        normalized.startsWith("fe9") ||
+        normalized.startsWith("fea") ||
+        normalized.startsWith("feb")) {
+        return true;
+    }
+
+    // IPv4-mapped IPv6 addresses.
+    const mapped =
+        normalized.match(
+            /::ffff:(\d+\.\d+\.\d+\.\d+)$/
+        );
+    if (mapped) {
+        return seerr_is_private_ipv4(mapped[1]);
+    }
+
+    return false;
+}
+
+async function seerr_resolve_public_host(hostname) {
+    const lower = String(hostname || "")
+        .toLowerCase()
+        .replace(/\.$/, "");
+
+    if (!lower ||
+        lower === "localhost" ||
+        lower.endsWith(".localhost") ||
+        lower.endsWith(".local") ||
+        lower.endsWith(".internal")) {
+        throw new HttpsError(
+            "invalid-argument",
+            "Seerr must use an internet-reachable HTTPS hostname."
+        );
+    }
+
+    if (net.isIP(lower)) {
+        if (seerr_is_private_ip(lower)) {
+            throw new HttpsError(
+                "invalid-argument",
+                "Private or local Seerr addresses are not allowed."
+            );
+        }
+
+        return [{
+            address: lower,
+            family: net.isIP(lower),
+        }];
+    }
+
+    let addresses;
+    try {
+        addresses = await dns.promises.lookup(
+            lower,
+            {
+                all: true,
+                verbatim: true,
+            }
+        );
+    } catch (_) {
+        throw new HttpsError(
+            "failed-precondition",
+            "That Seerr hostname could not be resolved."
+        );
+    }
+
+    if (!addresses.length ||
+        addresses.some((entry) =>
+            seerr_is_private_ip(entry.address)
+        )) {
+        throw new HttpsError(
+            "invalid-argument",
+            "That Seerr hostname does not resolve to a public internet address."
+        );
+    }
+
+    return addresses;
+}
+
+function normalize_seerr_base_url(value) {
+    let parsed;
+    try {
+        parsed = new URL(
+            String(value || "").trim()
+        );
+    } catch (_) {
+        throw new HttpsError(
+            "invalid-argument",
+            "Enter a valid Seerr URL."
+        );
+    }
+
+    if (parsed.protocol !== "https:") {
+        throw new HttpsError(
+            "invalid-argument",
+            "Seerr must use an HTTPS URL."
+        );
+    }
+
+    if (parsed.username ||
+        parsed.password ||
+        parsed.search ||
+        parsed.hash) {
+        throw new HttpsError(
+            "invalid-argument",
+            "Enter only the base HTTPS URL for Seerr."
+        );
+    }
+
+    if (parsed.href.length > 300) {
+        throw new HttpsError(
+            "invalid-argument",
+            "The Seerr URL is too long."
+        );
+    }
+
+    parsed.pathname =
+        parsed.pathname.replace(/\/+$/, "");
+
+    return parsed.toString().replace(/\/$/, "");
+}
+
+async function seerr_https_json(
+    endpoint,
+    api_key
+) {
+    const parsed = new URL(endpoint);
+    const addresses =
+        await seerr_resolve_public_host(
+            parsed.hostname
+        );
+    const target = addresses[0];
+
+    return await new Promise((resolve, reject) => {
+        const request = https.request(
+            {
+                protocol: "https:",
+                hostname: parsed.hostname,
+                port: parsed.port || 443,
+                path:
+                    parsed.pathname +
+                    parsed.search,
+                method: "GET",
+                servername: parsed.hostname,
+                rejectUnauthorized: true,
+                headers: {
+                    Accept: "application/json",
+                    "X-Api-Key": api_key,
+                    "User-Agent":
+                        "StellazHQ/1.0",
+                },
+                timeout: 12000,
+                lookup:
+                    (_hostname, _options, callback) =>
+                        callback(
+                            null,
+                            target.address,
+                            target.family
+                        ),
+            },
+            (response) => {
+                let body = "";
+
+                response.setEncoding("utf8");
+
+                response.on("data", (chunk) => {
+                    body += chunk;
+
+                    if (body.length >
+                        1024 * 1024) {
+                        request.destroy(
+                            new Error(
+                                "Seerr response was too large."
+                            )
+                        );
+                    }
+                });
+
+                response.on("end", () => {
+                    let payload = {};
+                    try {
+                        payload =
+                            body
+                                ? JSON.parse(body)
+                                : {};
+                    } catch (_) {}
+
+                    resolve({
+                        status:
+                            Number(
+                                response.statusCode || 0
+                            ),
+                        payload,
+                    });
+                });
+            }
+        );
+
+        request.on("timeout", () => {
+            request.destroy(
+                new Error(
+                    "Seerr connection timed out."
+                )
+            );
+        });
+
+        request.on("error", reject);
+        request.end();
+    });
+}
+
+exports.connectSeerrServer = onCall(
+    {
+        secrets: [
+            seerr_credential_encryption_key,
+        ],
+        timeoutSeconds: 30,
+    },
+    async (request) => {
+        if (!request.auth) {
+            throw new HttpsError(
+                "unauthenticated",
+                "You must be logged in."
+            );
+        }
+
+        const base_url =
+            normalize_seerr_base_url(
+                request.data?.base_url
+            );
+        const api_key =
+            String(
+                request.data?.api_key || ""
+            ).trim();
+
+        if (!api_key ||
+            api_key.length > 500) {
+            throw new HttpsError(
+                "invalid-argument",
+                "Enter a valid Seerr API key."
+            );
+        }
+
+        let result;
+        try {
+            result = await seerr_https_json(
+                base_url +
+                    "/api/v1/auth/me",
+                api_key
+            );
+        } catch (error) {
+            logger.warn(
+                "Unable to reach Seerr server.",
+                {
+                    uid: request.auth.uid,
+                    base_url,
+                    error:
+                        error?.message ||
+                        "Connection failed",
+                }
+            );
+
+            throw new HttpsError(
+                "failed-precondition",
+                "Stellaz could not securely reach that Seerr server."
+            );
+        }
+
+        if (result.status === 401 ||
+            result.status === 403) {
+            throw new HttpsError(
+                "failed-precondition",
+                "Seerr rejected that API key."
+            );
+        }
+
+        if (result.status < 200 ||
+            result.status >= 300 ||
+            !result.payload?.id) {
+            throw new HttpsError(
+                "failed-precondition",
+                "That server did not respond like a valid Seerr instance."
+            );
+        }
+
+        const encrypted =
+            encrypt_seerr_api_key(api_key);
+        const display_name =
+            result.payload.displayName ||
+            result.payload.username ||
+            result.payload.plexUsername ||
+            result.payload.jellyfinUsername ||
+            result.payload.email ||
+            "Seerr user";
+
+        await db
+            .collection("seerr_connections")
+            .doc(request.auth.uid)
+            .set({
+                base_url,
+                display_name:
+                    String(display_name)
+                        .slice(0, 160),
+                seerr_user_id:
+                    String(
+                        result.payload.id
+                    ),
+                credential: {
+                    ciphertext:
+                        encrypted.ciphertext,
+                    iv: encrypted.iv,
+                    tag: encrypted.tag,
+                    version:
+                        encrypted.version,
+                },
+                connected_at:
+                    new Date(),
+                updated_at:
+                    new Date(),
+            }, {merge: true});
+
+        return {
+            connected: true,
+            display_name:
+                String(display_name)
+                    .slice(0, 160),
+            base_url,
+        };
+    }
+);
+
+exports.getSeerrConnectionStatus =
+    onCall(async (request) => {
+        if (!request.auth) {
+            throw new HttpsError(
+                "unauthenticated",
+                "You must be logged in."
+            );
+        }
+
+        const snapshot = await db
+            .collection("seerr_connections")
+            .doc(request.auth.uid)
+            .get();
+
+        if (!snapshot.exists) {
+            return {
+                connected: false,
+            };
+        }
+
+        const data = snapshot.data();
+
+        return {
+            connected:
+                Boolean(
+                    data.base_url &&
+                    data.credential?.ciphertext &&
+                    data.credential?.iv &&
+                    data.credential?.tag
+                ),
+            display_name:
+                data.display_name || null,
+            base_url:
+                data.base_url || null,
+        };
+    });
 //#endregion
 
 
