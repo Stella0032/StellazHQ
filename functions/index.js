@@ -15,6 +15,7 @@ const logger = require("firebase-functions/logger");
 const dns = require("dns");
 const https = require("https");
 const net = require("net");
+const crypto = require("crypto");
 
 
 const {initializeApp} = require("firebase-admin/app");
