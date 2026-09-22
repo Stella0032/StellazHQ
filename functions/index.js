@@ -7,6 +7,8 @@
  * See a full list of supported triggers at https://firebase.google.com/docs/functions
  */
 
+const crypto = require("crypto");
+
 const {setGlobalOptions} = require("firebase-functions");
 const {defineSecret} = require("firebase-functions/params");
 const {onRequest, onCall, HttpsError} = require("firebase-functions/https");
@@ -5391,6 +5393,48 @@ exports.getPlexImportPreview = onCall(async (request) => {
 // X-Api-Key header, and a 409 on a duplicate request) has been stable across
 // Overseerr, Jellyseerr, and Seerr, so this also works against an
 // Overseerr/Jellyseerr server without changes.
+//
+// Unlike the Plex/Kitsu connections, the Seerr API key is encrypted at rest
+// (AES-256-GCM) with a dedicated secret rather than stored as plain text —
+// a Seerr key grants request/download control over someone's home server,
+// so it gets the same treatment as the other credential secrets below
+// (generate with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`,
+// store with `firebase functions:secrets:set SEERR_CREDENTIAL_ENCRYPTION_KEY`).
+const seerr_credential_encryption_key = defineSecret(
+    "SEERR_CREDENTIAL_ENCRYPTION_KEY"
+);
+
+function encrypt_seerr_api_key(plaintext, hex_key) {
+    const key = Buffer.from(hex_key, "hex");
+    const iv = crypto.randomBytes(12);
+    const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
+    const ciphertext = Buffer.concat([
+        cipher.update(plaintext, "utf8"), cipher.final(),
+    ]);
+    return [
+        iv.toString("base64"),
+        cipher.getAuthTag().toString("base64"),
+        ciphertext.toString("base64"),
+    ].join(":");
+}
+
+function decrypt_seerr_api_key(encrypted, hex_key) {
+    const [iv_b64, tag_b64, ciphertext_b64] = String(encrypted || "").split(":");
+    if (!iv_b64 || !tag_b64 || !ciphertext_b64) {
+        throw new Error("Stored Seerr API key is malformed.");
+    }
+    const key = Buffer.from(hex_key, "hex");
+    const decipher = crypto.createDecipheriv(
+        "aes-256-gcm", key, Buffer.from(iv_b64, "base64")
+    );
+    decipher.setAuthTag(Buffer.from(tag_b64, "base64"));
+    const plaintext = Buffer.concat([
+        decipher.update(Buffer.from(ciphertext_b64, "base64")),
+        decipher.final(),
+    ]);
+    return plaintext.toString("utf8");
+}
+
 function normalize_seerr_base_url(raw_url) {
     const value = String(raw_url || "").trim();
     if (!/^https?:\/\/\S+$/i.test(value)) return null;
@@ -5415,53 +5459,60 @@ async function seerr_request(base_url, path, api_key, options = {}) {
     return response.status === 204 ? null : response.json();
 }
 
-exports.connectSeerrServer = onCall(async (request) => {
-    if (!request.auth) {
-        throw new HttpsError("unauthenticated", "You must be logged in.");
-    }
+exports.connectSeerrServer = onCall(
+    {secrets: [seerr_credential_encryption_key]},
+    async (request) => {
+        if (!request.auth) {
+            throw new HttpsError("unauthenticated", "You must be logged in.");
+        }
 
-    const base_url = normalize_seerr_base_url(request.data?.base_url);
-    const api_key = String(request.data?.api_key || "").trim();
+        const base_url = normalize_seerr_base_url(request.data?.base_url);
+        const api_key = String(request.data?.api_key || "").trim();
 
-    if (!base_url) {
-        throw new HttpsError(
-            "invalid-argument",
-            "Enter your Seerr server's full URL, including https:// or http://."
+        if (!base_url) {
+            throw new HttpsError(
+                "invalid-argument",
+                "Enter your Seerr server's full URL, including https:// or http://."
+            );
+        }
+        if (!api_key) {
+            throw new HttpsError("invalid-argument", "Enter your Seerr API key.");
+        }
+
+        let user;
+        try {
+            user = await seerr_request(base_url, "/api/v1/auth/me", api_key);
+        } catch (error) {
+            logger.warn("Seerr connection check failed.", {
+                base_url,
+                status: error?.status || null,
+                error: error?.message || String(error),
+            });
+            throw new HttpsError(
+                "failed-precondition",
+                "Stellaz could not reach that Seerr server with this API key. " +
+                "Check the URL and key, and make sure the server is reachable " +
+                "from the internet (Stellaz calls it from Google's servers, " +
+                "not from your home network)."
+            );
+        }
+
+        const display_name =
+            user?.username || user?.plexUsername || user?.email || null;
+        const encrypted_api_key = encrypt_seerr_api_key(
+            api_key, seerr_credential_encryption_key.value()
         );
-    }
-    if (!api_key) {
-        throw new HttpsError("invalid-argument", "Enter your Seerr API key.");
-    }
 
-    let user;
-    try {
-        user = await seerr_request(base_url, "/api/v1/auth/me", api_key);
-    } catch (error) {
-        logger.warn("Seerr connection check failed.", {
+        await db.collection("seerr_connections").doc(request.auth.uid).set({
             base_url,
-            status: error?.status || null,
-            error: error?.message || String(error),
-        });
-        throw new HttpsError(
-            "failed-precondition",
-            "Stellaz could not reach that Seerr server with this API key. " +
-            "Check the URL and key, and make sure the server is reachable " +
-            "from the internet (Stellaz calls it from Google's servers, " +
-            "not from your home network)."
-        );
+            api_key: encrypted_api_key,
+            display_name,
+            connected_at: new Date(),
+        }, {merge: true});
+
+        return {connected: true, display_name};
     }
-
-    const display_name = user?.username || user?.plexUsername || user?.email || null;
-
-    await db.collection("seerr_connections").doc(request.auth.uid).set({
-        base_url,
-        api_key,
-        display_name,
-        connected_at: new Date(),
-    }, {merge: true});
-
-    return {connected: true, display_name};
-});
+);
 
 exports.getSeerrConnectionStatus = onCall(async (request) => {
     if (!request.auth) {
