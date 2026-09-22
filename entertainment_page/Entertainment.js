@@ -671,6 +671,7 @@ const movie_sort = document.getElementById("movie_sort");
 const movie_filter_clear = document.getElementById("movie_filter_clear");
 
 let movie_library = [];
+let movie_library_expanded = false;
 
 function get_collapsed_movie_count() {
     if (window.innerWidth <= 700) {
@@ -881,7 +882,10 @@ function get_filtered_movies() {
 function render_movie_library() {
     const movies = get_filtered_movies();
 
-    movie_grid.classList.remove("expanded");
+    movie_grid.classList.toggle(
+        "expanded",
+        movie_library_expanded
+    );
 
     if (movies.length === 0) {
         movie_grid.innerHTML =
@@ -904,7 +908,9 @@ function render_movie_library() {
 
     const has_hidden_movies = movies.length > get_collapsed_movie_count();
     movie_library_toggle.hidden = !has_hidden_movies;
-    movie_library_toggle.textContent = "Show all movies";
+    movie_library_toggle.textContent = movie_library_expanded
+        ? "Show less"
+        : "Show all movies";
 }
 
 
@@ -1039,13 +1045,17 @@ movie_filter_clear.addEventListener("click", () => {
 });
 
 movie_library_toggle.addEventListener("click", () => {
-    const expanded = movie_grid.classList.toggle("expanded");
+    movie_library_expanded = !movie_library_expanded;
+    movie_grid.classList.toggle(
+        "expanded",
+        movie_library_expanded
+    );
 
-    movie_library_toggle.textContent = expanded
+    movie_library_toggle.textContent = movie_library_expanded
         ? "Show less"
         : "Show all movies";
 
-    if (!expanded) {
+    if (!movie_library_expanded) {
         document.getElementById("movie_library").scrollIntoView({
             behavior: "smooth",
             block: "start"
@@ -1086,6 +1096,7 @@ let active_season_number = null;
 let active_season_episodes = [];
 
 let show_library = [];
+let show_library_expanded = false;
 
 function create_show_card(show, index) {
     const poster = show.poster_url
@@ -1173,7 +1184,10 @@ function get_filtered_shows() {
 
 function render_show_library() {
     const shows = get_filtered_shows();
-    show_grid.classList.remove("expanded");
+    show_grid.classList.toggle(
+        "expanded",
+        show_library_expanded
+    );
 
     if (shows.length === 0) {
         show_grid.innerHTML =
@@ -1191,7 +1205,9 @@ function render_show_library() {
         : `${show_library.length} SHOWS`;
     show_library_toggle.hidden =
         shows.length <= get_collapsed_movie_count();
-    show_library_toggle.textContent = "Show all shows";
+    show_library_toggle.textContent = show_library_expanded
+        ? "Show less"
+        : "Show all shows";
 }
 
 function populate_show_filters(shows) {
@@ -1739,8 +1755,14 @@ show_filter_clear.addEventListener("click", () => {
 });
 
 show_library_toggle.addEventListener("click", () => {
-    const expanded = show_grid.classList.toggle("expanded");
-    show_library_toggle.textContent = expanded ? "Show less" : "Show all shows";
+    show_library_expanded = !show_library_expanded;
+    show_grid.classList.toggle(
+        "expanded",
+        show_library_expanded
+    );
+    show_library_toggle.textContent = show_library_expanded
+        ? "Show less"
+        : "Show all shows";
 });
 //#endregion
 
