@@ -2628,6 +2628,144 @@ tmdb_connect_button.addEventListener("click", begin_tmdb_connection);
 
 
 //? ---------------------------------
+//* ----- Seerr Connection ----------
+//? ---------------------------------
+//#region
+const seerr_connection_label =
+    document.getElementById("seerr_connection_label");
+const seerr_connect_description =
+    document.getElementById("seerr_connect_description");
+const seerr_server_input =
+    document.getElementById("seerr_server_input");
+const seerr_api_key_input =
+    document.getElementById("seerr_api_key_input");
+const seerr_connect_button =
+    document.getElementById("seerr_connect_button");
+
+async function load_seerr_connection_status() {
+    try {
+        const get_status =
+            httpsCallable(functions, "getSeerrConnectionStatus");
+        const result = await get_status();
+
+        seerr_api_key_input.value = "";
+
+        if (result.data.connected) {
+            document.getElementById("seerr_connection_badge")
+                ?.removeAttribute("hidden");
+            seerr_connection_label.textContent =
+                result.data.display_name
+                    ? "Connected as " + result.data.display_name
+                    : "Connected";
+            seerr_connect_description.textContent =
+                "Connected to " +
+                (result.data.base_url || "your Seerr server") +
+                ". Stellaz can use this connection for media requests.";
+            seerr_server_input.value =
+                result.data.base_url || "";
+            seerr_connect_button.textContent =
+                "Update connection";
+            return;
+        }
+
+        document.getElementById("seerr_connection_badge")
+            ?.setAttribute("hidden", "");
+        seerr_connection_label.textContent = "Not connected";
+        seerr_connect_description.textContent =
+            "Connect your own Seerr server so Stellaz can request movies and TV shows from it.";
+        seerr_connect_button.textContent =
+            "Connect Seerr";
+    } catch (error) {
+        console.error(
+            "Unable to check Seerr connection:",
+            error
+        );
+    }
+}
+
+async function connect_seerr_server() {
+    const base_url =
+        seerr_server_input.value.trim();
+    const api_key =
+        seerr_api_key_input.value.trim();
+
+    if (!base_url) {
+        seerr_server_input.focus();
+        return;
+    }
+
+    if (!api_key) {
+        seerr_api_key_input.focus();
+        return;
+    }
+
+    seerr_connect_button.disabled = true;
+    seerr_connect_button.textContent = "Verifying...";
+
+    try {
+        const connect =
+            httpsCallable(functions, "connectSeerrServer");
+        const result = await connect({
+            base_url,
+            api_key
+        });
+
+        // Never leave the secret sitting in the page after the
+        // one request that needs it.
+        seerr_api_key_input.value = "";
+
+        await load_seerr_connection_status();
+
+        show_toast(
+            "Seerr connected" +
+            (result.data.display_name
+                ? " as " + result.data.display_name
+                : "") +
+            "."
+        );
+    } catch (error) {
+        seerr_api_key_input.value = "";
+        console.error(
+            "Unable to connect Seerr:",
+            error
+        );
+
+        alert(
+            error?.message ||
+            "Unable to connect to that Seerr server."
+        );
+    } finally {
+        seerr_connect_button.disabled = false;
+
+        if (seerr_connection_label.textContent
+            .startsWith("Connected")) {
+            seerr_connect_button.textContent =
+                "Update connection";
+        } else {
+            seerr_connect_button.textContent =
+                "Connect Seerr";
+        }
+    }
+}
+
+seerr_connect_button.addEventListener(
+    "click",
+    connect_seerr_server
+);
+
+seerr_api_key_input.addEventListener(
+    "keydown",
+    (event) => {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            connect_seerr_server();
+        }
+    }
+);
+//#endregion
+
+
+//? ---------------------------------
 //* ----- Kitsu Connection ----------
 //? ---------------------------------
 //#region
@@ -5546,6 +5684,7 @@ onAuthStateChanged(auth, async (user) => {
             load_anilist_connection_status(),
             load_kitsu_connection_status(),
             load_tmdb_connection_status(),
+            load_seerr_connection_status(),
             load_anime_library(),
             load_manga_library()
         ]);
