@@ -1102,7 +1102,7 @@ async function enrich_missing_movie_metadata(movies) {
     return true;
 }
 
-async function load_movie_library() {
+async function load_movie_library({refresh_recommendations = true} = {}) {
     try {
         const { data: movies, error } = await supabase
             .from("movies")
@@ -1137,7 +1137,9 @@ async function load_movie_library() {
         movie_library = movies;
         populate_movie_filters(movies);
         render_movie_library();
-        await load_movie_recommendations(movies);
+        if (refresh_recommendations) {
+            await load_movie_recommendations(movies);
+        }
 
         movies.forEach((movie) => {
             console.log("Loaded Supabase movie:", movie.title, movie);
@@ -2556,7 +2558,10 @@ library_remove_form.addEventListener("submit", async (event) => {
         library_remove_dialog.close();
 
         if (type === "movie") {
-            await load_movie_library();
+            // Removing a title doesn't change anything the recommendation
+            // engine should react to — skip the TMDB round trip that
+            // reloading recommendations would otherwise trigger.
+            await load_movie_library({refresh_recommendations: false});
             show_entertainment_category("Movies");
         } else {
             await load_show_library();
