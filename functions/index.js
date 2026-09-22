@@ -5531,4 +5531,59 @@ exports.getSeerrConnectionStatus = onCall(async (request) => {
     };
 });
 
+exports.requestMediaOnSeerr = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError("unauthenticated", "You must be logged in.");
+    }
+
+    const media_type = request.data?.media_type === "tv" ? "tv" : "movie";
+    const tmdb_id = Number(request.data?.tmdb_id);
+    if (!tmdb_id) {
+        throw new HttpsError(
+            "invalid-argument",
+            "A TMDB ID is required to request this title."
+        );
+    }
+
+    const connection = await db.collection("seerr_connections")
+        .doc(request.auth.uid).get();
+    if (!connection.exists) {
+        throw new HttpsError(
+            "failed-precondition",
+            "Connect your Seerr server first."
+        );
+    }
+
+    const {base_url, api_key} = connection.data();
+    const body = {mediaType: media_type, mediaId: tmdb_id};
+    // Seerr (and Overseerr/Jellyseerr before it) accepts the literal
+    // string "all" here to request every season of a show in one call.
+    if (media_type === "tv") body.seasons = "all";
+
+    try {
+        await seerr_request(base_url, "/api/v1/request", api_key, {
+            method: "POST",
+            body: JSON.stringify(body),
+        });
+        return {requested: true};
+    } catch (error) {
+        // Seerr returns 409 when this title has already been requested —
+        // treat that as a successful outcome from the user's perspective.
+        if (error.status === 409) {
+            return {requested: true, already_requested: true};
+        }
+        logger.warn("Seerr request failed.", {
+            uid: request.auth.uid,
+            tmdb_id,
+            media_type,
+            status: error?.status || null,
+            error: error?.message || String(error),
+        });
+        throw new HttpsError(
+            "internal",
+            "Stellaz could not send that request to your Seerr server."
+        );
+    }
+});
+
 //#endregion

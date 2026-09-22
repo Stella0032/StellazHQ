@@ -529,6 +529,9 @@ async function open_recommendation_details(item) {
                     data-dialog-action="watched">✓ I've seen it</button>
             <button type="button" class="recommendation-action"
                     data-dialog-action="watch_later">＋ Watch later</button>
+            ${item.tmdb_id ? `
+                <button type="button" class="recommendation-action"
+                        data-dialog-action="request_seerr">📥 Request</button>` : ""}
             <button type="button" class="recommendation-action muted"
                     data-dialog-action="not_interested">Not interested</button>`;
     recommendation_dialog.showModal();
@@ -582,7 +585,41 @@ async function open_recommendation_details(item) {
     }
 }
 
+async function request_media_on_seerr(item, media_type, button) {
+    const original_text = button.textContent;
+    button.disabled = true;
+    button.textContent = "Requesting...";
+    try {
+        const request_media = httpsCallable(functions, "requestMediaOnSeerr");
+        const result = await request_media({
+            tmdb_id: Number(item.tmdb_id),
+            media_type: media_type === "show" ? "tv" : "movie"
+        });
+        show_toast(result.data.already_requested
+            ? `${item.title} was already requested on your Seerr server.`
+            : `${item.title} requested on your Seerr server.`);
+        button.textContent = "✓ Requested";
+    } catch (error) {
+        console.error("Unable to request media on Seerr:", error);
+        button.disabled = false;
+        button.textContent = original_text;
+        const code = error?.code || "";
+        if (code.includes("failed-precondition") &&
+            confirm("Connect your Seerr server first. Open Connected Services now?")) {
+            open_connected_services_dialog();
+            return;
+        }
+        alert(error?.message ||
+            "Unable to send that request to your Seerr server.");
+    }
+}
+
 async function run_recommendation_action(item, action, button) {
+    if (action === "request_seerr") {
+        await request_media_on_seerr(item, active_recommendation_type, button);
+        return;
+    }
+
     button.disabled = true;
     try {
         if (action === "not_interested") {
@@ -1794,6 +1831,12 @@ async function open_library_detail(type, item) {
                     data-library-dialog-id="${item.id}">
                 ✓ Mark watched
             </button>` : ""}
+        ${item.status === "watch_later" && item.tmdb_id ? `
+            <button class="recommendation-action" type="button"
+                    data-library-dialog-request="${type}"
+                    data-library-dialog-id="${item.id}">
+                📥 Request
+            </button>` : ""}
         ${type === "show" ? `
             <button class="recommendation-action" type="button"
                     data-library-dialog-seasons="${item.id}">
@@ -1958,6 +2001,18 @@ recommendation_dialog_actions.addEventListener("click", async (event) => {
             watched_button
         );
         recommendation_dialog.close();
+        return;
+    }
+
+    const request_button = event.target.closest(
+        "[data-library-dialog-request]"
+    );
+    if (request_button) {
+        await request_media_on_seerr(
+            active_library_detail.item,
+            request_button.dataset.libraryDialogRequest,
+            request_button
+        );
         return;
     }
 
