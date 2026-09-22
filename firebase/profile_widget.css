@@ -277,6 +277,136 @@ html[data-theme="flurple"] .stellaz-ai-form button{
 /*#endregion*/
 
 
+/*? --------------------------- */
+/*^ ----- The Sunsetverse ----- */
+/*? --------------------------- */
+/*#region*/
+html[data-theme="sunset"]{
+    background:#0d0403;
+    overscroll-behavior-y:none;
+}
+
+html[data-theme="sunset"] body{
+    background:transparent;
+    color:#fff1e2;
+}
+
+html[data-theme="sunset"] .ambient-background,
+html[data-theme="sunset"] .space-bg{
+    filter:none;
+    background:
+        radial-gradient(ellipse at 80% 0%,rgba(255,138,56,.17) 0%,rgba(255,110,40,.08) 26%,transparent 62%),
+        radial-gradient(ellipse at 14% 68%,rgba(232,67,50,.12) 0%,rgba(180,40,28,.06) 34%,transparent 62%),
+        linear-gradient(180deg,#2b0f08 0%,#200a06 18%,#140604 42%,#0d0403 72%,#0d0403 100%);
+}
+
+html[data-theme="sunset"] .ambient-background::after{
+    background:rgba(255,122,48,.03);
+}
+
+html[data-theme="sunset"] .topbar{
+    background:rgba(19,7,4,.93);
+    border-bottom-color:rgba(255,140,64,.26);
+    box-shadow:0 10px 35px rgba(255,90,30,.07);
+}
+
+html[data-theme="sunset"] .brand{
+    color:#ffe9d6;
+    text-shadow:0 0 17px rgba(255,120,48,.3);
+}
+
+html[data-theme="sunset"] .brand span{
+    color:#ff7a30;
+    text-shadow:0 0 18px rgba(255,122,48,.5);
+}
+
+html[data-theme="sunset"] .nav-links a:hover,
+html[data-theme="sunset"] .nav-links a.active,
+html[data-theme="sunset"] .eyebrow,
+html[data-theme="sunset"] .movie-library-count,
+html[data-theme="sunset"] .library-card strong{
+    color:#ffb454;
+}
+
+html[data-theme="sunset"] .nav-links a.active::after{
+    background:linear-gradient(90deg,#ff3b3b,#ffb454);
+    box-shadow:0 0 12px rgba(255,122,48,.55);
+}
+
+html[data-theme="sunset"] .library-card,
+html[data-theme="sunset"] .menu-card,
+html[data-theme="sunset"] .movie-library-panel,
+html[data-theme="sunset"] .recommendations-panel{
+    border-color:rgba(255,140,64,.24);
+    background:linear-gradient(145deg,rgba(38,12,6,.93),rgba(14,6,4,.9));
+    box-shadow:0 18px 55px rgba(255,90,30,.065);
+}
+
+html[data-theme="sunset"] .library-card:hover,
+html[data-theme="sunset"] .menu-card:hover{
+    border-color:rgba(255,150,80,.58);
+    box-shadow:0 18px 55px rgba(255,90,30,.15),0 0 22px rgba(255,140,64,.09);
+}
+
+html[data-theme="sunset"] .movie-card{
+    border-color:rgba(255,120,60,.16);
+}
+
+html[data-theme="sunset"] .movie-card:hover{
+    border-color:rgba(255,150,80,.4);
+    box-shadow:0 12px 30px rgba(255,90,30,.1);
+}
+
+html[data-theme="sunset"] .library-add-button,
+html[data-theme="sunset"] .profile-save{
+    border-color:rgba(255,180,84,.6);
+    color:#2b0906;
+    background:linear-gradient(135deg,#ffcf70,#ff6a2e);
+    box-shadow:0 0 20px rgba(255,120,48,.18);
+}
+
+html[data-theme="sunset"] .profile-trigger,
+html[data-theme="sunset"] .profile-menu,
+html[data-theme="sunset"] .profile-dialog{
+    border-color:rgba(255,140,64,.23);
+    background:rgba(15,6,4,.96);
+}
+
+html[data-theme="sunset"] .profile-menu button:hover,
+html[data-theme="sunset"] .theme-choice:hover,
+html[data-theme="sunset"] .theme-choice.selected{
+    border-color:#ffb454;
+    background:rgba(255,110,40,.11);
+    box-shadow:0 0 18px rgba(255,140,64,.13);
+}
+
+html[data-theme="sunset"] .profile-avatar{
+    color:#2b0906;
+    background:linear-gradient(135deg,#ffcf70,#ff6a2e);
+    box-shadow:0 0 18px rgba(255,120,48,.26);
+}
+
+html[data-theme="sunset"] .hero h1{
+    background:linear-gradient(90deg,#ffe9d1,#ffb454,#ff5a28);
+    background-clip:text;
+    -webkit-background-clip:text;
+    color:transparent;
+    text-shadow:0 0 25px rgba(255,120,48,.12);
+}
+
+html[data-theme="sunset"] .muckiverse-brand-name,
+html[data-theme="sunset"] .flurpleverse-brand-name{
+    display:none;
+}
+
+html[data-theme="sunset"] .sunsetverse-brand-name{
+    display:inline-block;
+    color:#ffb454;
+    text-shadow:0 0 12px rgba(255,140,64,.36);
+}
+/*#endregion*/
+
+
 /* Keep every theme's ambient gradient continuous behind the full page. */
 html[data-theme="stellaz"] body{
     background:transparent;
@@ -296,11 +426,20 @@ html[data-theme="flurple"] .recommendation-action:hover{
     color:#fff7df;
     background:rgba(180,92,255,.11);
 }
+html[data-theme="sunset"] .recommendation-action.primary,
+html[data-theme="sunset"] .recommendation-action:hover{
+    border-color:rgba(255,150,84,.52);
+    color:#fff0e0;
+    background:rgba(255,110,40,.11);
+}
 html[data-theme="neon"] .recommendation-genre-filter:focus{
     border-color:rgba(72,255,111,.58);
 }
 html[data-theme="flurple"] .recommendation-genre-filter:focus{
     border-color:rgba(244,199,94,.58);
+}
+html[data-theme="sunset"] .recommendation-genre-filter:focus{
+    border-color:rgba(255,150,84,.58);
 }
 
 
