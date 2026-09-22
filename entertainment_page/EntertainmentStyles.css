@@ -413,6 +413,15 @@ a {
     opacity: 0.55;
 }
 
+/* The Watch-on-Plex slot renders an <a>, not a <button> — match the rest
+   of the action row instead of the browser's default link styling. */
+a.recommendation-action {
+    display: block;
+    box-sizing: border-box;
+    text-align: center;
+    text-decoration: none;
+}
+
 .recommendation-tabs {
     margin-top: 22px;
     display: flex;
