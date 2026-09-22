@@ -5802,8 +5802,18 @@ function normalize_seerr_base_url(value) {
 
 async function seerr_https_json(
     endpoint,
-    api_key
+    api_key,
+    request_options = {}
 ) {
+    const method =
+        request_options.method || "GET";
+    const request_body =
+        request_options.body != null
+            ? Buffer.from(
+                JSON.stringify(request_options.body)
+            )
+            : null;
+
     const parsed = new URL(endpoint);
     const addresses =
         await seerr_resolve_public_host(
@@ -5824,7 +5834,7 @@ async function seerr_https_json(
                 path:
                     parsed.pathname +
                     parsed.search,
-                method: "GET",
+                method,
                 servername: parsed.hostname,
                 rejectUnauthorized: true,
                 headers: {
@@ -5832,6 +5842,10 @@ async function seerr_https_json(
                     "X-Api-Key": api_key,
                     "User-Agent":
                         "StellazHQ/1.0",
+                    ...(request_body ? {
+                        "Content-Type": "application/json",
+                        "Content-Length": request_body.length,
+                    } : {}),
                 },
                 timeout: 12000,
                 lookup:
@@ -5889,6 +5903,7 @@ async function seerr_https_json(
         });
 
         request.on("error", reject);
+        if (request_body) request.write(request_body);
         request.end();
     });
 }
@@ -6049,6 +6064,267 @@ exports.getSeerrConnectionStatus =
                 data.base_url || null,
         };
     });
+
+// Everything below is the actual friction-reduction feature: show whether
+// a title is already on the user's Plex (via Seerr, since Seerr already
+// tracks Plex availability for whatever server it's paired with — no need
+// for Stellaz to talk to Plex directly), and let the user either watch it
+// or request it straight from its details in Stellaz.
+
+// Seerr's GET /api/v1/movie|tv/{id} embeds a `mediaInfo` object once
+// anything has happened with that title (requested, downloading, or
+// already in the library) — null/absent means Stellaz has never touched
+// it. `mediaInfo.mediaUrl` is a ready-made Plex web-app link that Seerr
+// itself computes from its own configured Plex server, so it's both the
+// "is this on Plex" signal and the destination for a Watch button in one
+// field — see the `setPlexUrls()` hook in Seerr's Media entity.
+async function seerr_fetch_media_info(
+    base_url,
+    api_key,
+    media_type,
+    tmdb_id
+) {
+    const result = await seerr_https_json(
+        `${base_url}/api/v1/${media_type}/${tmdb_id}`,
+        api_key
+    );
+
+    if (result.status < 200 || result.status >= 300) {
+        return {status_code: 1, watch_url: null};
+    }
+
+    const media_info = result.payload?.mediaInfo || null;
+    return {
+        status_code: Number(media_info?.status || 1),
+        watch_url: media_info?.mediaUrl || null,
+    };
+}
+
+// Maps Seerr's numeric MediaStatus (1 UNKNOWN, 2 PENDING, 3 PROCESSING,
+// 4 PARTIALLY_AVAILABLE, 5 AVAILABLE, 6 BLOCKLISTED, 7 DELETED) down to
+// the handful of states Stellaz's UI actually distinguishes. `watch_url`
+// wins outright when present — Seerr only sets it once the title exists
+// in the Plex library, regardless of the exact status code.
+function seerr_status_label(status_code, watch_url) {
+    if (watch_url) return "available";
+    if (status_code === 3) return "processing";
+    if (status_code === 2) return "requested";
+    return "idle";
+}
+
+async function seerr_connection_for(uid) {
+    const snapshot = await db
+        .collection("seerr_connections")
+        .doc(uid)
+        .get();
+    const data = snapshot.data();
+
+    if (!snapshot.exists ||
+        !data?.base_url ||
+        !data?.credential?.ciphertext) {
+        return null;
+    }
+
+    return {
+        base_url: data.base_url,
+        api_key: decrypt_seerr_api_key(data.credential),
+    };
+}
+
+exports.getSeerrMediaStatus = onCall(
+    {
+        secrets: [
+            seerr_credential_encryption_key,
+        ],
+        timeoutSeconds: 30,
+    },
+    async (request) => {
+        if (!request.auth) {
+            throw new HttpsError(
+                "unauthenticated",
+                "You must be logged in."
+            );
+        }
+
+        const media_type =
+            request.data?.media_type === "tv"
+                ? "tv" : "movie";
+        const tmdb_id =
+            Number(request.data?.tmdb_id);
+
+        if (!tmdb_id) {
+            throw new HttpsError(
+                "invalid-argument",
+                "A TMDB ID is required to check its status."
+            );
+        }
+
+        const connection = await seerr_connection_for(request.auth.uid);
+        if (!connection) {
+            return {connected: false, status: "idle", watch_url: null};
+        }
+
+        try {
+            const {status_code, watch_url} = await seerr_fetch_media_info(
+                connection.base_url,
+                connection.api_key,
+                media_type,
+                tmdb_id
+            );
+
+            return {
+                connected: true,
+                status: seerr_status_label(status_code, watch_url),
+                watch_url,
+            };
+        } catch (error) {
+            // A failed status check shouldn't block the details dialog from
+            // opening — fall back to "idle" so the Request button still
+            // renders, same as if nothing had ever been checked.
+            logger.warn(
+                "Unable to check Seerr media status.",
+                {
+                    uid: request.auth.uid,
+                    tmdb_id,
+                    media_type,
+                    error:
+                        error?.message ||
+                        "Connection failed",
+                }
+            );
+
+            return {connected: true, status: "idle", watch_url: null};
+        }
+    }
+);
+
+exports.requestMediaOnSeerr = onCall(
+    {
+        secrets: [
+            seerr_credential_encryption_key,
+        ],
+        timeoutSeconds: 30,
+    },
+    async (request) => {
+        if (!request.auth) {
+            throw new HttpsError(
+                "unauthenticated",
+                "You must be logged in."
+            );
+        }
+
+        const media_type =
+            request.data?.media_type === "tv"
+                ? "tv" : "movie";
+        const tmdb_id =
+            Number(request.data?.tmdb_id);
+
+        if (!tmdb_id) {
+            throw new HttpsError(
+                "invalid-argument",
+                "A TMDB ID is required to request this title."
+            );
+        }
+
+        const connection = await seerr_connection_for(request.auth.uid);
+        if (!connection) {
+            throw new HttpsError(
+                "failed-precondition",
+                "Connect your Seerr server first."
+            );
+        }
+
+        // Defense in depth: the frontend already hides the Request button
+        // once something is on Plex, but the dialog could have been open
+        // for a while — re-check right before requesting rather than
+        // trust a possibly-stale render.
+        const {watch_url} = await seerr_fetch_media_info(
+            connection.base_url,
+            connection.api_key,
+            media_type,
+            tmdb_id
+        );
+        if (watch_url) {
+            throw new HttpsError(
+                "failed-precondition",
+                "This is already on your Plex server."
+            );
+        }
+
+        const request_body = {
+            mediaType: media_type,
+            mediaId: tmdb_id,
+        };
+        // Seerr accepts the literal string "all" here to request every
+        // season of a show in one call.
+        if (media_type === "tv") {
+            request_body.seasons = "all";
+        }
+
+        let result;
+        try {
+            result = await seerr_https_json(
+                connection.base_url + "/api/v1/request",
+                connection.api_key,
+                {method: "POST", body: request_body}
+            );
+        } catch (error) {
+            logger.warn(
+                "Unable to reach Seerr server for a request.",
+                {
+                    uid: request.auth.uid,
+                    tmdb_id,
+                    media_type,
+                    error:
+                        error?.message ||
+                        "Connection failed",
+                }
+            );
+
+            throw new HttpsError(
+                "internal",
+                "Stellaz could not securely reach your Seerr server."
+            );
+        }
+
+        // A 409 means this title has already been requested — treat that
+        // as a successful outcome from the user's side, not an error.
+        if (result.status === 409) {
+            return {
+                requested: true,
+                already_requested: true,
+            };
+        }
+
+        if (result.status === 401 ||
+            result.status === 403) {
+            throw new HttpsError(
+                "failed-precondition",
+                "Seerr rejected that API key."
+            );
+        }
+
+        if (result.status < 200 ||
+            result.status >= 300) {
+            logger.warn(
+                "Seerr request failed.",
+                {
+                    uid: request.auth.uid,
+                    tmdb_id,
+                    media_type,
+                    status: result.status,
+                }
+            );
+
+            throw new HttpsError(
+                "internal",
+                "Stellaz could not send that request to your Seerr server."
+            );
+        }
+
+        return {requested: true};
+    }
+);
 //#endregion
 
 

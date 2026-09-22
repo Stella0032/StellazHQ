@@ -529,9 +529,24 @@ async function open_recommendation_details(item) {
                     data-dialog-action="watched">✓ I've seen it</button>
             <button type="button" class="recommendation-action"
                     data-dialog-action="watch_later">＋ Watch later</button>
+            ${item.tmdb_id ? `
+                <span class="recommendation-action muted" data-seerr-slot>
+                    Checking Seerr…
+                </span>` : ""}
             <button type="button" class="recommendation-action muted"
                     data-dialog-action="not_interested">Not interested</button>`;
     recommendation_dialog.showModal();
+
+    if (item.tmdb_id && active_recommendation_type !== "anime") {
+        refresh_seerr_status_slot(
+            recommendation_dialog_actions,
+            item.tmdb_id,
+            active_recommendation_type,
+            `<button type="button" class="recommendation-action" data-seerr-slot
+                     data-dialog-action="request_seerr">📥 Request</button>`,
+            () => active_recommendation_detail === item
+        );
+    }
 
     if (active_recommendation_type === "anime") {
         recommendation_dialog_facts.innerHTML =
@@ -582,7 +597,83 @@ async function open_recommendation_details(item) {
     }
 }
 
+async function request_media_on_seerr(item, media_type, button) {
+    const original_text = button.textContent;
+    button.disabled = true;
+    button.textContent = "Requesting...";
+    try {
+        const request_media = httpsCallable(functions, "requestMediaOnSeerr");
+        const result = await request_media({
+            tmdb_id: Number(item.tmdb_id),
+            media_type: media_type === "show" ? "tv" : "movie"
+        });
+        show_toast(result.data.already_requested
+            ? `${item.title} was already requested on your Seerr server.`
+            : `${item.title} requested on your Seerr server.`);
+        button.textContent = "✓ Requested";
+    } catch (error) {
+        console.error("Unable to request media on Seerr:", error);
+        button.disabled = false;
+        button.textContent = original_text;
+        if (error?.message === "Connect your Seerr server first." &&
+            confirm("Connect your Seerr server first. Open Connected Services now?")) {
+            open_connected_services_dialog();
+            return;
+        }
+        // Covers the backend's own defense-in-depth check for a title
+        // that became available on Plex while this dialog was still open.
+        alert(error?.message ||
+            "Unable to send that request to your Seerr server.");
+    }
+}
+
+// Shared by the recommendation/release dialog and the library detail
+// dialog: both show a Seerr-backed action slot next to the same title
+// details, they just differ in what "idle" (nothing requested/available
+// yet) should offer — recommendations always offer Request, a Watch
+// Later library item does too, but e.g. an already-watched item doesn't.
+function seerr_status_slot_markup(state, idle_markup) {
+    if (state.watch_url) {
+        return `<a class="recommendation-action primary" data-seerr-slot
+                   href="${state.watch_url}" target="_blank"
+                   rel="noopener">▶ Watch on Plex</a>`;
+    }
+    if (state.status === "processing") {
+        return '<span class="recommendation-action muted" ' +
+            'data-seerr-slot>⏳ Downloading on Seerr</span>';
+    }
+    if (state.status === "requested") {
+        return '<span class="recommendation-action muted" ' +
+            'data-seerr-slot>✓ Requested on Seerr</span>';
+    }
+    return idle_markup;
+}
+
+async function refresh_seerr_status_slot(
+    container, tmdb_id, media_type, idle_markup, still_open
+) {
+    let state = {status: "idle", watch_url: null};
+    try {
+        const get_status = httpsCallable(functions, "getSeerrMediaStatus");
+        const result = await get_status({
+            tmdb_id: Number(tmdb_id),
+            media_type: media_type === "show" ? "tv" : "movie"
+        });
+        state = result.data || state;
+    } catch (error) {
+        console.error("Unable to check Seerr media status:", error);
+    }
+    if (!still_open()) return;
+    const slot = container.querySelector("[data-seerr-slot]");
+    if (slot) slot.outerHTML = seerr_status_slot_markup(state, idle_markup);
+}
+
 async function run_recommendation_action(item, action, button) {
+    if (action === "request_seerr") {
+        await request_media_on_seerr(item, active_recommendation_type, button);
+        return;
+    }
+
     button.disabled = true;
     try {
         if (action === "not_interested") {
@@ -1835,6 +1926,10 @@ async function open_library_detail(type, item) {
                     data-library-dialog-id="${item.id}">
                 ✓ Mark watched
             </button>` : ""}
+        ${item.tmdb_id ? `
+            <span class="recommendation-action muted" data-seerr-slot>
+                Checking Seerr…
+            </span>` : ""}
         ${type === "show" ? `
             <button class="recommendation-action" type="button"
                     data-library-dialog-seasons="${item.id}">
@@ -1843,6 +1938,25 @@ async function open_library_detail(type, item) {
     `;
 
     recommendation_dialog.showModal();
+
+    if (item.tmdb_id) {
+        refresh_seerr_status_slot(
+            recommendation_dialog_actions,
+            item.tmdb_id,
+            type,
+            // Only offer to request something not yet on Plex if it's
+            // sitting in Watch Later — an already-watched item you added
+            // manually isn't necessarily something to re-request.
+            item.status === "watch_later" ? `
+                <button class="recommendation-action" type="button" data-seerr-slot
+                        data-library-dialog-request="${type}"
+                        data-library-dialog-id="${item.id}">
+                    📥 Request
+                </button>` : "",
+            () => active_library_detail?.item.id === item.id &&
+                active_library_detail?.type === type
+        );
+    }
 
     if (!item.tmdb_id && !saved_plex_metadata) {
         saved_plex_metadata = await ensure_plex_metadata_for_item(type, item);
@@ -1999,6 +2113,18 @@ recommendation_dialog_actions.addEventListener("click", async (event) => {
             watched_button
         );
         recommendation_dialog.close();
+        return;
+    }
+
+    const request_button = event.target.closest(
+        "[data-library-dialog-request]"
+    );
+    if (request_button) {
+        await request_media_on_seerr(
+            active_library_detail.item,
+            request_button.dataset.libraryDialogRequest,
+            request_button
+        );
         return;
     }
 
