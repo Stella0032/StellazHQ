@@ -2494,6 +2494,23 @@ html[data-theme="neon"] .stellaz-ai-form button {
     background: linear-gradient(135deg, #b9ffd2, #70ffa8);
 }
 
+/* The Sunsetverse */
+html[data-theme="sunset"] .stellaz-ai-launcher,
+html[data-theme="sunset"] .stellaz-ai-panel {
+    border-color: rgba(255, 150, 84, 0.4);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 28px rgba(255, 140, 64, 0.14);
+}
+
+html[data-theme="sunset"] .stellaz-ai-spark { color: #ffb454; }
+html[data-theme="sunset"] .stellaz-ai-message.assistant {
+    border-color: rgba(255, 150, 84, 0.24);
+    background: rgba(255, 110, 40, 0.09);
+}
+html[data-theme="sunset"] .stellaz-ai-form input:focus { border-color: rgba(255, 150, 84, 0.62); }
+html[data-theme="sunset"] .stellaz-ai-form button {
+    background: linear-gradient(135deg, #ffd28a, #ff8340);
+}
+
 @media (max-width: 600px) {
     .stellaz-ai-launcher { right: 16px; bottom: 16px; }
     .stellaz-ai-panel { right: 16px; bottom: 76px; height: min(500px, calc(100vh - 105px)); }
@@ -2503,7 +2520,8 @@ html[data-theme="neon"] .stellaz-ai-form button {
 
 /* Alternate theme labels make the left side wider, so visually rebalance nav. */
 html[data-theme="neon"] .nav-links,
-html[data-theme="flurple"] .nav-links {
+html[data-theme="flurple"] .nav-links,
+html[data-theme="sunset"] .nav-links {
     transform: translateX(-55px);
 }
 
@@ -3101,6 +3119,16 @@ html[data-theme="flurple"].anime-category-active .anime-library-panel::after {
         linear-gradient(180deg,rgba(25,10,38,.22),rgba(25,10,38,.74)),
         var(--anime-library-backdrop-2,none);
 }
+html[data-theme="sunset"].anime-category-active .anime-library-panel::before {
+    background-image: linear-gradient(90deg,rgba(28,10,5,.87),rgba(28,10,5,.48)),
+        linear-gradient(180deg,rgba(28,10,5,.22),rgba(28,10,5,.74)),
+        var(--anime-library-backdrop-1,none);
+}
+html[data-theme="sunset"].anime-category-active .anime-library-panel::after {
+    background-image: linear-gradient(90deg,rgba(28,10,5,.87),rgba(28,10,5,.48)),
+        linear-gradient(180deg,rgba(28,10,5,.22),rgba(28,10,5,.74)),
+        var(--anime-library-backdrop-2,none);
+}
 html.anime-category-active .anime-library-panel .movie-grid { position: relative; }
 @media (prefers-reduced-motion: reduce) {
     html.anime-category-active .anime-library-panel::before,
@@ -3162,6 +3190,17 @@ html[data-theme="flurple"].anime-category-active body::after {
         var(--anime-library-backdrop-2, none);
 }
 
+html[data-theme="sunset"].anime-category-active body::before {
+    background-image:
+        linear-gradient(180deg, rgba(26,9,4,.42), rgba(26,9,4,.70)),
+        var(--anime-library-backdrop-1, none);
+}
+html[data-theme="sunset"].anime-category-active body::after {
+    background-image:
+        linear-gradient(180deg, rgba(26,9,4,.42), rgba(26,9,4,.70)),
+        var(--anime-library-backdrop-2, none);
+}
+
 /* The poster now belongs to the page, not the Anime library panel. */
 html.anime-category-active .anime-library-panel,
 html.anime-category-active .anime-library-panel::before,
@@ -3185,6 +3224,10 @@ html[data-theme="neon"].anime-category-active .anime-library-panel {
 
 html[data-theme="flurple"].anime-category-active .anime-library-panel {
     background: rgba(29, 12, 44, .31);
+}
+
+html[data-theme="sunset"].anime-category-active .anime-library-panel {
+    background: rgba(28, 10, 5, .31);
 }
 
 /* Glass treatment for the visible Anime-page cards and controls. */
@@ -3214,6 +3257,12 @@ html[data-theme="flurple"].anime-category-active .mal-connect-card {
     background-color: rgba(29, 12, 44, .34);
 }
 
+html[data-theme="sunset"].anime-category-active .library-card,
+html[data-theme="sunset"].anime-category-active .recommendations-panel,
+html[data-theme="sunset"].anime-category-active .mal-connect-card {
+    background-color: rgba(28, 10, 5, .34);
+}
+
 @media (prefers-reduced-motion: reduce) {
     html.anime-category-active body::before,
     html.anime-category-active body::after {
@@ -3236,6 +3285,10 @@ html[data-theme="neon"].anime-category-active .anime-library-panel {
 
 html[data-theme="flurple"].anime-category-active .anime-library-panel {
     background: rgba(29, 12, 44, .22);
+}
+
+html[data-theme="sunset"].anime-category-active .anime-library-panel {
+    background: rgba(28, 10, 5, .22);
 }
 
 
@@ -3276,14 +3329,16 @@ html.anime-category-active body::after {
        single backdrop. Re-apply the dual side images on widescreen so every
        theme uses the same Anime layout. */
     html[data-theme="neon"].anime-category-active body::before,
-    html[data-theme="flurple"].anime-category-active body::before {
+    html[data-theme="flurple"].anime-category-active body::before,
+    html[data-theme="sunset"].anime-category-active body::before {
         background-image:
             var(--anime-library-backdrop-1-left, none),
             var(--anime-library-backdrop-1-right, none);
     }
 
     html[data-theme="neon"].anime-category-active body::after,
-    html[data-theme="flurple"].anime-category-active body::after {
+    html[data-theme="flurple"].anime-category-active body::after,
+    html[data-theme="sunset"].anime-category-active body::after {
         background-image:
             var(--anime-library-backdrop-2-left, none),
             var(--anime-library-backdrop-2-right, none);
@@ -3292,7 +3347,9 @@ html.anime-category-active body::after {
     html[data-theme="neon"].anime-category-active body::before,
     html[data-theme="neon"].anime-category-active body::after,
     html[data-theme="flurple"].anime-category-active body::before,
-    html[data-theme="flurple"].anime-category-active body::after {
+    html[data-theme="flurple"].anime-category-active body::after,
+    html[data-theme="sunset"].anime-category-active body::before,
+    html[data-theme="sunset"].anime-category-active body::after {
         background-size: auto 100%, auto 100%;
         background-position: left center, right center;
         background-repeat: no-repeat, no-repeat;
