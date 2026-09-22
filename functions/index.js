@@ -6533,6 +6533,30 @@ function plex_guids(item) {
     return (item.Guid || []).map((entry) => entry.id).filter(Boolean);
 }
 
+// Plex's userRating is already a 0.0-10.0 float in its API (5 stars =
+// 10.0, half-star granularity = whole-point steps) — the same scale
+// Stellaz's own my_rating uses, so this is a thin, explicit seam rather
+// than a real unit conversion. Kept as its own named step (same pattern
+// as kitsu_entry_rating() above) so Plex rating handling has one clear,
+// testable place to live if that assumption ever proves wrong for a
+// given server/client, rather than an unscaled passthrough scattered
+// across every call site that reads userRating.
+function plex_rating_to_stellaz(plex_user_rating) {
+    if (plex_user_rating == null) return null;
+    const value = Number(plex_user_rating);
+    if (!Number.isFinite(value)) return null;
+    const clamped = Math.min(10, Math.max(1, value));
+    return Math.round(clamped * 10) / 10;
+}
+
+function stellaz_rating_to_plex(stellaz_my_rating) {
+    if (stellaz_my_rating == null) return null;
+    const value = Number(stellaz_my_rating);
+    if (!Number.isFinite(value)) return null;
+    const clamped = Math.min(10, Math.max(1, value));
+    return Math.round(clamped * 10) / 10;
+}
+
 exports.getPlexMetadataFallback = onCall(async (request) => {
     if (!request.auth) throw new HttpsError("unauthenticated", "You must be logged in.");
     const title = String(request.data?.title || "").trim();
@@ -6728,7 +6752,7 @@ exports.getPlexRatedTitles = onCall(async (request) => {
         );
 
         for (const item of (rated.MediaContainer?.Metadata || [])) {
-            const rating = item.userRating == null ? null : Number(item.userRating);
+            const rating = plex_rating_to_stellaz(item.userRating);
             if (!(rating > 0)) continue;
             const row = {
                 title: item.title,
@@ -6933,7 +6957,7 @@ exports.getPlexImportPreview = onCall(async (request) => {
         if (section.type === "movie") {
             for (const item of items) {
                 const watched = Number(item.viewCount || 0) > 0;
-                const rating = item.userRating == null ? null : Number(item.userRating);
+                const rating = plex_rating_to_stellaz(item.userRating);
                 // A Plex library can contain thousands of unwatched server titles.
                 // Import candidates are personal activity only: watched or rated.
                 if (!watched && rating == null) continue;
@@ -6961,7 +6985,7 @@ exports.getPlexImportPreview = onCall(async (request) => {
         } else {
             for (const item of items) {
                 const watched_episodes = Number(item.viewedLeafCount || 0);
-                const rating = item.userRating == null ? null : Number(item.userRating);
+                const rating = plex_rating_to_stellaz(item.userRating);
                 // Keep shows only when this Plex user watched an episode or rated the show.
                 if (watched_episodes <= 0 && rating == null) continue;
                 shows.push({

@@ -828,25 +828,8 @@ function create_movie_card(movie, index) {
         : "";
 
     const personal_rating = personal_rating_value !== null
-        ? ` · ★ ${personal_rating_value}/10`
+        ? ` · ★ ${personal_rating_value.toFixed(1)}/10`
         : " · ★ —";
-
-    const rating_buttons = Array.from({length: 10}, (_, index) => {
-        const rating = index + 1;
-        const selected = personal_rating_value !== null &&
-            rating <= personal_rating_value;
-
-        return `
-            <button class="rating-star ${selected ? "selected" : ""}"
-                    type="button"
-                    data-movie-id="${movie.id}"
-                    data-rating="${rating}"
-                    aria-label="Rate ${movie.title} ${rating} out of 10">
-                ★
-                <span>${rating}</span>
-            </button>
-        `;
-    }).join("");
 
     const extra_class = index >= get_collapsed_movie_count()
         ? " library-extra"
@@ -867,70 +850,6 @@ function create_movie_card(movie, index) {
         </article>
     `;
 }
-
-async function save_personal_rating(movie_id, rating) {
-    const my_rating = rating === "" ? null : Number(rating);
-
-    const { error } = await supabase
-        .from("movies")
-        .update({my_rating})
-        .eq("id", movie_id);
-
-    if (error) {
-        throw error;
-    }
-
-    const movie = movie_library.find((item) => item.id === movie_id);
-
-    if (movie) {
-        movie.my_rating = my_rating;
-    }
-}
-
-movie_grid.addEventListener("click", async (event) => {
-    const rating_button = event.target.closest(".rating-star");
-
-    if (!rating_button) {
-        return;
-    }
-
-    const movie_id = Number(rating_button.dataset.movieId);
-    const rating = Number(rating_button.dataset.rating);
-    const card = rating_button.closest(".movie-card");
-
-    try {
-        await save_personal_rating(movie_id, rating);
-
-        card.querySelectorAll(".rating-star").forEach((button) => {
-            button.classList.toggle(
-                "selected",
-                Number(button.dataset.rating) <= rating
-            );
-        });
-
-        const movie = movie_library.find((item) => item.id === movie_id);
-
-        if (movie) {
-            const meta = card.querySelector(".movie-meta");
-            const tomato = movie.tomato_rating !== null
-                ? ` · 🍅 ${movie.tomato_rating}%`
-                : "";
-            const audience = movie.audience_rating !== null
-                ? ` · 🍿 ${movie.audience_rating}%`
-                : "";
-            const tmdb = movie.tmdb_rating !== null &&
-                movie.tmdb_rating !== undefined
-                ? ` · ⭐ ${Number(movie.tmdb_rating).toFixed(1)}`
-                : "";
-
-            meta.textContent =
-                `${movie.year}${tomato}${audience}${tmdb} · ★ ${rating}/10`;
-        }
-    } catch (error) {
-        console.error("Unable to save personal rating:", error);
-        alert("Unable to save your rating. Please try again.");
-    }
-});
 
 function populate_movie_filters(movies) {
     const genres = [...new Set(
@@ -1230,21 +1149,8 @@ function create_show_card(show, index) {
         ? ` · ⭐ ${Number(show.tmdb_rating).toFixed(1)}`
         : "";
     const personal_rating = personal_rating_value !== null
-        ? ` · ★ ${personal_rating_value}/10`
+        ? ` · ★ ${personal_rating_value.toFixed(1)}/10`
         : " · ★ —";
-    const rating_buttons = Array.from({length: 10}, (_, index) => {
-        const rating = index + 1;
-        const selected = personal_rating_value !== null &&
-            rating <= personal_rating_value;
-
-        return `
-            <button class="rating-star ${selected ? "selected" : ""}"
-                    type="button" data-show-id="${show.id}"
-                    data-rating="${rating}"
-                    aria-label="Rate ${show.title} ${rating} out of 10">
-                ★<span>${rating}</span>
-            </button>`;
-    }).join("");
     const extra_class = index >= get_collapsed_movie_count()
         ? " library-extra"
         : "";
@@ -1462,27 +1368,6 @@ async function load_show_library() {
     }
 }
 
-show_grid.addEventListener("click", async (event) => {
-    const button = event.target.closest(".rating-star");
-    if (!button) return;
-
-    const show_id = Number(button.dataset.showId);
-    const rating = Number(button.dataset.rating);
-
-    try {
-        const {error} = await supabase.from("tv_shows")
-            .update({my_rating: rating}).eq("id", show_id);
-        if (error) throw error;
-
-        const show = show_library.find((item) => item.id === show_id);
-        if (show) show.my_rating = rating;
-        render_show_library();
-    } catch (error) {
-        console.error("Unable to save TV show rating:", error);
-        alert("Unable to save your rating. Please try again.");
-    }
-});
-
 async function open_show_seasons(show, media_label = "TV SHOW") {
     active_show_id = show.id ?? null;
     show_details_eyebrow.textContent = media_label;
@@ -1654,8 +1539,7 @@ async function open_season_episodes(season_number) {
 }
 
 show_grid.addEventListener("click", (event) => {
-    if (event.target.closest(".rating-star") ||
-        event.target.closest(".library-remove-button") ||
+    if (event.target.closest(".library-remove-button") ||
         event.target.closest(".watch-later-complete")) {
         return;
     }
@@ -1895,21 +1779,24 @@ let active_library_detail = null;
 
 function render_library_detail_rating(item, type) {
     const value = item.my_rating !== null ? Number(item.my_rating) : null;
+    // The slider always has *some* position (range inputs can't
+    // represent "no value"), so an unrated item starts at the midpoint.
+    // Nothing is saved just from that starting position — native
+    // "change" events only fire on real user interaction, not from
+    // setting .value in markup, so viewing an unrated item's details
+    // still can't accidentally write a rating.
+    const slider_value = value !== null ? value : 5.5;
 
-    return Array.from({length: 10}, (_, index) => {
-        const rating = index + 1;
-        const selected = value !== null && rating <= value;
-
-        return `
-            <button class="rating-star ${selected ? "selected" : ""}"
-                    type="button"
-                    data-library-dialog-rating="${type}"
-                    data-library-dialog-id="${item.id}"
-                    data-rating="${rating}"
-                    aria-label="Rate ${item.title} ${rating} out of 10">
-                ★<span>${rating}</span>
-            </button>`;
-    }).join("");
+    return `
+        <input class="rating-slider" type="range"
+               min="1" max="10" step="0.1"
+               value="${slider_value}"
+               data-library-dialog-rating="${type}"
+               data-library-dialog-id="${item.id}"
+               aria-label="Rate ${item.title}, 1 to 10">
+        <span class="rating-slider-value" data-rating-slider-value>${
+            value !== null ? value.toFixed(1) : "—"
+        }</span>`;
 }
 
 async function open_library_detail(type, item) {
@@ -1945,7 +1832,7 @@ async function open_library_detail(type, item) {
     recommendation_dialog_actions.innerHTML = `
         <div class="library-dialog-rating">
             <p>Your rating</p>
-            <div class="rating-stars">
+            <div class="rating-slider-row">
                 ${render_library_detail_rating(item, type)}
             </div>
         </div>
@@ -2095,44 +1982,57 @@ show_grid.addEventListener("click", (event) => {
     if (show) open_library_detail("show", show);
 });
 
+// Live-updates the numeric label while dragging — "input" fires on every
+// tick of the drag, well before the rating is actually saved.
+recommendation_dialog_actions.addEventListener("input", (event) => {
+    const slider = event.target.closest("[data-library-dialog-rating]");
+    if (!slider) return;
+    const value_label =
+        recommendation_dialog_actions.querySelector("[data-rating-slider-value]");
+    if (value_label) value_label.textContent = Number(slider.value).toFixed(1);
+});
+
+// Saves once the slider is released/committed — "change" only fires on
+// real user interaction, never from setting .value in markup, so
+// rendering the dialog can't itself trigger a save.
+recommendation_dialog_actions.addEventListener("change", async (event) => {
+    const slider = event.target.closest("[data-library-dialog-rating]");
+    if (!slider) return;
+
+    const type = slider.dataset.libraryDialogRating;
+    const id = Number(slider.dataset.libraryDialogId);
+    const rating = Math.round(Number(slider.value) * 10) / 10;
+    const table = type === "movie" ? "movies" : "tv_shows";
+    const library = type === "movie" ? movie_library : show_library;
+    const item = library.find((entry) => entry.id === id);
+    const previous_rating = item?.my_rating ?? null;
+
+    try {
+        const {error} = await supabase
+            .from(table)
+            .update({my_rating: rating})
+            .eq("id", id);
+        if (error) throw error;
+
+        if (item) item.my_rating = rating;
+
+        if (type === "movie") render_movie_library();
+        else render_show_library();
+    } catch (error) {
+        console.error("Unable to save library rating:", error);
+        alert("Unable to save your rating. Please try again.");
+        slider.value = previous_rating ?? 5.5;
+        const value_label =
+            recommendation_dialog_actions.querySelector("[data-rating-slider-value]");
+        if (value_label) {
+            value_label.textContent =
+                previous_rating !== null ? previous_rating.toFixed(1) : "—";
+        }
+    }
+});
+
 recommendation_dialog_actions.addEventListener("click", async (event) => {
     if (!active_library_detail) return;
-
-    const rating_button = event.target.closest("[data-library-dialog-rating]");
-    if (rating_button) {
-        const type = rating_button.dataset.libraryDialogRating;
-        const id = Number(rating_button.dataset.libraryDialogId);
-        const rating = Number(rating_button.dataset.rating);
-        const table = type === "movie" ? "movies" : "tv_shows";
-
-        try {
-            const {error} = await supabase
-                .from(table)
-                .update({my_rating: rating})
-                .eq("id", id);
-            if (error) throw error;
-
-            const library = type === "movie" ? movie_library : show_library;
-            const item = library.find((entry) => entry.id === id);
-            if (item) item.my_rating = rating;
-
-            recommendation_dialog_actions
-                .querySelectorAll("[data-library-dialog-rating]")
-                .forEach((button) => {
-                    button.classList.toggle(
-                        "selected",
-                        Number(button.dataset.rating) <= rating
-                    );
-                });
-
-            if (type === "movie") render_movie_library();
-            else render_show_library();
-        } catch (error) {
-            console.error("Unable to save library rating:", error);
-            alert("Unable to save your rating. Please try again.");
-        }
-        return;
-    }
 
     const watched_button = event.target.closest(
         "[data-library-dialog-watched]"
