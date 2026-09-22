@@ -1966,6 +1966,12 @@ async function open_library_detail(type, item) {
                     data-library-dialog-seasons="${item.id}">
                 View seasons & episodes
             </button>` : ""}
+        ${type === "show" && (item.genres || []).some((genre) =>
+            String(genre).toLowerCase() === "animation") ? `
+            <button class="recommendation-action" type="button"
+                    data-library-dialog-move-to-anime="${item.id}">
+                Move to Anime library
+            </button>` : ""}
     `;
 
     recommendation_dialog.showModal();
@@ -2073,6 +2079,53 @@ async function open_library_detail(type, item) {
     }
 }
 
+// Remediation for shows imported before Plex anime detection existed (or
+// any TV show whose genres suggest it's actually anime): a manual, one-item
+// move rather than an automatic bulk reclassification, since Stellaz can't
+// safely infer this with certainty from stored genres alone.
+async function move_show_to_anime(show) {
+    if (!window.confirm(
+        `Move "${show.title}" to your Anime library? It will be removed from TV Shows.`
+    )) {
+        return;
+    }
+
+    try {
+        const {count: episodes_watched} = await supabase
+            .from("tv_episode_progress")
+            .select("*", {count: "exact", head: true})
+            .eq("tv_show_id", show.id)
+            .eq("watched", true);
+
+        const poster_url = show.poster_url ||
+            await get_plex_poster_data_url(show.plex_thumb);
+
+        const {error: insert_error} = await supabase.from("anime").insert({
+            title: show.title,
+            media_type: "tv",
+            status: show.status === "watched" ? "completed" : "plan_to_watch",
+            episodes_watched: episodes_watched || 0,
+            ...(poster_url ? {poster_url} : {}),
+            ...(show.genres?.length ? {genres: show.genres} : {}),
+            ...(show.my_rating != null ? {my_rating: Number(show.my_rating)} : {})
+        });
+        if (insert_error) throw insert_error;
+
+        const {error: delete_error} = await supabase
+            .from("tv_shows")
+            .delete()
+            .eq("id", show.id);
+        if (delete_error) throw delete_error;
+
+        recommendation_dialog.close();
+        await Promise.all([load_show_library(), load_anime_library()]);
+        show_toast(`${show.title} moved to your Anime library.`);
+    } catch (error) {
+        console.error("Unable to move show to anime:", error);
+        alert("Unable to move this title to Anime. Please try again.");
+    }
+}
+
 movie_grid.addEventListener("click", (event) => {
     const open_button = event.target.closest(
         '[data-library-detail-type="movie"]'
@@ -2168,6 +2221,14 @@ recommendation_dialog_actions.addEventListener("click", async (event) => {
         const show = active_library_detail.item;
         recommendation_dialog.close();
         open_show_seasons(show);
+        return;
+    }
+
+    const move_to_anime_button = event.target.closest(
+        "[data-library-dialog-move-to-anime]"
+    );
+    if (move_to_anime_button && active_library_detail.type === "show") {
+        await move_show_to_anime(active_library_detail.item);
     }
 });
 
@@ -5192,7 +5253,16 @@ const plex_import_confirm = document.getElementById("plex_import_confirm");
 let plex_import_preview = null;
 
 function same_library_title(a, b) {
-    return String(a.title || "").trim().toLowerCase() === String(b.title || "").trim().toLowerCase() &&
+    // tmdb_id is the reliable signal when both sides have one (matches the
+    // same tmdb-first pattern find_existing_movie_for_tmdb/
+    // find_existing_show_for_tmdb already use). Title text can differ
+    // between Plex and Stellaz for the same title (accents, punctuation,
+    // "and" vs "&", a missing/extra year) without tmdb_id to fall back on,
+    // which otherwise creates duplicate rows on import.
+    if (a.tmdb_id && b.tmdb_id) {
+        return Number(a.tmdb_id) === Number(b.tmdb_id);
+    }
+    return notification_normalize_title(a.title) === notification_normalize_title(b.title) &&
         (!a.year || !b.year || Number(a.year) === Number(b.year));
 }
 
@@ -5510,24 +5580,33 @@ async function open_plex_import_preview() {
     try {
         const result = await httpsCallable(functions, "getPlexImportPreview")();
         const data = result.data;
+        // Plex tags anime shows (Animation genre + Japan country) the same
+        // way the Seerr routing does. Split those out before dedup so they
+        // land in the Anime library instead of TV Shows.
+        const anime_shows = (data.shows || []).filter((item) => item.is_anime);
+        const tv_shows_only = (data.shows || []).filter((item) => !item.is_anime);
         const new_movies = (data.movies || []).filter((item) =>
             !movie_library.some((existing) => same_library_title(existing, item)));
-        const new_shows = (data.shows || []).filter((item) =>
+        const new_shows = tv_shows_only.filter((item) =>
             !show_library.some((existing) => same_library_title(existing, item)));
+        const new_anime = anime_shows.filter((item) =>
+            !anime_library.some((existing) =>
+                notification_normalize_title(existing.title) ===
+                    notification_normalize_title(item.title)));
         const movie_rating_updates = (data.movies || []).filter((item) =>
             item.rating != null && movie_library.some((existing) =>
                 same_library_title(existing, item) &&
                 Number(existing.my_rating) !== Number(item.rating)));
-        const show_rating_updates = (data.shows || []).filter((item) =>
+        const show_rating_updates = tv_shows_only.filter((item) =>
             item.rating != null && show_library.some((existing) =>
                 same_library_title(existing, item) &&
                 Number(existing.my_rating) !== Number(item.rating)));
         const rating_updates = movie_rating_updates.length + show_rating_updates.length;
-        const rated_new_titles = [...new_movies, ...new_shows]
+        const rated_new_titles = [...new_movies, ...new_shows, ...new_anime]
             .filter((item) => item.rating != null && Number(item.rating) > 0);
         const ratings_on_new_titles = rated_new_titles.length;
         plex_import_preview = {
-            ...data, new_movies, new_shows,
+            ...data, new_movies, new_shows, new_anime,
             movie_rating_updates, show_rating_updates
         };
         try {
@@ -5539,15 +5618,16 @@ async function open_plex_import_preview() {
         try { save_plex_metadata_store(data); } catch (_) {}
         if (plex_import_title) plex_import_title.hidden = false;
         plex_import_confirm.hidden = false;
-        plex_import_summary.textContent = `Found ${data.movies.length} movies and ${data.shows.length} TV shows on ${data.server}.` + (rated_new_titles.length ? ` Rated missing: ${rated_new_titles.map((item) => item.title).join(", ")}.` : "");
+        plex_import_summary.textContent = `Found ${data.movies.length} movies, ${tv_shows_only.length} TV shows and ${anime_shows.length} anime on ${data.server}.` + (rated_new_titles.length ? ` Rated missing: ${rated_new_titles.map((item) => item.title).join(", ")}.` : "");
         plex_import_stats.innerHTML = `
             <div><strong>${new_movies.length}</strong><span>new movies</span></div>
             <div><strong>${new_shows.length}</strong><span>new TV shows</span></div>
+            <div><strong>${new_anime.length}</strong><span>new anime</span></div>
             <div><strong>${rating_updates}</strong><span>ratings to update</span></div>
             <div><strong>${ratings_on_new_titles}</strong><span>ratings on new titles</span></div>
             <div><strong>${Number(data.watched_episode_count || 0)}</strong><span>watched episodes</span></div>`;
         plex_import_confirm.disabled =
-            new_movies.length + new_shows.length + rating_updates === 0;
+            new_movies.length + new_shows.length + new_anime.length + rating_updates === 0;
     } catch (error) {
         console.error("Unable to preview Plex import:", error);
         if (plex_import_title) plex_import_title.hidden = false;
@@ -5587,6 +5667,21 @@ plex_import_confirm?.addEventListener("click", async () => {
             status: Number(item.watched_episodes || 0) > 0 ? "watched" : "watch_later",
             ...(item.rating != null ? {my_rating: Number(item.rating)} : {})
         }));
+        const anime_rows = [];
+        for (const item of plex_import_preview.new_anime) {
+            const total = Number(item.total_episodes || 0);
+            const watched = Number(item.watched_episodes || 0);
+            anime_rows.push({
+                title: item.title,
+                media_type: "tv",
+                status: total > 0 && watched >= total ? "completed" : "watching",
+                episodes_watched: watched,
+                ...(total ? {total_episodes: total} : {}),
+                poster_url: await get_plex_poster_data_url(item.plex_thumb),
+                ...(item.genres?.length ? {genres: item.genres} : {}),
+                ...(item.rating != null ? {my_rating: Number(item.rating)} : {})
+            });
+        }
 
         if (movie_rows.length) {
             const {error} = await supabase.from("movies").insert(movie_rows);
@@ -5595,6 +5690,11 @@ plex_import_confirm?.addEventListener("click", async () => {
         if (show_rows.length) {
             const {error} = await supabase.from("tv_shows").insert(show_rows);
             if (error) throw error;
+        }
+        if (anime_rows.length) {
+            const {error} = await supabase.from("anime").insert(anime_rows);
+            if (error) throw error;
+            await load_anime_library();
         }
 
         for (const item of plex_import_preview.movies || []) {
@@ -5688,7 +5788,7 @@ plex_import_confirm?.addEventListener("click", async () => {
         }
 
         await load_show_library();
-        const added = movie_rows.length + show_rows.length;
+        const added = movie_rows.length + show_rows.length + anime_rows.length;
         const updated = plex_import_preview.movie_rating_updates.length +
             plex_import_preview.show_rating_updates.length;
         plex_import_dialog.close();
