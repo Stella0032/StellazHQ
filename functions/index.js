@@ -5082,7 +5082,11 @@ async function seerr_https_json(
         await seerr_resolve_public_host(
             parsed.hostname
         );
-    const target = addresses[0];
+    // Prefer IPv4 when both families are available because Cloud Functions
+    // deployments do not always have outbound IPv6 routing.
+    const target =
+        addresses.find((entry) => entry.family === 4) ||
+        addresses[0];
 
     return await new Promise((resolve, reject) => {
         const request = https.request(
