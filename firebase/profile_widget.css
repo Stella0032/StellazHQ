@@ -1009,3 +1009,257 @@ html[data-theme="flurple"] .feedback-form textarea:focus{
         flex-direction:column;
     }
 }
+
+
+/* Stellaz guilds */
+.guild-dialog{
+    width:min(640px,calc(100% - 28px));
+    max-height:min(820px,calc(100vh - 28px));
+}
+.guild-shell{
+    display:grid;
+    gap:16px;
+}
+.guild-message{
+    min-height:18px;
+    margin:-8px 0 0!important;
+    color:#91a9bd!important;
+    font-size:11px!important;
+}
+.guild-empty-state,
+.guild-active-state{
+    display:grid;
+    gap:18px;
+}
+.guild-empty-state[hidden],
+.guild-active-state[hidden]{
+    display:none;
+}
+.guild-create-form{
+    display:grid;
+    gap:8px;
+}
+.guild-create-form label{
+    color:#b9cddd;
+    font-size:10px;
+    font-weight:700;
+    letter-spacing:1.3px;
+    text-transform:uppercase;
+}
+.guild-create-form>div,
+.guild-invite-form{
+    display:flex;
+    gap:9px;
+}
+.guild-create-form input,
+.guild-invite-form select{
+    min-width:0;
+    flex:1;
+    padding:11px 13px;
+    border:1px solid rgba(255,255,255,.13);
+    border-radius:10px;
+    outline:0;
+    color:#fff;
+    background:rgba(1,6,18,.72);
+    font:inherit;
+}
+.guild-invite-form select option{
+    color:#fff;
+    background:#09101f;
+}
+.guild-create-form input:focus,
+.guild-invite-form select:focus{
+    border-color:rgba(75,211,255,.55);
+}
+.guild-create-form button,
+.guild-invite-form button,
+.guild-row-actions button{
+    padding:0 15px;
+    border:1px solid rgba(92,205,255,.38);
+    border-radius:10px;
+    color:#fff;
+    background:rgba(75,211,255,.11);
+    cursor:pointer;
+    font:inherit;
+    font-weight:700;
+}
+.guild-create-form button:disabled,
+.guild-invite-form button:disabled,
+.guild-row-actions button:disabled,
+.guild-leave-button:disabled{
+    cursor:wait;
+    opacity:.55;
+}
+.guild-summary{
+    padding:16px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    border:1px solid rgba(255,255,255,.11);
+    border-radius:14px;
+    background:linear-gradient(135deg,rgba(75,211,255,.08),rgba(142,91,255,.08));
+}
+.guild-summary>div>span{
+    color:#7890a4;
+    font-size:9px;
+    font-weight:800;
+    letter-spacing:1.5px;
+}
+.guild-summary h3{
+    margin:4px 0 0;
+    font-size:20px;
+}
+.guild-role,
+.guild-member-role{
+    padding:5px 9px;
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:999px;
+    color:#bcd7ea;
+    background:rgba(255,255,255,.05);
+    font-size:9px;
+    font-weight:750;
+    text-transform:uppercase;
+}
+.guild-section{
+    display:grid;
+    gap:9px;
+}
+.guild-section-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    color:#b9cddd;
+    font-size:11px;
+    letter-spacing:.7px;
+    text-transform:uppercase;
+}
+.guild-section-head>span{
+    min-width:24px;
+    padding:3px 7px;
+    border-radius:999px;
+    text-align:center;
+    background:rgba(255,255,255,.06);
+}
+.guild-list{
+    display:grid;
+    gap:7px;
+}
+.guild-row{
+    min-height:54px;
+    padding:8px 10px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    border:1px solid rgba(255,255,255,.09);
+    border-radius:12px;
+    background:rgba(255,255,255,.035);
+}
+.guild-identity{
+    min-width:0;
+    display:flex;
+    align-items:center;
+    gap:10px;
+}
+.guild-identity-copy{
+    min-width:0;
+    display:grid;
+    gap:2px;
+}
+.guild-identity-copy strong{
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    font-size:13px;
+}
+.guild-invite-copy{
+    min-width:0;
+    display:grid;
+    gap:4px;
+}
+.guild-invite-copy strong{
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    font-size:13px;
+}
+.guild-invite-copy span{
+    color:#91a9bd;
+    font-size:10px;
+}
+.guild-row-actions{
+    display:flex;
+    gap:7px;
+}
+.guild-row-actions button{
+    min-height:32px;
+    padding:0 10px;
+    font-size:11px;
+}
+.guild-row-actions .guild-secondary-button{
+    border-color:rgba(255,255,255,.12);
+    color:#b9c8d7;
+    background:rgba(255,255,255,.045);
+}
+.guild-empty{
+    margin:0!important;
+    padding:12px;
+    border:1px dashed rgba(255,255,255,.09);
+    border-radius:11px;
+    color:#7890a4!important;
+    text-align:center;
+    font-size:11px!important;
+}
+.guild-pending-list{
+    margin-top:2px;
+}
+.guild-leave-button{
+    justify-self:start;
+    padding:9px 12px;
+    border:1px solid rgba(238,91,116,.34);
+    border-radius:10px;
+    color:#ffc1cc;
+    background:rgba(238,91,116,.08);
+    cursor:pointer;
+    font:inherit;
+    font-size:11px;
+    font-weight:700;
+}
+.guild-leave-button:hover{
+    background:rgba(238,91,116,.14);
+}
+html[data-theme="neon"] .guild-create-form button,
+html[data-theme="neon"] .guild-invite-form button,
+html[data-theme="neon"] .guild-row-actions button{
+    border-color:rgba(72,255,111,.5);
+    background:rgba(43,255,88,.1);
+}
+html[data-theme="flurple"] .guild-create-form button,
+html[data-theme="flurple"] .guild-invite-form button,
+html[data-theme="flurple"] .guild-row-actions button{
+    border-color:rgba(244,199,94,.5);
+    background:rgba(180,92,255,.11);
+}
+@media(max-width:600px){
+    .guild-create-form>div,
+    .guild-invite-form{
+        display:grid;
+    }
+    .guild-create-form button,
+    .guild-invite-form button{
+        min-height:42px;
+    }
+    .guild-row{
+        align-items:flex-start;
+    }
+    .guild-invite-row{
+        display:grid;
+    }
+    .guild-row-actions{
+        width:100%;
+    }
+    .guild-row-actions button{
+        flex:1;
+    }
+}
