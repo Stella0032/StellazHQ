@@ -6156,6 +6156,739 @@ function clean_anilist_description(value) {
         .trim();
 }
 
+
+function anime_catalog_normalize_title(value) {
+    return String(value || "")
+        .normalize("NFKD")
+        .toLowerCase()
+        .replace(/&/g, " and ")
+        .replace(/[^a-z0-9]+/g, " ")
+        .trim();
+}
+
+function anime_catalog_year(item) {
+    const value =
+        item?.start_date ||
+        item?.startDate ||
+        "";
+    return /^\d{4}/.test(String(value))
+        ? Number(String(value).slice(0, 4))
+        : null;
+}
+
+function map_anilist_anime_catalog_item(item) {
+    return {
+        anilist_id:
+            Number(item.id) || null,
+        mal_id:
+            Number(item.idMal || 0) || null,
+        kitsu_id: null,
+        title:
+            item.title?.english ||
+            item.title?.userPreferred ||
+            item.title?.romaji ||
+            item.title?.native ||
+            "Untitled",
+        title_romaji:
+            item.title?.romaji || null,
+        title_native:
+            item.title?.native || null,
+        synonyms:
+            Array.isArray(item.synonyms)
+                ? item.synonyms
+                    .filter(Boolean)
+                    .slice(0, 30)
+                : [],
+        media_type:
+            String(item.format || "")
+                .toLowerCase() || null,
+        status:
+            item.status || null,
+        total_episodes:
+            Number(item.episodes || 0) || null,
+        average_episode_duration_seconds:
+            Number(item.duration || 0) > 0
+                ? Number(item.duration) * 60
+                : null,
+        mal_score: null,
+        anilist_score:
+            Number(item.averageScore || 0) || null,
+        kitsu_score: null,
+        poster_url:
+            item.coverImage?.extraLarge ||
+            item.coverImage?.large ||
+            null,
+        banner_url:
+            item.bannerImage || null,
+        description:
+            clean_anilist_description(
+                item.description
+            ),
+        genres:
+            Array.isArray(item.genres)
+                ? item.genres
+                : [],
+        site_url:
+            item.siteUrl || null,
+        start_date:
+            anilist_date_to_iso(
+                item.startDate
+            ),
+        finish_date:
+            anilist_date_to_iso(
+                item.endDate
+            ),
+        sources: ["AniList"],
+    };
+}
+
+async function search_anilist_anime_catalog(
+    search,
+    per_page = 12
+) {
+    const query_text = [
+        "query ($search: String!, $perPage: Int!) {",
+        "  Page(page: 1, perPage: $perPage) {",
+        "    media(search: $search, type: ANIME, isAdult: false) {",
+        "      id",
+        "      idMal",
+        "      title { romaji english native userPreferred }",
+        "      synonyms",
+        "      format",
+        "      status",
+        "      episodes",
+        "      duration",
+        "      averageScore",
+        "      description(asHtml: false)",
+        "      genres",
+        "      siteUrl",
+        "      coverImage { extraLarge large }",
+        "      bannerImage",
+        "      startDate { year month day }",
+        "      endDate { year month day }",
+        "    }",
+        "  }",
+        "}",
+    ].join("\n");
+
+    const data =
+        await anilist_graphql_public(
+            query_text,
+            {
+                search,
+                perPage:
+                    Math.max(
+                        1,
+                        Math.min(
+                            25,
+                            Number(per_page) || 12
+                        )
+                    ),
+            }
+        );
+
+    return (data?.Page?.media || [])
+        .map(
+            map_anilist_anime_catalog_item
+        );
+}
+
+async function search_mal_anime_catalog(
+    search,
+    limit = 12
+) {
+    const url =
+        new URL(
+            "https://api.myanimelist.net/v2/anime"
+        );
+    url.searchParams.set("q", search);
+    url.searchParams.set(
+        "limit",
+        String(
+            Math.max(
+                1,
+                Math.min(
+                    100,
+                    Number(limit) || 12
+                )
+            )
+        )
+    );
+    url.searchParams.set(
+        "fields",
+        [
+            "id",
+            "title",
+            "main_picture",
+            "alternative_titles",
+            "start_date",
+            "end_date",
+            "synopsis",
+            "mean",
+            "genres",
+            "media_type",
+            "status",
+            "num_episodes",
+            "average_episode_duration",
+        ].join(",")
+    );
+
+    const response =
+        await fetch(
+            url,
+            {
+                headers: {
+                    "X-MAL-CLIENT-ID":
+                        mal_client_id.value(),
+                },
+            }
+        );
+
+    if (!response.ok) {
+        throw new Error(
+            "MyAnimeList public search failed with " +
+            response.status
+        );
+    }
+
+    const payload =
+        await response.json();
+
+    return (payload.data || [])
+        .map(({node}) => {
+            const alternatives =
+                node.alternative_titles || {};
+            const synonyms = [
+                alternatives.en,
+                alternatives.ja,
+                ...(alternatives.synonyms || []),
+            ].filter(Boolean);
+
+            return {
+                anilist_id: null,
+                mal_id:
+                    Number(node.id) || null,
+                kitsu_id: null,
+                title:
+                    alternatives.en ||
+                    node.title ||
+                    "Untitled",
+                title_romaji:
+                    node.title || null,
+                title_native:
+                    alternatives.ja || null,
+                synonyms,
+                media_type:
+                    node.media_type || null,
+                status:
+                    node.status || null,
+                total_episodes:
+                    Number(
+                        node.num_episodes || 0
+                    ) || null,
+                average_episode_duration_seconds:
+                    Number(
+                        node.average_episode_duration ||
+                        0
+                    ) || null,
+                mal_score:
+                    Number(node.mean || 0) || null,
+                anilist_score: null,
+                kitsu_score: null,
+                poster_url:
+                    node.main_picture?.large ||
+                    node.main_picture?.medium ||
+                    null,
+                banner_url: null,
+                description:
+                    node.synopsis || null,
+                genres:
+                    (node.genres || [])
+                        .map(
+                            (genre) =>
+                                genre.name
+                        )
+                        .filter(Boolean),
+                site_url:
+                    node.id
+                        ? "https://myanimelist.net/anime/" +
+                            Number(node.id)
+                        : null,
+                start_date:
+                    node.start_date || null,
+                finish_date:
+                    node.end_date || null,
+                sources: ["MyAnimeList"],
+            };
+        });
+}
+
+async function search_kitsu_anime_catalog(
+    search,
+    limit = 12
+) {
+    const url =
+        new URL(
+            kitsu_api_base + "/anime"
+        );
+    url.searchParams.set(
+        "filter[text]",
+        search
+    );
+    url.searchParams.set(
+        "page[limit]",
+        String(
+            Math.max(
+                1,
+                Math.min(
+                    20,
+                    Number(limit) || 12
+                )
+            )
+        )
+    );
+
+    const response =
+        await fetch(
+            url,
+            {
+                headers:
+                    kitsu_headers(),
+            }
+        );
+
+    if (!response.ok) {
+        throw new Error(
+            "Kitsu public search failed with " +
+            response.status
+        );
+    }
+
+    const payload =
+        await response.json();
+
+    return (payload.data || [])
+        .map((item) => {
+            const attrs =
+                item.attributes || {};
+
+            return {
+                anilist_id: null,
+                mal_id: null,
+                kitsu_id:
+                    Number(item.id) || null,
+                title:
+                    kitsu_media_title(attrs),
+                title_romaji:
+                    attrs.titles?.en_jp ||
+                    null,
+                title_native:
+                    attrs.titles?.ja_jp ||
+                    null,
+                synonyms:
+                    kitsu_aliases(attrs),
+                media_type:
+                    String(
+                        attrs.subtype || ""
+                    ).toLowerCase() ||
+                    null,
+                status:
+                    attrs.status || null,
+                total_episodes:
+                    Number(
+                        attrs.episodeCount || 0
+                    ) || null,
+                average_episode_duration_seconds:
+                    Number(
+                        attrs.episodeLength || 0
+                    ) > 0
+                        ? Number(
+                            attrs.episodeLength
+                        ) * 60
+                        : null,
+                mal_score: null,
+                anilist_score: null,
+                kitsu_score:
+                    Number(
+                        attrs.averageRating ||
+                        0
+                    ) || null,
+                poster_url:
+                    kitsu_image(
+                        attrs.posterImage
+                    ),
+                banner_url:
+                    kitsu_image(
+                        attrs.coverImage
+                    ),
+                description:
+                    attrs.synopsis ||
+                    attrs.description ||
+                    null,
+                genres: [],
+                site_url:
+                    "https://kitsu.app/anime/" +
+                    (
+                        attrs.slug ||
+                        String(item.id)
+                    ),
+                start_date:
+                    attrs.startDate ||
+                    null,
+                finish_date:
+                    attrs.endDate ||
+                    null,
+                sources: ["Kitsu"],
+            };
+        });
+}
+
+function merge_anime_catalog_rows(rows) {
+    const merged = [];
+
+    const aliases_for = (item) => {
+        return [
+            item.title,
+            item.title_romaji,
+            item.title_native,
+            ...(item.synonyms || []),
+        ]
+            .map(
+                anime_catalog_normalize_title
+            )
+            .filter(Boolean);
+    };
+
+    for (const row of rows) {
+        const row_aliases =
+            new Set(
+                aliases_for(row)
+            );
+        const row_year =
+            anime_catalog_year(row);
+
+        const existing =
+            merged.find((item) => {
+                if (row.anilist_id &&
+                    item.anilist_id &&
+                    Number(row.anilist_id) ===
+                    Number(item.anilist_id)) {
+                    return true;
+                }
+
+                if (row.mal_id &&
+                    item.mal_id &&
+                    Number(row.mal_id) ===
+                    Number(item.mal_id)) {
+                    return true;
+                }
+
+                if (row.kitsu_id &&
+                    item.kitsu_id &&
+                    Number(row.kitsu_id) ===
+                    Number(item.kitsu_id)) {
+                    return true;
+                }
+
+                const item_year =
+                    anime_catalog_year(item);
+
+                if (row_year &&
+                    item_year &&
+                    row_year !== item_year) {
+                    return false;
+                }
+
+                return aliases_for(item)
+                    .some(
+                        (alias) =>
+                            row_aliases.has(
+                                alias
+                            )
+                    );
+            });
+
+        if (!existing) {
+            merged.push({
+                ...row,
+                sources:
+                    [...new Set(
+                        row.sources || []
+                    )],
+            });
+            continue;
+        }
+
+        for (const field of [
+            "anilist_id",
+            "mal_id",
+            "kitsu_id",
+            "title_romaji",
+            "title_native",
+            "media_type",
+            "status",
+            "total_episodes",
+            "average_episode_duration_seconds",
+            "mal_score",
+            "anilist_score",
+            "kitsu_score",
+            "poster_url",
+            "banner_url",
+            "description",
+            "site_url",
+            "start_date",
+            "finish_date",
+        ]) {
+            if ((existing[field] === null ||
+                 existing[field] === undefined ||
+                 existing[field] === "") &&
+                row[field] !== null &&
+                row[field] !== undefined &&
+                row[field] !== "") {
+                existing[field] =
+                    row[field];
+            }
+        }
+
+        existing.synonyms =
+            [...new Set([
+                ...(existing.synonyms || []),
+                ...(row.synonyms || []),
+            ])]
+                .filter(Boolean)
+                .slice(0, 40);
+
+        existing.genres =
+            [...new Set([
+                ...(existing.genres || []),
+                ...(row.genres || []),
+            ])]
+                .filter(Boolean);
+
+        existing.sources =
+            [...new Set([
+                ...(existing.sources || []),
+                ...(row.sources || []),
+            ])];
+    }
+
+    return merged;
+}
+
+exports.searchAnimeCatalog =
+    onCall(
+        {
+            secrets: [mal_client_id],
+        },
+        async (request) => {
+            if (!request.auth) {
+                throw new HttpsError(
+                    "unauthenticated",
+                    "You must be logged in."
+                );
+            }
+
+            const search =
+                String(
+                    request.data?.query || ""
+                ).trim();
+
+            if (search.length < 2) {
+                return {
+                    results: [],
+                };
+            }
+
+            if (search.length > 120) {
+                throw new HttpsError(
+                    "invalid-argument",
+                    "Search is too long."
+                );
+            }
+
+            const settled =
+                await Promise.allSettled([
+                    search_anilist_anime_catalog(
+                        search,
+                        12
+                    ),
+                    search_mal_anime_catalog(
+                        search,
+                        12
+                    ),
+                    search_kitsu_anime_catalog(
+                        search,
+                        12
+                    ),
+                ]);
+
+            const rows =
+                settled.flatMap(
+                    (entry) =>
+                        entry.status ===
+                            "fulfilled"
+                            ? entry.value
+                            : []
+                );
+
+            settled.forEach(
+                (entry, index) => {
+                    if (entry.status !==
+                        "rejected") {
+                        return;
+                    }
+
+                    logger.warn(
+                        "Anime catalog source search failed.",
+                        {
+                            source:
+                                [
+                                    "AniList",
+                                    "MyAnimeList",
+                                    "Kitsu",
+                                ][index],
+                            error:
+                                entry.reason?.message ||
+                                String(
+                                    entry.reason
+                                ),
+                        }
+                    );
+                }
+            );
+
+            if (!rows.length &&
+                settled.every(
+                    (entry) =>
+                        entry.status ===
+                        "rejected"
+                )) {
+                throw new HttpsError(
+                    "internal",
+                    "Anime search is temporarily unavailable."
+                );
+            }
+
+            return {
+                results:
+                    merge_anime_catalog_rows(
+                        rows
+                    ).slice(0, 24),
+            };
+        }
+    );
+
+exports.getAnimeCatalogDetails =
+    onCall(
+        {
+            secrets: [mal_client_id],
+        },
+        async (request) => {
+            if (!request.auth) {
+                throw new HttpsError(
+                    "unauthenticated",
+                    "You must be logged in."
+                );
+            }
+
+            const title =
+                String(
+                    request.data?.title || ""
+                ).trim();
+            const anilist_id =
+                Number(
+                    request.data?.anilist_id ||
+                    0
+                );
+            const mal_id =
+                Number(
+                    request.data?.mal_id ||
+                    0
+                );
+            const kitsu_id =
+                Number(
+                    request.data?.kitsu_id ||
+                    0
+                );
+
+            const sources = [];
+
+            if (title) {
+                const settled =
+                    await Promise.allSettled([
+                        search_anilist_anime_catalog(
+                            title,
+                            8
+                        ),
+                        search_mal_anime_catalog(
+                            title,
+                            8
+                        ),
+                        search_kitsu_anime_catalog(
+                            title,
+                            8
+                        ),
+                    ]);
+
+                for (const entry of
+                    settled) {
+                    if (entry.status ===
+                        "fulfilled") {
+                        sources.push(
+                            ...entry.value
+                        );
+                    }
+                }
+            }
+
+            let merged =
+                merge_anime_catalog_rows(
+                    sources
+                );
+
+            const wanted =
+                merged.find((item) =>
+                    (
+                        anilist_id &&
+                        Number(
+                            item.anilist_id
+                        ) === anilist_id
+                    ) ||
+                    (
+                        mal_id &&
+                        Number(
+                            item.mal_id
+                        ) === mal_id
+                    ) ||
+                    (
+                        kitsu_id &&
+                        Number(
+                            item.kitsu_id
+                        ) === kitsu_id
+                    )
+                ) ||
+                merged.find((item) =>
+                    title &&
+                    anime_catalog_normalize_title(
+                        item.title
+                    ) ===
+                    anime_catalog_normalize_title(
+                        title
+                    )
+                ) ||
+                merged[0];
+
+            if (!wanted) {
+                throw new HttpsError(
+                    "not-found",
+                    "Anime details were not found."
+                );
+            }
+
+            return wanted;
+        }
+    );
+
 exports.searchAniListAnime = onCall(async (request) => {
     if (!request.auth) {
         throw new HttpsError(
