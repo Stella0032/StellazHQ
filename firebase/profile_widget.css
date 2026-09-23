@@ -1263,3 +1263,107 @@ html[data-theme="flurple"] .guild-row-actions button{
         flex:1;
     }
 }
+
+
+/* Custom profile picture upload */
+.profile-custom-avatar{
+    margin:10px 0 16px;
+    padding:12px;
+    display:grid;
+    grid-template-columns:64px minmax(0,1fr) auto;
+    align-items:center;
+    gap:12px;
+    border:1px solid rgba(255,255,255,.11);
+    border-radius:14px;
+    background:rgba(255,255,255,.035);
+}
+.profile-custom-avatar>img{
+    width:64px;
+    height:64px;
+    display:block;
+    object-fit:cover;
+    border:2px solid rgba(255,255,255,.14);
+    border-radius:50%;
+    background:rgba(255,255,255,.04);
+}
+.profile-custom-avatar-copy{
+    min-width:0;
+    display:grid;
+    gap:3px;
+}
+.profile-custom-avatar-copy strong{
+    color:#edf8ff;
+    font-size:12px;
+}
+.profile-custom-avatar-copy span,
+.profile-custom-avatar-copy small{
+    color:#8399aa;
+    font-size:10px;
+    line-height:1.35;
+}
+.profile-custom-avatar-copy small{
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+}
+.profile-avatar-upload-button{
+    padding:9px 11px;
+    border:1px solid rgba(92,205,255,.38);
+    border-radius:10px;
+    color:#fff;
+    background:rgba(75,211,255,.1);
+    cursor:pointer;
+    font-size:10px;
+    font-weight:750;
+    white-space:nowrap;
+}
+.profile-avatar-upload-button:hover{
+    border-color:rgba(92,205,255,.62);
+    background:rgba(75,211,255,.16);
+}
+.profile-avatar-divider{
+    margin:2px 0 0;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    color:#6f8496;
+    font-size:9px;
+    text-transform:uppercase;
+    letter-spacing:1px;
+}
+.profile-avatar-divider::before,
+.profile-avatar-divider::after{
+    content:"";
+    height:1px;
+    flex:1;
+    background:rgba(255,255,255,.08);
+}
+.profile-save:disabled{
+    cursor:wait;
+    opacity:.62;
+}
+html[data-theme="neon"] .profile-avatar-upload-button{
+    border-color:rgba(72,255,111,.5);
+    background:rgba(43,255,88,.1);
+}
+html[data-theme="flurple"] .profile-avatar-upload-button{
+    border-color:rgba(244,199,94,.5);
+    background:rgba(180,92,255,.11);
+}
+html[data-theme="sunset"] .profile-avatar-upload-button{
+    border-color:rgba(255,150,84,.5);
+    background:rgba(255,110,40,.11);
+}
+@media(max-width:600px){
+    .profile-custom-avatar{
+        grid-template-columns:56px minmax(0,1fr);
+    }
+    .profile-custom-avatar>img{
+        width:56px;
+        height:56px;
+    }
+    .profile-avatar-upload-button{
+        grid-column:1/-1;
+        text-align:center;
+    }
+}

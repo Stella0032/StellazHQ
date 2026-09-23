@@ -2,6 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebas
 import { getAuth } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 import { getFunctions } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-functions.js";
+import { getStorage } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-storage.js";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 
@@ -23,6 +24,7 @@ const app = initializeApp(firebase_config);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const functions = getFunctions(app, "us-central1");
+const storage = getStorage(app);
 //#endregion
 
 
@@ -45,4 +47,4 @@ const supabase = createClient(
 //#endregion
 
 
-export { app, auth, db, functions, supabase };
+export { app, auth, db, functions, storage, supabase };

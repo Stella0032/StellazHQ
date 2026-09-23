@@ -1,7 +1,8 @@
 import {onAuthStateChanged,signOut} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 import {doc,getDoc,setDoc} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 import {httpsCallable} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-functions.js";
-import {auth,db,functions} from "./firebase_config.js";
+import {ref,uploadBytes,getDownloadURL} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-storage.js";
+import {auth,db,functions,storage} from "./firebase_config.js";
 const widget=document.querySelector("[data-profile-widget]");
 if(widget){
 const trigger=widget.querySelector(".profile-trigger"),menu=widget.querySelector("[data-profile-menu]"),name_el=widget.querySelector("[data-profile-name]"),avatar_el=widget.querySelector("[data-profile-avatar]");
@@ -159,9 +160,54 @@ notification_list.addEventListener("click",event=>{
 });
 
 
-const avatars=["../images/ChatGPT Image Sep 20, 2026, 02_41_21 AM.png","../images/ChatGPT Image Sep 20, 2026, 02_41_30 AM.png","../images/ChatGPT Image Sep 20, 2026, 02_41_46 AM.png","../images/ChatGPT Image Sep 20, 2026, 02_41_53 AM.png","../images/ChatGPT Image Sep 20, 2026, 02_42_03 AM.png","../images/ChatGPT Image Sep 20, 2026, 02_46_25 AM.png"];const default_avatar=avatars[0];const themes=[{id:"stellaz",name:"Stellaz Original",description:"The original Stellaz look."},{id:"neon",name:"The Muckiverse",description:"Neon green, deep black, and a little radioactive energy."},{id:"flurple",name:"The Flurpleverse",description:"Royal purple, warm gold, and cosmic energy."},{id:"sunset",name:"The Sunsetverse",description:"Fire orange, deep crimson, and golden-hour glow."}];let current_user=null,selected_avatar=default_avatar,selected_theme="stellaz";
-const dialog=document.createElement("dialog");dialog.className="profile-dialog";dialog.innerHTML=`<form class="profile-form"><div class="profile-dialog-head"><div><h2>Your Profile</h2><p>Choose how you appear around Stellaz.</p></div><button class="profile-close" type="button">×</button></div><div class="profile-field"><label for="profile_username">Username</label><input id="profile_username" maxlength="24" autocomplete="nickname" required></div><span class="profile-avatar-label">Profile picture</span><div class="profile-avatar-options">${avatars.map(a=>`<button class="avatar-choice" type="button" data-avatar="${a}"><img src="${a}" alt=""></button>`).join("")}</div><button class="profile-save" type="submit">Save Profile</button><p class="profile-message" aria-live="polite"></p></form>`;document.body.appendChild(dialog);
+const avatars=["../images/ChatGPT Image Sep 20, 2026, 02_41_21 AM.png","../images/ChatGPT Image Sep 20, 2026, 02_41_30 AM.png","../images/ChatGPT Image Sep 20, 2026, 02_41_46 AM.png","../images/ChatGPT Image Sep 20, 2026, 02_41_53 AM.png","../images/ChatGPT Image Sep 20, 2026, 02_42_03 AM.png","../images/ChatGPT Image Sep 20, 2026, 02_46_25 AM.png"];const default_avatar=avatars[0];let pending_avatar_file=null;const themes=[{id:"stellaz",name:"Stellaz Original",description:"The original Stellaz look."},{id:"neon",name:"The Muckiverse",description:"Neon green, deep black, and a little radioactive energy."},{id:"flurple",name:"The Flurpleverse",description:"Royal purple, warm gold, and cosmic energy."},{id:"sunset",name:"The Sunsetverse",description:"Fire orange, deep crimson, and golden-hour glow."}];let current_user=null,selected_avatar=default_avatar,selected_theme="stellaz";
+const dialog=document.createElement("dialog");
+dialog.className="profile-dialog";
+dialog.innerHTML=`
+<form class="profile-form">
+    <div class="profile-dialog-head">
+        <div>
+            <h2>Your Profile</h2>
+            <p>Choose how you appear around Stellaz.</p>
+        </div>
+        <button class="profile-close" type="button">×</button>
+    </div>
+
+    <div class="profile-field">
+        <label for="profile_username">Username</label>
+        <input id="profile_username" maxlength="24" autocomplete="nickname" required>
+    </div>
+
+    <span class="profile-avatar-label">Profile picture</span>
+
+    <div class="profile-custom-avatar">
+        <img id="profile_custom_avatar_preview" src="${default_avatar}" alt="Profile picture preview">
+        <div class="profile-custom-avatar-copy">
+            <strong>Upload your own</strong>
+            <span>Stellaz resizes it to a small 512 × 512 WebP image.</span>
+            <small id="profile_avatar_file_name">No custom image selected</small>
+        </div>
+        <label class="profile-avatar-upload-button">
+            Choose image
+            <input id="profile_avatar_file" type="file"
+                   accept="image/jpeg,image/png,image/webp" hidden>
+        </label>
+    </div>
+
+    <div class="profile-avatar-divider"><span>or choose a Stellaz avatar</span></div>
+
+    <div class="profile-avatar-options">
+        ${avatars.map(a=>`<button class="avatar-choice" type="button" data-avatar="${a}"><img src="${a}" alt=""></button>`).join("")}
+    </div>
+
+    <button class="profile-save" type="submit">Save Profile</button>
+    <p class="profile-message" aria-live="polite"></p>
+</form>`;
+document.body.appendChild(dialog);
 const input=dialog.querySelector("#profile_username"),message=dialog.querySelector(".profile-message");
+const profile_avatar_file=dialog.querySelector("#profile_avatar_file");
+const profile_avatar_preview=dialog.querySelector("#profile_custom_avatar_preview");
+const profile_avatar_file_name=dialog.querySelector("#profile_avatar_file_name");
 let services_button=widget.querySelector("[data-profile-services]");
 if(!services_button){
     services_button=document.createElement("button");
@@ -598,10 +644,23 @@ let friend_overview={
     outgoing:[]
 };
 
+function profile_avatar_src(value){
+    const avatar=String(value||"");
+    if(avatars.includes(avatar))return avatar;
+
+    if(avatar.startsWith(
+        "https://firebasestorage.googleapis.com/"
+    )){
+        return avatar;
+    }
+
+    return default_avatar;
+}
+
 function friend_avatar_src(profile){
-    return avatars.includes(profile?.profile_avatar)
-        ? profile.profile_avatar
-        : default_avatar;
+    return profile_avatar_src(
+        profile?.profile_avatar
+    );
 }
 
 function friend_identity(profile){
@@ -1129,11 +1188,221 @@ guild_dialog.querySelector(".guild-leave-button")
 const theme_dialog=document.createElement("dialog");theme_dialog.className="profile-dialog theme-dialog";theme_dialog.innerHTML=`<div class="profile-form"><div class="profile-dialog-head"><div><h2>Theme</h2><p>Choose how Stellaz looks for your account.</p></div><button class="profile-close" type="button">×</button></div><div class="theme-options">${themes.map(t=>`<button class="theme-choice" type="button" data-theme="${t.id}"><strong>${t.name}</strong><span>${t.description}</span></button>`).join("")}</div></div>`;document.body.appendChild(theme_dialog);
 function apply_theme(theme){selected_theme=themes.some(t=>t.id===theme)?theme:"stellaz";document.documentElement.dataset.theme=selected_theme;theme_dialog.querySelectorAll(".theme-choice").forEach(b=>b.classList.toggle("selected",b.dataset.theme===selected_theme))}
 
-function render(n,a){name_el.textContent=n||"Account";const avatar=avatars.includes(a)?a:default_avatar;avatar_el.textContent="";let img=avatar_el.querySelector("img");if(!img){img=document.createElement("img");img.alt="";avatar_el.appendChild(img)}img.src=avatar}function select(a){selected_avatar=a;dialog.querySelectorAll(".avatar-choice").forEach(b=>b.classList.toggle("selected",b.dataset.avatar===a))}
+function render(n,a){
+    name_el.textContent=n||"Account";
+    const avatar=profile_avatar_src(a);
+    avatar_el.textContent="";
+    let img=avatar_el.querySelector("img");
+    if(!img){
+        img=document.createElement("img");
+        img.alt="";
+        avatar_el.appendChild(img);
+    }
+    img.src=avatar;
+}
+
+function select(a){
+    pending_avatar_file=null;
+    selected_avatar=profile_avatar_src(a);
+    profile_avatar_file.value="";
+    profile_avatar_file_name.textContent=
+        avatars.includes(selected_avatar)
+            ?"Using a Stellaz avatar"
+            :"Using your custom picture";
+    profile_avatar_preview.src=selected_avatar;
+    dialog.querySelectorAll(".avatar-choice").forEach(
+        b=>b.classList.toggle(
+            "selected",
+            b.dataset.avatar===selected_avatar
+        )
+    );
+}
+
+function load_profile_image(file){
+    return new Promise((resolve,reject)=>{
+        const object_url=URL.createObjectURL(file);
+        const image=new Image();
+
+        image.onload=()=>{
+            URL.revokeObjectURL(object_url);
+            resolve(image);
+        };
+
+        image.onerror=()=>{
+            URL.revokeObjectURL(object_url);
+            reject(new Error("Unable to read that image."));
+        };
+
+        image.src=object_url;
+    });
+}
+
+async function resize_profile_avatar(file){
+    const image=await load_profile_image(file);
+    const size=512;
+    const canvas=document.createElement("canvas");
+    canvas.width=size;
+    canvas.height=size;
+
+    const context=canvas.getContext("2d");
+    if(!context){
+        throw new Error("Image resizing is unavailable in this browser.");
+    }
+
+    const source_size=Math.min(
+        image.naturalWidth,
+        image.naturalHeight
+    );
+    const source_x=
+        (image.naturalWidth-source_size)/2;
+    const source_y=
+        (image.naturalHeight-source_size)/2;
+
+    context.drawImage(
+        image,
+        source_x,
+        source_y,
+        source_size,
+        source_size,
+        0,
+        0,
+        size,
+        size
+    );
+
+    const blob=await new Promise((resolve)=>
+        canvas.toBlob(
+            resolve,
+            "image/webp",
+            .82
+        )
+    );
+
+    if(!blob){
+        throw new Error("Unable to prepare that image.");
+    }
+
+    if(blob.size>2*1024*1024){
+        throw new Error("That image is still too large after resizing.");
+    }
+
+    return blob;
+}
+
+async function upload_profile_avatar(file){
+    if(!current_user){
+        throw new Error("You must be logged in.");
+    }
+
+    const blob=await resize_profile_avatar(file);
+    const avatar_ref=ref(
+        storage,
+        "profile_avatars/"+
+        current_user.uid+
+        "/avatar.webp"
+    );
+
+    await uploadBytes(
+        avatar_ref,
+        blob,
+        {
+            contentType:"image/webp",
+            cacheControl:"public,max-age=3600"
+        }
+    );
+
+    return await getDownloadURL(
+        avatar_ref
+    );
+}
 trigger.addEventListener("click",e=>{e.stopPropagation();notification_panel.hidden=true;notification_button.setAttribute("aria-expanded","false");menu.hidden=!menu.hidden;trigger.setAttribute("aria-expanded",String(!menu.hidden))});document.addEventListener("click",e=>{if(!widget.contains(e.target)){menu.hidden=true;notification_panel.hidden=true;trigger.setAttribute("aria-expanded","false");notification_button.setAttribute("aria-expanded","false")}});
-widget.querySelector("[data-profile-edit]").addEventListener("click",()=>{menu.hidden=true;message.textContent="";dialog.showModal()});widget.querySelector("[data-profile-theme]")?.addEventListener("click",()=>{menu.hidden=true;apply_theme(selected_theme);theme_dialog.showModal()});services_button.addEventListener("click",()=>{menu.hidden=true;trigger.setAttribute("aria-expanded","false");const services_dialog=document.getElementById("connected_services_dialog");if(services_dialog){if(!services_dialog.open)services_dialog.showModal();return}window.location.href="../entertainment_page/Entertainment.html?services=1"});feedback_button.addEventListener("click",()=>{menu.hidden=true;feedback_message.textContent="";feedback_counter.textContent=feedback_textarea.value.length+" / 2000";feedback_dialog.showModal();feedback_textarea.focus()});widget.querySelector("[data-profile-logout]").addEventListener("click",async()=>{await signOut(auth);window.location.href="../index.html"});
+widget.querySelector("[data-profile-edit]").addEventListener("click",()=>{menu.hidden=true;message.textContent="";select(selected_avatar);dialog.showModal()});widget.querySelector("[data-profile-theme]")?.addEventListener("click",()=>{menu.hidden=true;apply_theme(selected_theme);theme_dialog.showModal()});services_button.addEventListener("click",()=>{menu.hidden=true;trigger.setAttribute("aria-expanded","false");const services_dialog=document.getElementById("connected_services_dialog");if(services_dialog){if(!services_dialog.open)services_dialog.showModal();return}window.location.href="../entertainment_page/Entertainment.html?services=1"});feedback_button.addEventListener("click",()=>{menu.hidden=true;feedback_message.textContent="";feedback_counter.textContent=feedback_textarea.value.length+" / 2000";feedback_dialog.showModal();feedback_textarea.focus()});widget.querySelector("[data-profile-logout]").addEventListener("click",async()=>{await signOut(auth);window.location.href="../index.html"});
 dialog.querySelector(".profile-close").addEventListener("click",()=>dialog.close());theme_dialog.querySelector(".profile-close").addEventListener("click",()=>theme_dialog.close());feedback_dialog.querySelector(".profile-close").addEventListener("click",()=>feedback_dialog.close());theme_dialog.querySelectorAll(".theme-choice").forEach(b=>b.addEventListener("click",async()=>{if(!current_user)return;const theme=b.dataset.theme;apply_theme(theme);try{await setDoc(doc(db,"users",current_user.uid),{theme},{merge:true});theme_dialog.close()}catch(error){console.error(error)}}));dialog.querySelectorAll(".avatar-choice").forEach(b=>b.addEventListener("click",()=>select(b.dataset.avatar)));
-dialog.querySelector(".profile-form").addEventListener("submit",async e=>{e.preventDefault();if(!current_user)return;const display_name=input.value.trim();if(!display_name)return;message.textContent="Saving...";try{const save_profile=httpsCallable(functions,"saveStellazProfile");const result=await save_profile({username:display_name,profile_avatar:selected_avatar});const saved_name=result.data?.username||display_name;input.value=saved_name;render(saved_name,selected_avatar);message.textContent="Profile saved.";await load_friend_overview();setTimeout(()=>dialog.close(),450)}catch(error){console.error(error);message.textContent=error?.code==="functions/already-exists"?"That username is already taken.":(error?.message||"Unable to save profile.");}});
+profile_avatar_file.addEventListener("change",()=>{
+    const file=profile_avatar_file.files?.[0];
+    if(!file)return;
+
+    if(!["image/jpeg","image/png","image/webp"].includes(file.type)){
+        profile_avatar_file.value="";
+        message.textContent="Choose a JPG, PNG, or WebP image.";
+        return;
+    }
+
+    if(file.size>10*1024*1024){
+        profile_avatar_file.value="";
+        message.textContent="Choose an image smaller than 10 MB.";
+        return;
+    }
+
+    pending_avatar_file=file;
+    message.textContent="";
+    profile_avatar_file_name.textContent=file.name;
+    dialog.querySelectorAll(".avatar-choice").forEach(
+        button=>button.classList.remove("selected")
+    );
+
+    const preview_url=URL.createObjectURL(file);
+    profile_avatar_preview.src=preview_url;
+    profile_avatar_preview.onload=()=>{
+        URL.revokeObjectURL(preview_url);
+    };
+});
+
+dialog.querySelector(".profile-form").addEventListener("submit",async e=>{
+    e.preventDefault();
+    if(!current_user)return;
+
+    const display_name=input.value.trim();
+    if(!display_name)return;
+
+    const save_button=dialog.querySelector(".profile-save");
+    save_button.disabled=true;
+
+    try{
+        let avatar_to_save=selected_avatar;
+
+        if(pending_avatar_file){
+            message.textContent="Preparing and uploading picture...";
+            avatar_to_save=
+                await upload_profile_avatar(
+                    pending_avatar_file
+                );
+        }else{
+            message.textContent="Saving...";
+        }
+
+        const save_profile=httpsCallable(functions,"saveStellazProfile");
+        const result=await save_profile({
+            username:display_name,
+            profile_avatar:avatar_to_save
+        });
+
+        const saved_name=
+            result.data?.username||
+            display_name;
+
+        selected_avatar=avatar_to_save;
+        pending_avatar_file=null;
+        profile_avatar_file.value="";
+        input.value=saved_name;
+        select(selected_avatar);
+        render(saved_name,selected_avatar);
+        message.textContent="Profile saved.";
+        await Promise.allSettled([
+            load_friend_overview(),
+            load_guild_overview()
+        ]);
+        setTimeout(()=>dialog.close(),450);
+    }catch(error){
+        console.error(error);
+        message.textContent=
+            error?.code==="functions/already-exists"
+                ?"That username is already taken."
+                :(error?.message||"Unable to save profile.");
+    }finally{
+        save_button.disabled=false;
+    }
+});
 feedback_textarea.addEventListener("input",()=>{
     feedback_counter.textContent=feedback_textarea.value.length+" / 2000";
 });
@@ -1168,7 +1437,7 @@ feedback_dialog.querySelector(".feedback-form").addEventListener("submit",async 
         submit_button.textContent="Send feedback";
     }
 });
-onAuthStateChanged(auth,async user=>{if(!user){window.location.href="../index.html";return}current_user=user;const fallback=user.email?.split("@")[0]||"Account";try{const snap=await getDoc(doc(db,"users",user.uid)),profile=snap.exists()?snap.data():{};const display_name=profile.display_name||fallback;selected_avatar=avatars.includes(profile.profile_avatar)?profile.profile_avatar:default_avatar;selected_theme=profile.theme||"stellaz";apply_theme(selected_theme);input.value=display_name;select(selected_avatar);render(display_name,selected_avatar)}catch(error){console.error(error);apply_theme("stellaz");input.value=fallback;render(fallback,default_avatar)}await ensure_friend_username();await Promise.allSettled([load_notifications(),load_friend_overview(),load_guild_overview()]);if(notification_timer)clearInterval(notification_timer);notification_timer=setInterval(()=>load_notifications({mark_seen:!notification_panel.hidden}),60000)});
+onAuthStateChanged(auth,async user=>{if(!user){window.location.href="../index.html";return}current_user=user;const fallback=user.email?.split("@")[0]||"Account";try{const snap=await getDoc(doc(db,"users",user.uid)),profile=snap.exists()?snap.data():{};const display_name=profile.display_name||fallback;selected_avatar=profile_avatar_src(profile.profile_avatar);selected_theme=profile.theme||"stellaz";apply_theme(selected_theme);input.value=display_name;select(selected_avatar);render(display_name,selected_avatar)}catch(error){console.error(error);apply_theme("stellaz");input.value=fallback;render(fallback,default_avatar)}await ensure_friend_username();await Promise.allSettled([load_notifications(),load_friend_overview(),load_guild_overview()]);if(notification_timer)clearInterval(notification_timer);notification_timer=setInterval(()=>load_notifications({mark_seen:!notification_panel.hidden}),60000)});
 }
 // Profile, Friends, and Friend Library dialogs can all be dismissed
 // by clicking the backdrop as well as their close button.
