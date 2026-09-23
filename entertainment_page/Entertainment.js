@@ -325,7 +325,9 @@ let active_recommendation_detail = null;
 
 function recommendation_reason(item) {
     if (active_recommendation_type === "anime") {
-        return "Recommended from your MyAnimeList history";
+        return item.because_of?.length
+            ? `Because you liked ${item.because_of.join(" and ")}`
+            : "Recommended from your anime history";
     }
 
     if (active_recommendation_type === "manga") {
@@ -431,11 +433,27 @@ async function finish_recommendation_load(items) {
 
     recommendation_pool = items.filter((item) =>
         !library.some((entry) => {
-            if (active_recommendation_type === "anime" &&
-                item.mal_id &&
-                entry.mal_id) {
-                return Number(entry.mal_id) ===
-                    Number(item.mal_id);
+            if (active_recommendation_type === "anime") {
+                if (item.anilist_id &&
+                    entry.anilist_id &&
+                    Number(entry.anilist_id) ===
+                    Number(item.anilist_id)) {
+                    return true;
+                }
+
+                if (item.mal_id &&
+                    entry.mal_id &&
+                    Number(entry.mal_id) ===
+                    Number(item.mal_id)) {
+                    return true;
+                }
+
+                if (item.kitsu_id &&
+                    entry.kitsu_id &&
+                    Number(entry.kitsu_id) ===
+                    Number(item.kitsu_id)) {
+                    return true;
+                }
             }
 
             if (active_recommendation_type === "manga" &&
@@ -538,7 +556,7 @@ async function load_anime_recommendations(anime) {
     }
     try {
         const get_recommendations =
-            httpsCallable(functions, "getMALAnimeRecommendations");
+            httpsCallable(functions, "getAnimeRecommendations");
         const result = await get_recommendations({
             seeds: seeds.map((item) => ({
                 mal_id: item.mal_id,
