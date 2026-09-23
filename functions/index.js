@@ -3409,76 +3409,140 @@ exports.getEntertainmentReleases = onCall(
         }
 
         if (type === "anime") {
-            const access_token =
-                await get_valid_mal_access_token(request.auth.uid);
-            const mal_headers = {Authorization: `Bearer ${access_token}`};
             const now = new Date();
-            const month = now.getUTCMonth() + 1;
-            const season = month <= 3 ? "winter" :
-                month <= 6 ? "spring" :
-                    month <= 9 ? "summer" : "fall";
-            const year = now.getUTCFullYear();
-            const today = now.toISOString().slice(0, 10);
+            const today =
+                Number(
+                    now.toISOString()
+                        .slice(0, 10)
+                        .replaceAll("-", "")
+                );
+            const recent_start =
+                new Date(
+                    now.getTime() -
+                    120 * 24 * 60 * 60 * 1000
+                );
+            const recent_start_value =
+                Number(
+                    recent_start.toISOString()
+                        .slice(0, 10)
+                        .replaceAll("-", "")
+                );
+            const future_end =
+                new Date(
+                    now.getTime() +
+                    365 * 24 * 60 * 60 * 1000
+                );
+            const future_end_value =
+                Number(
+                    future_end.toISOString()
+                        .slice(0, 10)
+                        .replaceAll("-", "")
+                );
 
-            const season_url = new URL(
-                `https://api.myanimelist.net/v2/anime/season/${year}/${season}`
-            );
-            season_url.searchParams.set("limit", "100");
-            season_url.searchParams.set(
-                "fields",
-                "start_date,mean,main_picture"
-            );
+            const fields = [
+                "id",
+                "idMal",
+                "title { english romaji native userPreferred }",
+                "synonyms",
+                "format",
+                "status",
+                "episodes",
+                "duration",
+                "averageScore",
+                "description(asHtml: false)",
+                "genres",
+                "siteUrl",
+                "coverImage { extraLarge large }",
+                "bannerImage",
+                "startDate { year month day }",
+                "endDate { year month day }",
+            ].join("\n");
 
-            const upcoming_url = new URL(
-                "https://api.myanimelist.net/v2/anime/ranking"
-            );
-            upcoming_url.searchParams.set("ranking_type", "upcoming");
-            upcoming_url.searchParams.set("limit", "20");
-            upcoming_url.searchParams.set(
-                "fields",
-                "start_date,mean,main_picture"
-            );
+            const query = [
+                "query {",
+                "  recent: Page(page: 1, perPage: 30) {",
+                "    media(",
+                "      type: ANIME,",
+                "      isAdult: false,",
+                "      startDate_greater: " +
+                    recent_start_value + ",",
+                "      startDate_lesser: " +
+                    today + ",",
+                "      sort: START_DATE_DESC",
+                "    ) {",
+                fields,
+                "    }",
+                "  }",
+                "  upcoming: Page(page: 1, perPage: 30) {",
+                "    media(",
+                "      type: ANIME,",
+                "      isAdult: false,",
+                "      startDate_greater: " +
+                    today + ",",
+                "      startDate_lesser: " +
+                    future_end_value + ",",
+                "      sort: START_DATE",
+                "    ) {",
+                fields,
+                "    }",
+                "  }",
+                "}",
+            ].join("\n");
 
-            const [season_response, upcoming_response] = await Promise.all([
-                fetch(season_url, {headers: mal_headers}),
-                fetch(upcoming_url, {headers: mal_headers}),
-            ]);
+            let data;
+            try {
+                data =
+                    await anilist_graphql_public(
+                        query
+                    );
+            } catch (error) {
+                logger.error(
+                    "AniList anime release lookup failed.",
+                    {error: error.message}
+                );
+                throw new HttpsError(
+                    "internal",
+                    "Anime release lookup failed."
+                );
+            }
 
-            const season_data = season_response.ok ?
-                await season_response.json() : {data: []};
-            const upcoming_data = upcoming_response.ok ?
-                await upcoming_response.json() : {data: []};
-
-            const map_anime = (item) => {
-                const node = item.node || {};
-                return {
-                    mal_id: node.id,
-                    title: node.title,
-                    release_date: node.start_date || null,
-                    poster_url: node.main_picture?.large ||
-                        node.main_picture?.medium || "",
-                    rating: node.mean ?? null,
+            const map_release =
+                (item) => {
+                    const mapped =
+                        map_anilist_anime_catalog_item(
+                            item
+                        );
+                    return {
+                        ...mapped,
+                        release_date:
+                            mapped.start_date,
+                        rating:
+                            mapped.anilist_score != null
+                                ? Number(
+                                    mapped.anilist_score
+                                ) / 10
+                                : null,
+                    };
                 };
+
+            return {
+                newly_released:
+                    (data?.recent?.media || [])
+                        .map(map_release)
+                        .filter(
+                            (item) =>
+                                item.poster_url
+                        )
+                        .slice(0, 7),
+                upcoming:
+                    (data?.upcoming?.media || [])
+                        .map(map_release)
+                        .filter(
+                            (item) =>
+                                item.poster_url
+                        )
+                        .slice(0, 7),
             };
-
-            const newly_released = (season_data.data || [])
-                .map(map_anime)
-                .filter((item) =>
-                    item.release_date && item.release_date <= today
-                )
-                .sort((a, b) =>
-                    String(b.release_date).localeCompare(a.release_date)
-                )
-                .slice(0, 7);
-
-            const upcoming = (upcoming_data.data || [])
-                .map(map_anime)
-                .filter((item) =>
-                    !item.release_date || item.release_date > today
-                )
-                .slice(0, 7);
-
-            return {newly_released, upcoming};
         }
 
         const media_type = type === "show" ? "tv" : "movie";
