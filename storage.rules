@@ -1,0 +1,13 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /profile_avatars/{user_id}/avatar.webp {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null
+        && request.auth.uid == user_id
+        && request.resource.size < 2 * 1024 * 1024
+        && request.resource.contentType == 'image/webp';
+    }
+  }
+}
