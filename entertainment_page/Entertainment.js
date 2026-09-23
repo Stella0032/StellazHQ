@@ -6307,6 +6307,752 @@ stellaz_ai_form.addEventListener("submit", async (event) => {
 });
 //#endregion
 
+//? -------------------------------------
+//* ----- Global Entertainment Search ---
+//? -------------------------------------
+//#region
+const global_search_form =
+    document.getElementById("global_search_form");
+const global_search_input =
+    document.getElementById("global_search_input");
+const global_search_dialog =
+    document.getElementById("global_search_dialog");
+const global_search_close =
+    document.getElementById("global_search_close");
+const global_search_dialog_form =
+    document.getElementById("global_search_dialog_form");
+const global_search_dialog_input =
+    document.getElementById("global_search_dialog_input");
+const global_search_filters =
+    document.getElementById("global_search_filters");
+const global_search_results =
+    document.getElementById("global_search_results");
+const global_search_summary =
+    document.getElementById("global_search_summary");
+
+let global_search_items = [];
+let global_search_filter = "all";
+let global_search_request = 0;
+
+function global_search_type_label(type) {
+    if (type === "show") return "TV";
+    if (type === "anime") return "ANIME";
+    if (type === "manga") return "MANGA";
+    return "MOVIE";
+}
+
+function global_search_item_year(item) {
+    if (item.year) return Number(item.year) || null;
+
+    const date =
+        item.start_date ||
+        item.release_date ||
+        item.first_air_date ||
+        "";
+
+    return /^\d{4}/.test(String(date))
+        ? Number(String(date).slice(0, 4))
+        : null;
+}
+
+function global_search_item_meta(item) {
+    const parts = [];
+    const year = global_search_item_year(item);
+    if (year) parts.push(String(year));
+
+    if (item.search_type === "anime") {
+        if (item.media_type) {
+            parts.push(
+                String(item.media_type)
+                    .replaceAll("_", " ")
+                    .toUpperCase()
+            );
+        }
+        if (item.anilist_score != null) {
+            parts.push(
+                "★ " +
+                Number(item.anilist_score) +
+                "%"
+            );
+        }
+    } else if (item.search_type === "manga") {
+        if (item.media_kind) {
+            parts.push(
+                String(item.media_kind)
+                    .toUpperCase()
+            );
+        }
+        if (item.anilist_score != null) {
+            parts.push(
+                "★ " +
+                Number(item.anilist_score) +
+                "%"
+            );
+        }
+    }
+
+    return parts.join(" · ");
+}
+
+function global_search_make_button(
+    label,
+    action,
+    primary = false
+) {
+    const button =
+        document.createElement("button");
+    button.type = "button";
+    button.dataset.globalSearchAction =
+        action;
+    button.textContent = label;
+    if (primary) {
+        button.classList.add("primary");
+    }
+    return button;
+}
+
+function render_global_search_results() {
+    if (!global_search_results) return;
+
+    const visible =
+        global_search_filter === "all"
+            ? global_search_items
+            : global_search_items.filter(
+                (item) =>
+                    item.search_type ===
+                    global_search_filter
+            );
+
+    global_search_results.replaceChildren();
+
+    if (!visible.length) {
+        const empty =
+            document.createElement("p");
+        empty.className =
+            "global-search-empty";
+        empty.textContent =
+            global_search_items.length
+                ? "No results in this category."
+                : "No titles found.";
+        global_search_results.appendChild(
+            empty
+        );
+        return;
+    }
+
+    visible.forEach((item, index) => {
+        const card =
+            document.createElement("article");
+        card.className =
+            "global-search-result";
+        card.dataset.globalSearchIndex =
+            String(
+                global_search_items.indexOf(
+                    item
+                )
+            );
+
+        const poster_wrap =
+            document.createElement("div");
+        poster_wrap.className =
+            "global-search-poster-wrap";
+
+        if (item.poster_url) {
+            const image =
+                document.createElement("img");
+            image.className =
+                "global-search-poster";
+            image.src = item.poster_url;
+            image.alt =
+                (item.title || "Title") +
+                " poster";
+            image.loading = "lazy";
+            poster_wrap.appendChild(image);
+        } else {
+            const placeholder =
+                document.createElement("div");
+            placeholder.className =
+                "global-search-poster-placeholder";
+            placeholder.textContent =
+                String(
+                    item.title || "?"
+                ).slice(0, 1);
+            poster_wrap.appendChild(
+                placeholder
+            );
+        }
+
+        const kind =
+            document.createElement("span");
+        kind.className =
+            "global-search-kind";
+        kind.textContent =
+            global_search_type_label(
+                item.search_type
+            );
+        poster_wrap.appendChild(kind);
+
+        const title =
+            document.createElement("h3");
+        title.textContent =
+            item.title || "Untitled";
+        title.title =
+            item.title || "";
+
+        const meta =
+            document.createElement("p");
+        meta.className =
+            "global-search-meta";
+        meta.textContent =
+            global_search_item_meta(item);
+
+        const actions =
+            document.createElement("div");
+        actions.className =
+            "global-search-card-actions";
+
+        if (item.search_type === "movie" ||
+            item.search_type === "show") {
+            actions.append(
+                global_search_make_button(
+                    "View details",
+                    "details",
+                    true
+                ),
+                global_search_make_button(
+                    "＋ Watch later",
+                    "watch_later"
+                )
+            );
+        } else if (
+            item.search_type === "anime"
+        ) {
+            actions.append(
+                global_search_make_button(
+                    "✓ Add watched",
+                    "anime_watched",
+                    true
+                )
+            );
+        } else {
+            actions.append(
+                global_search_make_button(
+                    "＋ Start reading",
+                    "manga_reading",
+                    true
+                )
+            );
+        }
+
+        card.append(
+            poster_wrap,
+            title,
+            meta,
+            actions
+        );
+        global_search_results.appendChild(
+            card
+        );
+    });
+}
+
+function global_search_set_filter(type) {
+    global_search_filter = type;
+
+    global_search_filters
+        ?.querySelectorAll(
+            "[data-search-filter]"
+        )
+        .forEach((button) => {
+            const active =
+                button.dataset
+                    .searchFilter === type;
+            button.classList.toggle(
+                "active",
+                active
+            );
+            button.setAttribute(
+                "aria-selected",
+                String(active)
+            );
+        });
+
+    render_global_search_results();
+}
+
+async function run_global_search(query) {
+    const search =
+        String(query || "").trim();
+
+    if (search.length < 2) return;
+
+    const request_id =
+        ++global_search_request;
+    global_search_dialog_input.value =
+        search;
+    global_search_input.value =
+        search;
+    global_search_summary.textContent =
+        'Searching for "' +
+        search +
+        '"...';
+    global_search_results.innerHTML =
+        '<p class="global-search-loading">Searching movies, TV, anime and manga...</p>';
+
+    if (!global_search_dialog.open) {
+        global_search_dialog.showModal();
+    }
+
+    const movie_search =
+        httpsCallable(
+            functions,
+            "searchEntertainmentTitles"
+        );
+    const anime_search_function =
+        httpsCallable(
+            functions,
+            "searchAniListAnime"
+        );
+    const manga_search_function =
+        httpsCallable(
+            functions,
+            "searchAniListManga"
+        );
+
+    const settled =
+        await Promise.allSettled([
+            movie_search({
+                query: search,
+                type: "movie"
+            }),
+            movie_search({
+                query: search,
+                type: "show"
+            }),
+            anime_search_function({
+                query: search
+            }),
+            manga_search_function({
+                query: search
+            })
+        ]);
+
+    if (request_id !==
+        global_search_request) {
+        return;
+    }
+
+    const movie_results =
+        settled[0].status ===
+            "fulfilled"
+            ? settled[0].value.data
+                ?.results || []
+            : [];
+    const show_results =
+        settled[1].status ===
+            "fulfilled"
+            ? settled[1].value.data
+                ?.results || []
+            : [];
+    const anime_results =
+        settled[2].status ===
+            "fulfilled"
+            ? settled[2].value.data
+                ?.results || []
+            : [];
+    const manga_results =
+        settled[3].status ===
+            "fulfilled"
+            ? settled[3].value.data
+                ?.results || []
+            : [];
+
+    global_search_items = [
+        ...movie_results.map(
+            (item) => ({
+                ...item,
+                search_type: "movie"
+            })
+        ),
+        ...show_results.map(
+            (item) => ({
+                ...item,
+                search_type: "show"
+            })
+        ),
+        ...anime_results.map(
+            (item) => ({
+                ...item,
+                search_type: "anime",
+                year:
+                    global_search_item_year(
+                        item
+                    )
+            })
+        ),
+        ...manga_results.map(
+            (item) => ({
+                ...item,
+                search_type: "manga",
+                year:
+                    global_search_item_year(
+                        item
+                    )
+            })
+        )
+    ];
+
+    const failures =
+        settled.filter(
+            (entry) =>
+                entry.status ===
+                    "rejected"
+        );
+
+    if (!global_search_items.length &&
+        failures.length === settled.length) {
+        global_search_summary.textContent =
+            "Search is temporarily unavailable.";
+        global_search_results.innerHTML =
+            '<p class="global-search-error">Unable to search right now. Please try again.</p>';
+        return;
+    }
+
+    global_search_summary.textContent =
+        global_search_items.length +
+        " result" +
+        (global_search_items.length === 1
+            ? ""
+            : "s") +
+        ' for "' +
+        search +
+        '"' +
+        (failures.length
+            ? " · some sources were unavailable"
+            : "");
+
+    global_search_set_filter("all");
+}
+
+async function add_global_anime_watched(
+    item,
+    button
+) {
+    button.disabled = true;
+    const original =
+        button.textContent;
+    button.textContent = "Adding...";
+
+    try {
+        const total_episodes =
+            Number(
+                item.total_episodes || 0
+            );
+
+        const row = {
+            mal_id: null,
+            anilist_id:
+                item.anilist_id,
+            kitsu_id: null,
+            title: item.title,
+            title_romaji:
+                item.title_romaji,
+            title_native:
+                item.title_native,
+            synonyms:
+                item.synonyms || [],
+            status: "completed",
+            episodes_watched:
+                total_episodes,
+            total_episodes:
+                total_episodes || null,
+            my_rating: null,
+            poster_url:
+                item.poster_url,
+            media_type:
+                item.media_type,
+            start_date:
+                item.start_date,
+            finish_date:
+                item.finish_date,
+            average_episode_duration_ms:
+                Number(
+                    item.average_episode_duration_seconds ||
+                    0
+                ) || null,
+            mal_score: null,
+            anilist_score:
+                item.anilist_score,
+            kitsu_score: null,
+            description:
+                item.description,
+            genres:
+                item.genres || [],
+            site_url:
+                item.site_url,
+            synced_at:
+                new Date().toISOString()
+        };
+
+        const merged =
+            await merge_anime_import_rows(
+                [row]
+            );
+        button.textContent = "✓ Added";
+        show_toast(
+            item.title +
+            (merged.added
+                ? " added as watched."
+                : " updated in your anime library.")
+        );
+    } catch (error) {
+        console.error(
+            "Unable to add searched anime:",
+            error
+        );
+        button.disabled = false;
+        button.textContent = original;
+        alert(
+            "Unable to add this anime to Stellaz."
+        );
+    }
+}
+
+async function add_global_manga_reading(
+    item,
+    button
+) {
+    button.disabled = true;
+    const original =
+        button.textContent;
+    button.textContent = "Adding...";
+
+    try {
+        const {data: existing,
+            error: existing_error} =
+            await supabase
+                .from("manga_library")
+                .select("id")
+                .eq(
+                    "anilist_id",
+                    item.anilist_id
+                )
+                .limit(1);
+
+        if (existing_error) {
+            throw existing_error;
+        }
+
+        if (existing?.length) {
+            button.textContent =
+                "✓ In library";
+            show_toast(
+                item.title +
+                " is already in your library."
+            );
+            return;
+        }
+
+        const {error} =
+            await supabase
+                .from("manga_library")
+                .insert({
+                    anilist_id:
+                        item.anilist_id,
+                    title:
+                        item.title,
+                    title_romaji:
+                        item.title_romaji,
+                    title_native:
+                        item.title_native,
+                    synonyms:
+                        item.synonyms || [],
+                    country_of_origin:
+                        item.country_of_origin,
+                    media_kind:
+                        item.media_kind,
+                    format:
+                        item.format,
+                    publication_status:
+                        item.publication_status,
+                    user_status:
+                        "reading",
+                    chapters_read: 0,
+                    total_chapters:
+                        item.total_chapters,
+                    volumes_read: 0,
+                    total_volumes:
+                        item.total_volumes,
+                    anilist_score:
+                        item.anilist_score,
+                    poster_url:
+                        item.poster_url,
+                    banner_url:
+                        item.banner_url,
+                    description:
+                        item.description,
+                    genres:
+                        item.genres || [],
+                    site_url:
+                        item.site_url,
+                    start_date:
+                        item.start_date,
+                    end_date:
+                        item.end_date
+                });
+
+        if (error) throw error;
+
+        await load_manga_library();
+        button.textContent = "✓ Added";
+        show_toast(
+            item.title +
+            " added to your reading library."
+        );
+    } catch (error) {
+        console.error(
+            "Unable to add searched manga:",
+            error
+        );
+        button.disabled = false;
+        button.textContent = original;
+        alert(
+            "Unable to add this title. Please try again."
+        );
+    }
+}
+
+global_search_form?.addEventListener(
+    "submit",
+    async (event) => {
+        event.preventDefault();
+        await run_global_search(
+            global_search_input.value
+        );
+    }
+);
+
+global_search_dialog_form?.addEventListener(
+    "submit",
+    async (event) => {
+        event.preventDefault();
+        await run_global_search(
+            global_search_dialog_input.value
+        );
+    }
+);
+
+global_search_close?.addEventListener(
+    "click",
+    () => global_search_dialog.close()
+);
+
+global_search_filters?.addEventListener(
+    "click",
+    (event) => {
+        const button =
+            event.target.closest(
+                "[data-search-filter]"
+            );
+        if (!button) return;
+        global_search_set_filter(
+            button.dataset.searchFilter
+        );
+    }
+);
+
+global_search_results?.addEventListener(
+    "click",
+    async (event) => {
+        const action_button =
+            event.target.closest(
+                "[data-global-search-action]"
+            );
+        if (!action_button) return;
+
+        const card =
+            action_button.closest(
+                "[data-global-search-index]"
+            );
+        if (!card) return;
+
+        const item =
+            global_search_items[
+                Number(
+                    card.dataset
+                        .globalSearchIndex
+                )
+            ];
+        if (!item) return;
+
+        const action =
+            action_button.dataset
+                .globalSearchAction;
+
+        if (action === "details") {
+            active_recommendation_type =
+                item.search_type;
+            global_search_dialog.close();
+            await open_recommendation_details(
+                item
+            );
+            return;
+        }
+
+        if (action === "watch_later") {
+            action_button.disabled = true;
+            const original =
+                action_button.textContent;
+            action_button.textContent =
+                "Adding...";
+
+            try {
+                active_recommendation_type =
+                    item.search_type;
+                await save_recommendation_to_library(
+                    item,
+                    "watch_later"
+                );
+                action_button.textContent =
+                    "✓ Watch later";
+                show_toast(
+                    item.title +
+                    " added to Watch Later."
+                );
+            } catch (error) {
+                console.error(
+                    "Unable to add search result:",
+                    error
+                );
+                action_button.disabled = false;
+                action_button.textContent =
+                    original;
+                alert(
+                    "Unable to add that title. Please try again."
+                );
+            }
+            return;
+        }
+
+        if (action === "anime_watched") {
+            await add_global_anime_watched(
+                item,
+                action_button
+            );
+            return;
+        }
+
+        if (action === "manga_reading") {
+            await add_global_manga_reading(
+                item,
+                action_button
+            );
+        }
+    }
+);
+//#endregion
+
+
 // Close modal dialogs by clicking the backdrop, while preserving clicks
 // anywhere inside the dialog itself.
 function enable_dialog_backdrop_close(dialog) {

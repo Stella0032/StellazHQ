@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Entertainment | Stellaz HQ</title>
     <link rel="icon" type="image/png" href="../images/stellaz_favicon.png">
-    <link rel="stylesheet" href="EntertainmentStyles.css?v=44">
+    <link rel="stylesheet" href="EntertainmentStyles.css?v=45">
     <link rel="stylesheet" href="../firebase/profile_widget.css?v=10">
 </head>
 <body>
@@ -51,6 +51,18 @@
     </header>
 
     <main class="entertainment-dashboard">
+        <section class="global-search-panel" aria-label="Search all entertainment">
+            <form class="global-search-form" id="global_search_form">
+                <span class="global-search-icon" aria-hidden="true">⌕</span>
+                <input id="global_search_input" type="search"
+                       autocomplete="off" minlength="2" maxlength="120"
+                       placeholder="Search movies, TV shows, anime, manga..."
+                       aria-label="Search movies, TV shows, anime and manga">
+                <button type="submit">Search</button>
+            </form>
+            <p>Explore titles beyond your library.</p>
+        </section>
+
         <section class="library-grid" aria-label="Entertainment libraries">
             <a class="library-card movies" href="#movie_library" data-library="Movies">
                 <span class="library-icon">🎬</span>
@@ -524,6 +536,39 @@
     </section>
 
 
+    <dialog class="global-search-dialog" id="global_search_dialog">
+        <div class="global-search-dialog-shell">
+            <div class="global-search-dialog-header">
+                <div>
+                    <p class="eyebrow">DISCOVER</p>
+                    <h2>Search Stellaz</h2>
+                    <p id="global_search_summary">Search across movies, TV shows, anime, manga and manhwa.</p>
+                </div>
+                <button class="profile-close" id="global_search_close" type="button" aria-label="Close search">×</button>
+            </div>
+
+            <form class="global-search-dialog-form" id="global_search_dialog_form">
+                <input id="global_search_dialog_input" type="search"
+                       autocomplete="off" minlength="2" maxlength="120"
+                       placeholder="Search all entertainment..."
+                       aria-label="Search all entertainment">
+                <button type="submit">Search</button>
+            </form>
+
+            <div class="global-search-filters" id="global_search_filters" role="tablist" aria-label="Search result type">
+                <button class="active" type="button" data-search-filter="all">All</button>
+                <button type="button" data-search-filter="movie">Movies</button>
+                <button type="button" data-search-filter="show">TV Shows</button>
+                <button type="button" data-search-filter="anime">Anime</button>
+                <button type="button" data-search-filter="manga">Manga</button>
+            </div>
+
+            <div class="global-search-results" id="global_search_results">
+                <p class="global-search-empty">Type at least two characters to start exploring.</p>
+            </div>
+        </div>
+    </dialog>
+
     <dialog class="connected-services-dialog" id="connected_services_dialog">
         <div class="connected-services-shell">
             <div class="connected-services-header">
@@ -672,7 +717,7 @@
     </dialog>
 
     <div class="toast" id="toast" role="status"></div>
-    <script type="module" src="Entertainment.js?v=88"></script>
+    <script type="module" src="Entertainment.js?v=89"></script>
     <script type="module" src="../firebase/profile_widget.js?v=8"></script>
 </body>
 </html>
