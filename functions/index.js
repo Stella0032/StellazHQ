@@ -784,19 +784,68 @@ exports.getMALAnimeRecommendations = onCall(
                         }
                     );
             } catch (error) {
-                logger.warn(
-                    "AniList anime recommendation seed failed.",
-                    {
-                        seed: seed_title ||
-                            mal_id ||
-                            anilist_id,
-                        error: error.message,
+                if (seed_title) {
+                    try {
+                        data =
+                            await anilist_graphql_public(
+                                query,
+                                {
+                                    id: null,
+                                    malId: null,
+                                    search: seed_title,
+                                }
+                            );
+                    } catch (title_error) {
+                        logger.warn(
+                            "AniList anime recommendation seed failed.",
+                            {
+                                seed: seed_title ||
+                                    mal_id ||
+                                    anilist_id,
+                                error:
+                                    title_error.message,
+                            }
+                        );
+                        continue;
                     }
-                );
-                continue;
+                } else {
+                    logger.warn(
+                        "AniList anime recommendation seed failed.",
+                        {
+                            seed: seed_title ||
+                                mal_id ||
+                                anilist_id,
+                            error: error.message,
+                        }
+                    );
+                    continue;
+                }
             }
 
-            const media = data?.Media;
+            let media = data?.Media;
+            if (!media && seed_title) {
+                try {
+                    data =
+                        await anilist_graphql_public(
+                            query,
+                            {
+                                id: null,
+                                malId: null,
+                                search: seed_title,
+                            }
+                        );
+                } catch (error) {
+                    logger.warn(
+                        "AniList anime title fallback failed.",
+                        {
+                            seed: seed_title,
+                            error: error.message,
+                        }
+                    );
+                }
+            }
+
+            media = data?.Media;
             if (!media) continue;
 
             const resolved_seed_title =
@@ -1243,22 +1292,75 @@ exports.getAniListMangaRecommendations =
                         }
                     );
             } catch (error) {
-                logger.warn(
-                    "AniList manga recommendation seed failed.",
-                    {
-                        seed:
-                            seed_title ||
-                            mal_id ||
-                            seed_id,
-                        error:
-                            error.message,
+                if (seed_title) {
+                    try {
+                        data =
+                            await anilist_graphql_public(
+                                query,
+                                {
+                                    id: null,
+                                    malId: null,
+                                    search: seed_title,
+                                }
+                            );
+                    } catch (title_error) {
+                        logger.warn(
+                            "AniList manga recommendation seed failed.",
+                            {
+                                seed:
+                                    seed_title ||
+                                    mal_id ||
+                                    seed_id,
+                                error:
+                                    title_error.message,
+                            }
+                        );
+                        continue;
                     }
-                );
-                continue;
+                } else {
+                    logger.warn(
+                        "AniList manga recommendation seed failed.",
+                        {
+                            seed:
+                                seed_title ||
+                                mal_id ||
+                                seed_id,
+                            error:
+                                error.message,
+                        }
+                    );
+                    continue;
+                }
             }
 
-            const media =
+            let media =
                 data?.Media;
+
+            if (!media && seed_title) {
+                try {
+                    data =
+                        await anilist_graphql_public(
+                            query,
+                            {
+                                id: null,
+                                malId: null,
+                                search: seed_title,
+                            }
+                        );
+                    media = data?.Media;
+                } catch (error) {
+                    logger.warn(
+                        "AniList manga title fallback failed.",
+                        {
+                            seed:
+                                seed_title,
+                            error:
+                                error.message,
+                        }
+                    );
+                }
+            }
+
             if (!media) continue;
 
             const resolved_seed_title =
