@@ -6005,7 +6005,10 @@ function normalize_guild_name(value) {
         );
     }
 
-    if (/[\\x00-\\x1F\\x7F]/.test(name)) {
+    if ([...name].some((character) => {
+        const code = character.charCodeAt(0);
+        return code < 32 || code === 127;
+    })) {
         throw new HttpsError(
             "invalid-argument",
             "Guild name contains unsupported characters."
