@@ -5877,6 +5877,203 @@ if (plex_connect_button) {
 }
 //#endregion
 
+
+const friend_activity_panel =
+    document.getElementById("friend_activity_panel");
+const friend_activity_count =
+    document.getElementById("friend_activity_count");
+const friend_activity_grid =
+    document.getElementById("friend_activity_grid");
+
+function friend_activity_time_label(value) {
+    const time = new Date(value).getTime();
+    if (!Number.isFinite(time)) return "";
+
+    const seconds = Math.max(
+        0,
+        Math.floor((Date.now() - time) / 1000)
+    );
+
+    if (seconds < 60) return "just now";
+    if (seconds < 3600) {
+        const minutes = Math.floor(seconds / 60);
+        return minutes + "m ago";
+    }
+    if (seconds < 86400) {
+        const hours = Math.floor(seconds / 3600);
+        return hours + "h ago";
+    }
+
+    const days = Math.floor(seconds / 86400);
+    if (days < 30) return days + "d ago";
+
+    return new Date(time).toLocaleDateString(
+        undefined,
+        {month: "short", day: "numeric"}
+    );
+}
+
+function render_friend_recent_activity(data) {
+    if (!friend_activity_panel ||
+        !friend_activity_grid ||
+        !friend_activity_count) {
+        return;
+    }
+
+    const friend_count =
+        Number(data?.friend_count || 0);
+    const items =
+        Array.isArray(data?.items)
+            ? data.items
+            : [];
+
+    if (friend_count <= 0) {
+        friend_activity_panel.hidden = true;
+        return;
+    }
+
+    friend_activity_panel.hidden = false;
+    const limit =
+        window.matchMedia("(max-width: 700px)").matches
+            ? 6
+            : 7;
+    const visible = items.slice(0, limit);
+    friend_activity_count.textContent =
+        visible.length
+            ? visible.length + " RECENT"
+            : friend_count +
+                (friend_count === 1
+                    ? " FRIEND"
+                    : " FRIENDS");
+
+    friend_activity_grid.replaceChildren();
+
+    if (!visible.length) {
+        const empty =
+            document.createElement("p");
+        empty.className =
+            "recommendation-loading";
+        empty.textContent =
+            "No recent watch activity to show yet.";
+        friend_activity_grid.appendChild(empty);
+        return;
+    }
+
+    visible.forEach((item) => {
+        const card =
+            document.createElement("article");
+        card.className =
+            "recommendation-card friend-activity-card";
+
+        const poster_wrap =
+            document.createElement("div");
+        poster_wrap.className =
+            "friend-activity-poster-wrap";
+
+        if (item.poster_url) {
+            const poster =
+                document.createElement("img");
+            poster.className =
+                "recommendation-poster";
+            poster.src =
+                item.poster_url;
+            poster.alt =
+                (item.title || "Title") +
+                " poster";
+            poster.loading = "lazy";
+            poster_wrap.appendChild(poster);
+        } else {
+            const placeholder =
+                document.createElement("div");
+            placeholder.className =
+                "poster-placeholder";
+            placeholder.textContent =
+                String(
+                    item.title || "?"
+                ).slice(0, 1);
+            poster_wrap.appendChild(
+                placeholder
+            );
+        }
+
+        const type_badge =
+            document.createElement("span");
+        type_badge.className =
+            "friend-activity-type";
+        type_badge.textContent =
+            item.media_type === "show"
+                ? "TV"
+                : item.media_type === "anime"
+                    ? "ANIME"
+                    : "MOVIE";
+        poster_wrap.appendChild(type_badge);
+
+        const title =
+            document.createElement("h3");
+        title.textContent =
+            item.title || "Untitled";
+
+        const meta =
+            document.createElement("p");
+        meta.className =
+            "friend-activity-meta";
+
+        const friend_name =
+            document.createElement("strong");
+        friend_name.textContent =
+            item.friend?.username ||
+            "Friend";
+
+        const detail =
+            document.createElement("span");
+        const parts = [
+            item.detail || "Watched",
+            friend_activity_time_label(
+                item.activity_at
+            ),
+        ].filter(Boolean);
+        detail.textContent =
+            " · " + parts.join(" · ");
+
+        meta.append(
+            friend_name,
+            detail
+        );
+
+        card.append(
+            poster_wrap,
+            title,
+            meta
+        );
+        friend_activity_grid.appendChild(
+            card
+        );
+    });
+}
+
+async function load_friend_recent_activity() {
+    if (!friend_activity_panel) return;
+
+    try {
+        const get_activity =
+            httpsCallable(
+                functions,
+                "getFriendRecentActivity"
+            );
+        const result =
+            await get_activity();
+        render_friend_recent_activity(
+            result.data || {}
+        );
+    } catch (error) {
+        console.error(
+            "Unable to load recent friend activity:",
+            error
+        );
+        friend_activity_panel.hidden = true;
+    }
+}
+
 onAuthStateChanged(auth, async (user) => {
     if (!user) {
         window.location.href = "../index.html";
@@ -5907,6 +6104,9 @@ onAuthStateChanged(auth, async (user) => {
             load_movie_library(),
             load_show_library()
         ]);
+        load_friend_recent_activity().catch((error) =>
+            console.error("Unable to load friend activity:", error)
+        );
         auto_sync_plex_activity().catch((error) =>
             console.error("Unable to auto-sync Plex ratings:", error)
         );
