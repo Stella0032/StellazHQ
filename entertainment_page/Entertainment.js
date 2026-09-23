@@ -40,7 +40,12 @@ let release_rows_type = "movie";
 let release_items = [];
 
 function release_item_id(item) {
-    return Number(item.tmdb_id || item.id);
+    return Number(
+        item.tmdb_id ||
+        item.mal_id ||
+        item.anilist_id ||
+        item.id
+    );
 }
 
 function create_release_card(item) {
@@ -50,10 +55,22 @@ function create_release_card(item) {
             {year: "numeric", month: "short", day: "numeric"}
         )
         : "Date TBA";
-    const rating = item.rating
-        ? ` · ⭐ ${Number(item.rating).toFixed(1)}`
-        : "";
-    const controls = release_rows_type === "anime" ? "" : `
+    const rating =
+        release_rows_type === "manga" &&
+        item.anilist_score != null
+            ? ` · ⭐ ${Number(item.anilist_score)}%`
+            : item.rating
+                ? ` · ⭐ ${Number(item.rating).toFixed(1)}`
+                : "";
+    const controls =
+        release_rows_type === "anime"
+            ? ""
+            : release_rows_type === "manga"
+                ? `
+        <button class="recommendation-watch-later" type="button"
+                data-release-action="manga_reading" title="Start reading"
+                aria-label="Add ${item.title} to your reading library">＋</button>`
+                : `
         <button class="recommendation-watched" type="button"
                 data-release-action="watched" title="Add as watched"
                 aria-label="Add ${item.title} as watched">✓</button>
@@ -93,7 +110,15 @@ async function load_release_rows(type) {
         ? ["Newly Released TV Shows", "Upcoming TV Releases"]
         : type === "anime"
             ? ["Newly Released Anime", "Upcoming Anime Releases"]
-            : ["Newly Released Movies", "Upcoming Movie Releases"];
+            : type === "manga"
+                ? [
+                    "Newly Released Manga / Manhwa",
+                    "Upcoming Manga / Manhwa"
+                ]
+                : [
+                    "Newly Released Movies",
+                    "Upcoming Movie Releases"
+                ];
 
     new_release_title.textContent = labels[0];
     upcoming_release_title.textContent = labels[1];
@@ -155,6 +180,15 @@ async function open_release_details(item) {
 }
 
 async function run_release_action(item, action, button) {
+    if (release_rows_type === "manga" &&
+        action === "manga_reading") {
+        await add_global_manga_reading(
+            item,
+            button
+        );
+        return;
+    }
+
     const normalized = {
         ...item,
         tmdb_rating: item.tmdb_rating ?? item.rating,
@@ -231,13 +265,18 @@ let visible_recommendations = [];
 let ignored_recommendation_ids = new Set();
 
 function recommendation_id(item) {
-    return Number(active_recommendation_type === "anime"
-        ? item.mal_id
-        : item.tmdb_id);
+    return Number(
+        active_recommendation_type === "anime"
+            ? item.mal_id
+            : active_recommendation_type === "manga"
+                ? item.anilist_id
+                : item.tmdb_id
+    );
 }
 
 function populate_recommendation_genres() {
-    if (active_recommendation_type === "anime") {
+    if (active_recommendation_type === "anime" ||
+        active_recommendation_type === "manga") {
         recommendation_genre_filter.innerHTML =
             '<option value="">All genres</option>';
         recommendation_genre_filter.disabled = true;
@@ -288,16 +327,36 @@ function recommendation_reason(item) {
     if (active_recommendation_type === "anime") {
         return "Recommended from your MyAnimeList history";
     }
+
+    if (active_recommendation_type === "manga") {
+        return item.because_of?.length
+            ? `Because you liked ${item.because_of.join(" and ")}`
+            : "Recommended from your manga / manhwa history";
+    }
+
     return item.because_of?.length
         ? `Because you liked ${item.because_of.join(" and ")}`
         : `Picked from your ${active_recommendation_type} history`;
 }
 
 function create_recommendation_card(item) {
-    const rating = item.tmdb_rating !== null &&
-        item.tmdb_rating !== undefined
-        ? ` · ⭐ ${Number(item.tmdb_rating).toFixed(1)}` : "";
-    const controls = active_recommendation_type === "anime" ? "" : `
+    const rating =
+        active_recommendation_type === "manga" &&
+        item.anilist_score != null
+            ? ` · ⭐ ${Number(item.anilist_score)}%`
+            : item.tmdb_rating !== null &&
+                item.tmdb_rating !== undefined
+                ? ` · ⭐ ${Number(item.tmdb_rating).toFixed(1)}`
+                : "";
+    const controls =
+        active_recommendation_type === "anime"
+            ? ""
+            : active_recommendation_type === "manga"
+                ? `
+        <button class="recommendation-watch-later" type="button"
+                data-rec-action="manga_reading" title="Start reading"
+                aria-label="Add ${item.title} to your reading library">＋</button>`
+                : `
         <button class="recommendation-watched" type="button"
                 data-rec-action="watched" title="Add as watched"
                 aria-label="Add ${item.title} as watched">✓</button>
@@ -307,6 +366,12 @@ function create_recommendation_card(item) {
         <button class="recommendation-watch-later" type="button"
                 data-rec-action="watch_later" title="Add to Watch Later"
                 aria-label="Add ${item.title} to Watch Later">＋</button>`;
+
+    const display_year =
+        item.year ||
+        (item.start_date
+            ? String(item.start_date).slice(0, 4)
+            : "");
 
     return `
         <article class="recommendation-card"
@@ -324,7 +389,7 @@ function create_recommendation_card(item) {
             </div>
             <button class="recommendation-title-button" type="button"
                     data-rec-open title="${item.title}">${item.title}</button>
-            <p>${item.year || ""}${rating}</p>
+            <p>${display_year}${rating}</p>
             <p class="recommendation-reason">${recommendation_reason(item)}</p>
         </article>`;
 }
@@ -338,7 +403,8 @@ function render_recommendations() {
 
 async function load_recommendation_feedback(type) {
     ignored_recommendation_ids = new Set();
-    if (type === "anime") return;
+    if (type === "anime" ||
+        type === "manga") return;
 
     const {data, error} = await supabase
         .from("recommendation_feedback")
@@ -352,16 +418,48 @@ async function load_recommendation_feedback(type) {
 }
 
 async function finish_recommendation_load(items) {
-    const library = active_recommendation_type === "movie"
-        ? movie_library
-        : active_recommendation_type === "show"
-            ? show_library
-            : [];
+    const library =
+        active_recommendation_type === "movie"
+            ? movie_library
+            : active_recommendation_type === "show"
+                ? show_library
+                : active_recommendation_type === "anime"
+                    ? anime_library
+                    : active_recommendation_type === "manga"
+                        ? manga_library
+                        : [];
+
     recommendation_pool = items.filter((item) =>
-        !library.some((entry) =>
-            entry.title.toLowerCase() === item.title.toLowerCase() &&
-            Number(entry.year) === Number(item.year)
-        )
+        !library.some((entry) => {
+            if (active_recommendation_type === "anime" &&
+                item.mal_id &&
+                entry.mal_id) {
+                return Number(entry.mal_id) ===
+                    Number(item.mal_id);
+            }
+
+            if (active_recommendation_type === "manga" &&
+                item.anilist_id &&
+                entry.anilist_id) {
+                return Number(entry.anilist_id) ===
+                    Number(item.anilist_id);
+            }
+
+            const same_title =
+                String(entry.title || "")
+                    .toLowerCase() ===
+                String(item.title || "")
+                    .toLowerCase();
+
+            if (active_recommendation_type === "movie" ||
+                active_recommendation_type === "show") {
+                return same_title &&
+                    Number(entry.year) ===
+                    Number(item.year);
+            }
+
+            return same_title;
+        })
     );
     recommendation_genre_filter.value = "";
     await load_recommendation_feedback(active_recommendation_type);
@@ -455,6 +553,79 @@ async function load_anime_recommendations(anime) {
 }
 
 
+async function load_manga_recommendations(manga) {
+    active_recommendation_type = "manga";
+    recommendation_title.textContent =
+        "Recommended Manga / Manhwa For You";
+    recommendation_grid.innerHTML =
+        '<p class="recommendation-loading">Finding manga and manhwa for you...</p>';
+
+    const candidates = [...manga]
+        .filter((item) =>
+            item.user_status === "reading" ||
+            item.user_status === "completed" ||
+            Number(item.my_rating || 0) > 0
+        )
+        .sort((a, b) =>
+            Number(b.my_rating || 0) -
+            Number(a.my_rating || 0)
+        );
+
+    const seeds = candidates.slice(0, 8);
+
+    if (!seeds.length) {
+        recommendation_count.textContent = "0 PICKS";
+        recommendation_grid.innerHTML =
+            '<p class="recommendation-loading">Read or rate some manga or manhwa to get recommendations.</p>';
+        return;
+    }
+
+    try {
+        const get_recommendations =
+            httpsCallable(
+                functions,
+                "getAniListMangaRecommendations"
+            );
+        const result =
+            await get_recommendations({
+                seeds: seeds.map((item) => ({
+                    anilist_id:
+                        item.anilist_id,
+                    title:
+                        item.title,
+                    my_rating:
+                        item.my_rating
+                })),
+                library_ids:
+                    manga
+                        .map(
+                            (item) =>
+                                item.anilist_id
+                        )
+                        .filter(Boolean),
+                library_titles:
+                    manga.map(
+                        (item) =>
+                            item.title
+                    )
+            });
+
+        await finish_recommendation_load(
+            result.data.recommendations ||
+            []
+        );
+    } catch (error) {
+        console.error(
+            "Unable to load manga recommendations:",
+            error
+        );
+        recommendation_count.textContent = "—";
+        recommendation_grid.innerHTML =
+            '<p class="recommendation-loading">Unable to load manga recommendations.</p>';
+    }
+}
+
+
 async function save_recommendation_to_library(item, status) {
     const is_movie = active_recommendation_type === "movie";
     const table = is_movie ? "movies" : "tv_shows";
@@ -519,18 +690,39 @@ async function open_recommendation_details(item) {
     recommendation_dialog_type.textContent =
         active_recommendation_type === "show" ? "TV SHOW RECOMMENDATION" :
             active_recommendation_type === "anime" ? "ANIME RECOMMENDATION" :
-                "MOVIE RECOMMENDATION";
+                active_recommendation_type === "manga"
+                    ? "MANGA / MANHWA RECOMMENDATION"
+                    : "MOVIE RECOMMENDATION";
     recommendation_dialog_title.textContent = item.title;
+
+    const recommendation_year =
+        item.year ||
+        (item.start_date
+            ? Number(
+                String(item.start_date)
+                    .slice(0, 4)
+            )
+            : null);
+
     recommendation_dialog_meta.textContent =
-        `${item.year || "Year unavailable"}${item.tmdb_rating != null ?
-            ` · ⭐ ${Number(item.tmdb_rating).toFixed(1)} TMDB` : ""}`;
+        active_recommendation_type === "manga"
+            ? `${recommendation_year || "Year unavailable"}${item.anilist_score != null ?
+                ` · ⭐ ${Number(item.anilist_score)}% AniList` : ""}`
+            : `${item.year || "Year unavailable"}${item.tmdb_rating != null ?
+                ` · ⭐ ${Number(item.tmdb_rating).toFixed(1)} TMDB` : ""}`;
     recommendation_dialog_description.textContent =
         item.overview || "No description available.";
     recommendation_dialog_reason.textContent = recommendation_reason(item);
     recommendation_dialog_facts.innerHTML =
         '<span>Loading full details…</span>';
     recommendation_dialog_actions.innerHTML =
-        active_recommendation_type === "anime" ? "" : `
+        active_recommendation_type === "anime"
+            ? ""
+            : active_recommendation_type === "manga"
+                ? `
+            <button type="button" class="recommendation-action primary"
+                    data-dialog-action="manga_reading">＋ Start reading</button>`
+                : `
             <button type="button" class="recommendation-action primary"
                     data-dialog-action="watched">✓ I've seen it</button>
             <button type="button" class="recommendation-action"
@@ -542,6 +734,39 @@ async function open_recommendation_details(item) {
             <button type="button" class="recommendation-action muted"
                     data-dialog-action="not_interested">Not interested</button>`;
     recommendation_dialog.showModal();
+
+    if (active_recommendation_type === "manga") {
+        const facts = [
+            item.media_kind
+                ? `Type: ${item.media_kind}`
+                : null,
+            item.total_chapters
+                ? `Chapters: ${item.total_chapters}`
+                : null,
+            item.total_volumes
+                ? `Volumes: ${item.total_volumes}`
+                : null,
+            item.publication_status
+                ? `Status: ${String(item.publication_status)
+                    .replaceAll("_", " ")}`
+                : null,
+            item.genres?.length
+                ? `Genres: ${item.genres.join(", ")}`
+                : null
+        ].filter(Boolean);
+
+        recommendation_dialog_description.textContent =
+            item.description ||
+            "No description available.";
+        recommendation_dialog_facts.innerHTML =
+            facts.length
+                ? facts.map(
+                    (fact) =>
+                        `<span>${fact}</span>`
+                ).join("")
+                : "<span>No additional details available.</span>";
+        return;
+    }
 
     if (item.tmdb_id && active_recommendation_type !== "anime") {
         refresh_seerr_status_slot(
@@ -704,6 +929,18 @@ async function refresh_seerr_status_slot(
 }
 
 async function run_recommendation_action(item, action, button) {
+    if (active_recommendation_type === "manga" &&
+        action === "manga_reading") {
+        await add_global_manga_reading(
+            item,
+            button
+        );
+        if (recommendation_dialog.open) {
+            recommendation_dialog.close();
+        }
+        return;
+    }
+
     if (action === "request_seerr") {
         await request_media_on_seerr(item, active_recommendation_type, button);
         return;
@@ -1491,7 +1728,11 @@ show_grid.addEventListener("click", async (event) => {
     }
 });
 
-async function open_show_seasons(show, media_label = "TV SHOW") {
+async function open_show_seasons(
+    show,
+    media_label = "TV SHOW",
+    open_first_season = false
+) {
     active_show_id = show.id ?? null;
     show_details_eyebrow.textContent = media_label;
     show_details_title.textContent = show.title;
@@ -1564,6 +1805,24 @@ async function open_show_seasons(show, media_label = "TV SHOW") {
                 </article>`;
         }).join("") ||
             '<p class="library-loading">No seasons found.</p>';
+
+        if (open_first_season &&
+            result.data.seasons.length) {
+            const first_season =
+                result.data.seasons.find(
+                    (season) =>
+                        Number(
+                            season.season_number
+                        ) > 0
+                ) ||
+                result.data.seasons[0];
+
+            await open_season_episodes(
+                Number(
+                    first_season.season_number
+                )
+            );
+        }
     } catch (error) {
         console.error("Unable to load seasons:", error);
         const code = error?.code || "";
@@ -1638,7 +1897,13 @@ async function open_season_episodes(season_number) {
             return `
                 <article class="episode-card ${watched ? "watched" : ""}"
                          data-episode-number="${episode.episode_number}">
-                    <div class="episode-watch-image">
+                    <button class="episode-watch-image" type="button"
+                            ${active_show_id !== null ? `
+                                data-episode-watched="${episode.episode_number}"
+                                aria-label="${watched ?
+                                    "Mark episode not watched" :
+                                    "Mark episode watched"}"
+                            ` : "disabled"}>
                         ${still}
                         ${active_show_id !== null ? `
                             <span class="episode-watch-overlay">
@@ -1646,7 +1911,7 @@ async function open_season_episodes(season_number) {
                                 ${watched ? "Watched" : "Mark watched"}
                             </span>
                         ` : ""}
-                    </div>
+                    </button>
                     <div>
                         <strong>E${episode.episode_number} · ${episode.name}</strong>
                         <p>${episode.air_date || "Air date unavailable"}${runtime}${rating}</p>
@@ -2226,7 +2491,11 @@ recommendation_dialog_actions.addEventListener("click", async (event) => {
     if (seasons_button && active_library_detail.type === "show") {
         const show = active_library_detail.item;
         recommendation_dialog.close();
-        open_show_seasons(show);
+        await open_show_seasons(
+            show,
+            "TV SHOW",
+            true
+        );
         return;
     }
 
@@ -4683,11 +4952,15 @@ anime_view_seasons.addEventListener("click", () => {
         : undefined;
 
     anime_edit_dialog.close();
-    open_show_seasons({
-        id: null,
-        title: active_anime.title,
-        year
-    }, "ANIME");
+    open_show_seasons(
+        {
+            id: null,
+            title: active_anime.title,
+            year
+        },
+        "ANIME",
+        true
+    );
 });
 
 anime_episode_picker.addEventListener("click", (event) => {
@@ -5884,6 +6157,11 @@ const friend_activity_count =
     document.getElementById("friend_activity_count");
 const friend_activity_grid =
     document.getElementById("friend_activity_grid");
+let friend_activity_data = {
+    friend_count: 0,
+    items: []
+};
+let active_entertainment_category = "Movies";
 
 function friend_activity_time_label(value) {
     const time = new Date(value).getTime();
@@ -5913,31 +6191,56 @@ function friend_activity_time_label(value) {
     );
 }
 
-function render_friend_recent_activity(data) {
+function render_friend_recent_activity(data = friend_activity_data) {
     if (!friend_activity_panel ||
         !friend_activity_grid ||
         !friend_activity_count) {
         return;
     }
 
-    const friend_count =
-        Number(data?.friend_count || 0);
-    const items =
-        Array.isArray(data?.items)
-            ? data.items
-            : [];
+    friend_activity_data = {
+        friend_count:
+            Number(data?.friend_count || 0),
+        items:
+            Array.isArray(data?.items)
+                ? data.items
+                : []
+    };
 
-    if (friend_count <= 0) {
+    const friend_count =
+        friend_activity_data.friend_count;
+
+    if (friend_count <= 0 ||
+        active_entertainment_category ===
+            "Manga / Manhwa") {
         friend_activity_panel.hidden = true;
         return;
     }
+
+    const category_media_type =
+        active_entertainment_category ===
+            "TV Shows" ?
+            "show" :
+            active_entertainment_category ===
+                "Anime" ?
+                "anime" :
+                "movie";
+
+    const category_items =
+        friend_activity_data.items
+            .filter(
+                (item) =>
+                    item.media_type ===
+                    category_media_type
+            );
 
     friend_activity_panel.hidden = false;
     const limit =
         window.matchMedia("(max-width: 700px)").matches
             ? 6
             : 7;
-    const visible = items.slice(0, limit);
+    const visible =
+        category_items.slice(0, limit);
     friend_activity_count.textContent =
         visible.length
             ? visible.length + " RECENT"
@@ -5953,8 +6256,14 @@ function render_friend_recent_activity(data) {
             document.createElement("p");
         empty.className =
             "recommendation-loading";
+        const category_label =
+            active_entertainment_category === "TV Shows"
+                ? "TV show"
+                : active_entertainment_category.toLowerCase();
         empty.textContent =
-            "No recent watch activity to show yet.";
+            "No recent " +
+            category_label +
+            " activity to show yet.";
         friend_activity_grid.appendChild(empty);
         return;
     }
@@ -6141,6 +6450,8 @@ onAuthStateChanged(auth, async (user) => {
             show_entertainment_category(requested_library);
         } else {
             // Movies are the default visible category on first load.
+            active_entertainment_category = "Movies";
+            render_friend_recent_activity();
             load_movie_recommendations(movie_library);
             load_release_rows("movie");
         }
@@ -6167,6 +6478,7 @@ const new_release_panel = document.getElementById("new_release_panel");
 const upcoming_release_panel = document.getElementById("upcoming_release_panel");
 
 function show_entertainment_category(category) {
+    active_entertainment_category = category;
     const showing_movies = category === "Movies";
     const showing_shows = category === "TV Shows";
     const showing_anime = category === "Anime";
@@ -6184,8 +6496,10 @@ function show_entertainment_category(category) {
 
     [recommendations_panel, new_release_panel, upcoming_release_panel]
         .forEach((panel) =>
-            panel.classList.toggle("category-panel-hidden", showing_manga)
+            panel.classList.remove("category-panel-hidden")
         );
+
+    render_friend_recent_activity();
 
     if (showing_movies) {
         load_movie_recommendations(movie_library);
@@ -6196,6 +6510,11 @@ function show_entertainment_category(category) {
     } else if (showing_anime) {
         load_anime_recommendations(anime_library);
         load_release_rows("anime");
+    } else if (showing_manga) {
+        load_manga_recommendations(
+            manga_library
+        );
+        load_release_rows("manga");
     }
 }
 
