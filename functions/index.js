@@ -3118,6 +3118,224 @@ exports.getFriendEntertainmentLibrary =
         }
     );
 
+
+exports.submitFeedback =
+    onCall(async (request) => {
+        if (!request.auth) {
+            throw new HttpsError(
+                "unauthenticated",
+                "You must be logged in."
+            );
+        }
+
+        const message =
+            String(request.data?.message || "")
+                .trim();
+        const page =
+            String(request.data?.page || "")
+                .trim()
+                .slice(0, 200);
+
+        if (message.length < 5) {
+            throw new HttpsError(
+                "invalid-argument",
+                "Please write a little more detail."
+            );
+        }
+
+        if (message.length > 2000) {
+            throw new HttpsError(
+                "invalid-argument",
+                "Feedback must be 2,000 characters or less."
+            );
+        }
+
+        const profile_snapshot =
+            await db
+                .collection("users")
+                .doc(request.auth.uid)
+                .get();
+        const profile =
+            profile_snapshot.exists
+                ? profile_snapshot.data()
+                : {};
+
+        await db
+            .collection("developer_feedback")
+            .add({
+                user_uid: request.auth.uid,
+                username:
+                    profile.display_name ||
+                    "Stellaz user",
+                message,
+                page: page || null,
+                status: "new",
+                created_at: new Date(),
+            });
+
+        return {submitted: true};
+    });
+
+async function friend_recent_activity_supabase(
+    friend_uids
+) {
+    const endpoint = new URL(
+        supabase_url +
+        "/rest/v1/rpc/get_friend_recent_activity"
+    );
+
+    const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+            ...supabase_service_headers(),
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            friend_ids: friend_uids,
+        }),
+    });
+
+    if (!response.ok) {
+        const error_text =
+            await response.text();
+
+        logger.error(
+            "Friend recent activity Supabase read failed.",
+            {
+                status: response.status,
+                error: error_text,
+            }
+        );
+
+        throw new HttpsError(
+            "internal",
+            "Unable to load recent friend activity."
+        );
+    }
+
+    const rows = await response.json();
+    return Array.isArray(rows) ? rows : [];
+}
+
+exports.getFriendRecentActivity =
+    onCall(
+        {
+            secrets: [
+                supabase_secret_key,
+            ],
+        },
+        async (request) => {
+            if (!request.auth) {
+                throw new HttpsError(
+                    "unauthenticated",
+                    "You must be logged in."
+                );
+            }
+
+            const viewer_uid =
+                request.auth.uid;
+            const friendship_snapshot =
+                await db
+                    .collection("friendships")
+                    .where(
+                        "members",
+                        "array-contains",
+                        viewer_uid
+                    )
+                    .get();
+
+            const friend_uids =
+                [...new Set(
+                    friendship_snapshot.docs
+                        .flatMap(
+                            (snapshot) =>
+                                snapshot.data()
+                                    ?.members || []
+                        )
+                        .filter(
+                            (member_uid) =>
+                                member_uid &&
+                                member_uid !==
+                                    viewer_uid
+                        )
+                )];
+
+            if (!friend_uids.length) {
+                return {
+                    friend_count: 0,
+                    items: [],
+                };
+            }
+
+            const profile_refs =
+                friend_uids.map(
+                    (friend_uid) =>
+                        db.collection("users")
+                            .doc(friend_uid)
+                );
+            const profile_snapshots =
+                await db.getAll(
+                    ...profile_refs
+                );
+            const profiles =
+                new Map(
+                    profile_snapshots.map(
+                        (snapshot) => [
+                            snapshot.id,
+                            public_friend_profile(
+                                snapshot.id,
+                                snapshot.exists
+                                    ? snapshot.data()
+                                    : {}
+                            ),
+                        ]
+                    )
+                );
+
+            const activity =
+                await friend_recent_activity_supabase(
+                    friend_uids
+                );
+
+            const items =
+                activity
+                    .map((item) => {
+                        const friend =
+                            profiles.get(
+                                item.friend_uid
+                            ) ||
+                            public_friend_profile(
+                                item.friend_uid
+                            );
+
+                        return {
+                            media_type:
+                                item.media_type,
+                            media_id:
+                                item.media_id,
+                            title:
+                                item.title,
+                            year:
+                                item.year,
+                            poster_url:
+                                item.poster_url,
+                            activity_at:
+                                item.activity_at,
+                            detail:
+                                item.detail,
+                            friend,
+                        };
+                    })
+                    .slice(0, 18);
+
+            return {
+                friend_count:
+                    friend_uids.length,
+                items,
+            };
+        }
+    );
+
 function notification_normalize_title(value) {
     return String(value || "")
         .normalize("NFKD")

@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Entertainment | Stellaz HQ</title>
     <link rel="icon" type="image/png" href="../images/stellaz_favicon.png">
-    <link rel="stylesheet" href="EntertainmentStyles.css?v=43">
-    <link rel="stylesheet" href="../firebase/profile_widget.css?v=8">
+    <link rel="stylesheet" href="EntertainmentStyles.css?v=44">
+    <link rel="stylesheet" href="../firebase/profile_widget.css?v=9">
 </head>
 <body>
     <div class="ambient-background" aria-hidden="true"></div>
@@ -75,6 +75,19 @@
                 <div><h2>Manga / Manhwa</h2><p>Read: <strong id="manga_count">—</strong></p></div>
                 <span class="card-arrow">→</span>
             </a>
+        </section>
+
+        <section class="recommendations-panel friend-activity-panel" id="friend_activity_panel" hidden>
+            <div class="recommendations-header">
+                <div>
+                    <p class="eyebrow">FRIENDS</p>
+                    <h2>Friends Have Watched Recently</h2>
+                </div>
+                <span class="recommendation-count" id="friend_activity_count">LOADING</span>
+            </div>
+            <div class="recommendation-grid friend-activity-grid" id="friend_activity_grid">
+                <p class="recommendation-loading">Loading friend activity...</p>
+            </div>
         </section>
 
         <section class="movie-library-panel" id="movie_library">
@@ -659,7 +672,7 @@
     </dialog>
 
     <div class="toast" id="toast" role="status"></div>
-    <script type="module" src="Entertainment.js?v=87"></script>
-    <script type="module" src="../firebase/profile_widget.js?v=6"></script>
+    <script type="module" src="Entertainment.js?v=88"></script>
+    <script type="module" src="../firebase/profile_widget.js?v=7"></script>
 </body>
 </html>

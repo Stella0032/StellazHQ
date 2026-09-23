@@ -4100,3 +4100,75 @@ html.anime-category-active .anime-library-panel .movie-filter-clear {
         margin-left: 0;
     }
 }
+
+
+/* Friends recent activity */
+.friend-activity-panel {
+    border-color: rgba(102, 229, 179, 0.2);
+}
+
+.friend-activity-grid {
+    min-height: 0;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.friend-activity-card {
+    min-width: 0;
+    padding: 7px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.035);
+}
+
+.friend-activity-poster-wrap {
+    position: relative;
+}
+
+.friend-activity-type {
+    position: absolute;
+    left: 7px;
+    bottom: 7px;
+    padding: 4px 6px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 999px;
+    color: #fff;
+    background: rgba(8, 9, 22, 0.84);
+    backdrop-filter: blur(8px);
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: .7px;
+}
+
+.friend-activity-meta {
+    line-height: 1.4;
+}
+
+.friend-activity-meta strong {
+    color: #d8ffe9;
+    font-weight: 750;
+}
+
+@media (max-width: 1100px) {
+    .friend-activity-grid {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 700px) {
+    .friend-activity-grid {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 6px;
+    }
+
+    .friend-activity-card {
+        padding: 3px;
+        border-radius: 9px;
+    }
+
+    .friend-activity-type {
+        left: 4px;
+        bottom: 4px;
+        padding: 3px 4px;
+        font-size: 6px;
+    }
+}
