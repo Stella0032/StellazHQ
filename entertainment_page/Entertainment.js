@@ -1491,7 +1491,11 @@ show_grid.addEventListener("click", async (event) => {
     }
 });
 
-async function open_show_seasons(show, media_label = "TV SHOW") {
+async function open_show_seasons(
+    show,
+    media_label = "TV SHOW",
+    open_first_season = false
+) {
     active_show_id = show.id ?? null;
     show_details_eyebrow.textContent = media_label;
     show_details_title.textContent = show.title;
@@ -1564,6 +1568,24 @@ async function open_show_seasons(show, media_label = "TV SHOW") {
                 </article>`;
         }).join("") ||
             '<p class="library-loading">No seasons found.</p>';
+
+        if (open_first_season &&
+            result.data.seasons.length) {
+            const first_season =
+                result.data.seasons.find(
+                    (season) =>
+                        Number(
+                            season.season_number
+                        ) > 0
+                ) ||
+                result.data.seasons[0];
+
+            await open_season_episodes(
+                Number(
+                    first_season.season_number
+                )
+            );
+        }
     } catch (error) {
         console.error("Unable to load seasons:", error);
         const code = error?.code || "";
@@ -1638,7 +1660,13 @@ async function open_season_episodes(season_number) {
             return `
                 <article class="episode-card ${watched ? "watched" : ""}"
                          data-episode-number="${episode.episode_number}">
-                    <div class="episode-watch-image">
+                    <button class="episode-watch-image" type="button"
+                            ${active_show_id !== null ? `
+                                data-episode-watched="${episode.episode_number}"
+                                aria-label="${watched ?
+                                    "Mark episode not watched" :
+                                    "Mark episode watched"}"
+                            ` : "disabled"}>
                         ${still}
                         ${active_show_id !== null ? `
                             <span class="episode-watch-overlay">
@@ -1646,7 +1674,7 @@ async function open_season_episodes(season_number) {
                                 ${watched ? "Watched" : "Mark watched"}
                             </span>
                         ` : ""}
-                    </div>
+                    </button>
                     <div>
                         <strong>E${episode.episode_number} · ${episode.name}</strong>
                         <p>${episode.air_date || "Air date unavailable"}${runtime}${rating}</p>
@@ -2226,7 +2254,11 @@ recommendation_dialog_actions.addEventListener("click", async (event) => {
     if (seasons_button && active_library_detail.type === "show") {
         const show = active_library_detail.item;
         recommendation_dialog.close();
-        open_show_seasons(show);
+        await open_show_seasons(
+            show,
+            "TV SHOW",
+            true
+        );
         return;
     }
 
@@ -4683,11 +4715,15 @@ anime_view_seasons.addEventListener("click", () => {
         : undefined;
 
     anime_edit_dialog.close();
-    open_show_seasons({
-        id: null,
-        title: active_anime.title,
-        year
-    }, "ANIME");
+    open_show_seasons(
+        {
+            id: null,
+            title: active_anime.title,
+            year
+        },
+        "ANIME",
+        true
+    );
 });
 
 anime_episode_picker.addEventListener("click", (event) => {
