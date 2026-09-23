@@ -1,8 +1,7 @@
 import {onAuthStateChanged,signOut} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 import {doc,getDoc,setDoc} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 import {httpsCallable} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-functions.js";
-import {ref,uploadBytes,getDownloadURL} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-storage.js";
-import {auth,db,functions,storage} from "./firebase_config.js";
+import {auth,db,functions,supabase} from "./firebase_config.js";
 const widget=document.querySelector("[data-profile-widget]");
 if(widget){
 const trigger=widget.querySelector(".profile-trigger"),menu=widget.querySelector("[data-profile-menu]"),name_el=widget.querySelector("[data-profile-name]"),avatar_el=widget.querySelector("[data-profile-avatar]");
@@ -648,8 +647,11 @@ function profile_avatar_src(value){
     const avatar=String(value||"");
     if(avatars.includes(avatar))return avatar;
 
+    const supabase_avatar_prefix=
+        "https://xmycfxwapejnbpareaxc.supabase.co/storage/v1/object/public/profile-avatars/";
+
     if(avatar.startsWith(
-        "https://firebasestorage.googleapis.com/"
+        supabase_avatar_prefix
     )){
         return avatar;
     }
@@ -1295,25 +1297,46 @@ async function upload_profile_avatar(file){
     }
 
     const blob=await resize_profile_avatar(file);
-    const avatar_ref=ref(
-        storage,
-        "profile_avatars/"+
+    const object_path=
         current_user.uid+
-        "/avatar.webp"
-    );
+        "/avatar.webp";
 
-    await uploadBytes(
-        avatar_ref,
-        blob,
-        {
-            contentType:"image/webp",
-            cacheControl:"public,max-age=3600"
-        }
-    );
+    const {error}=
+        await supabase.storage
+            .from("profile-avatars")
+            .upload(
+                object_path,
+                blob,
+                {
+                    contentType:"image/webp",
+                    cacheControl:"3600",
+                    upsert:true
+                }
+            );
 
-    return await getDownloadURL(
-        avatar_ref
-    );
+    if(error){
+        throw error;
+    }
+
+    const {data}=
+        supabase.storage
+            .from("profile-avatars")
+            .getPublicUrl(
+                object_path
+            );
+
+    const public_url=
+        data?.publicUrl;
+
+    if(!public_url){
+        throw new Error(
+            "Unable to create the profile picture URL."
+        );
+    }
+
+    return public_url+
+        "?v="+
+        Date.now();
 }
 trigger.addEventListener("click",e=>{e.stopPropagation();notification_panel.hidden=true;notification_button.setAttribute("aria-expanded","false");menu.hidden=!menu.hidden;trigger.setAttribute("aria-expanded",String(!menu.hidden))});document.addEventListener("click",e=>{if(!widget.contains(e.target)){menu.hidden=true;notification_panel.hidden=true;trigger.setAttribute("aria-expanded","false");notification_button.setAttribute("aria-expanded","false")}});
 widget.querySelector("[data-profile-edit]").addEventListener("click",()=>{menu.hidden=true;message.textContent="";select(selected_avatar);dialog.showModal()});widget.querySelector("[data-profile-theme]")?.addEventListener("click",()=>{menu.hidden=true;apply_theme(selected_theme);theme_dialog.showModal()});services_button.addEventListener("click",()=>{menu.hidden=true;trigger.setAttribute("aria-expanded","false");const services_dialog=document.getElementById("connected_services_dialog");if(services_dialog){if(!services_dialog.open)services_dialog.showModal();return}window.location.href="../entertainment_page/Entertainment.html?services=1"});feedback_button.addEventListener("click",()=>{menu.hidden=true;feedback_message.textContent="";feedback_counter.textContent=feedback_textarea.value.length+" / 2000";feedback_dialog.showModal();feedback_textarea.focus()});widget.querySelector("[data-profile-logout]").addEventListener("click",async()=>{await signOut(auth);window.location.href="../index.html"});
