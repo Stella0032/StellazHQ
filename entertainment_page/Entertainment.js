@@ -5920,6 +5920,11 @@ const friend_activity_count =
     document.getElementById("friend_activity_count");
 const friend_activity_grid =
     document.getElementById("friend_activity_grid");
+let friend_activity_data = {
+    friend_count: 0,
+    items: []
+};
+let active_entertainment_category = "Movies";
 
 function friend_activity_time_label(value) {
     const time = new Date(value).getTime();
@@ -5949,31 +5954,56 @@ function friend_activity_time_label(value) {
     );
 }
 
-function render_friend_recent_activity(data) {
+function render_friend_recent_activity(data = friend_activity_data) {
     if (!friend_activity_panel ||
         !friend_activity_grid ||
         !friend_activity_count) {
         return;
     }
 
-    const friend_count =
-        Number(data?.friend_count || 0);
-    const items =
-        Array.isArray(data?.items)
-            ? data.items
-            : [];
+    friend_activity_data = {
+        friend_count:
+            Number(data?.friend_count || 0),
+        items:
+            Array.isArray(data?.items)
+                ? data.items
+                : []
+    };
 
-    if (friend_count <= 0) {
+    const friend_count =
+        friend_activity_data.friend_count;
+
+    if (friend_count <= 0 ||
+        active_entertainment_category ===
+            "Manga / Manhwa") {
         friend_activity_panel.hidden = true;
         return;
     }
+
+    const category_media_type =
+        active_entertainment_category ===
+            "TV Shows" ?
+            "show" :
+            active_entertainment_category ===
+                "Anime" ?
+                "anime" :
+                "movie";
+
+    const category_items =
+        friend_activity_data.items
+            .filter(
+                (item) =>
+                    item.media_type ===
+                    category_media_type
+            );
 
     friend_activity_panel.hidden = false;
     const limit =
         window.matchMedia("(max-width: 700px)").matches
             ? 6
             : 7;
-    const visible = items.slice(0, limit);
+    const visible =
+        category_items.slice(0, limit);
     friend_activity_count.textContent =
         visible.length
             ? visible.length + " RECENT"
@@ -5989,8 +6019,14 @@ function render_friend_recent_activity(data) {
             document.createElement("p");
         empty.className =
             "recommendation-loading";
+        const category_label =
+            active_entertainment_category === "TV Shows"
+                ? "TV show"
+                : active_entertainment_category.toLowerCase();
         empty.textContent =
-            "No recent watch activity to show yet.";
+            "No recent " +
+            category_label +
+            " activity to show yet.";
         friend_activity_grid.appendChild(empty);
         return;
     }
@@ -6177,6 +6213,8 @@ onAuthStateChanged(auth, async (user) => {
             show_entertainment_category(requested_library);
         } else {
             // Movies are the default visible category on first load.
+            active_entertainment_category = "Movies";
+            render_friend_recent_activity();
             load_movie_recommendations(movie_library);
             load_release_rows("movie");
         }
@@ -6203,6 +6241,7 @@ const new_release_panel = document.getElementById("new_release_panel");
 const upcoming_release_panel = document.getElementById("upcoming_release_panel");
 
 function show_entertainment_category(category) {
+    active_entertainment_category = category;
     const showing_movies = category === "Movies";
     const showing_shows = category === "TV Shows";
     const showing_anime = category === "Anime";
@@ -6220,8 +6259,10 @@ function show_entertainment_category(category) {
 
     [recommendations_panel, new_release_panel, upcoming_release_panel]
         .forEach((panel) =>
-            panel.classList.toggle("category-panel-hidden", showing_manga)
+            panel.classList.remove("category-panel-hidden")
         );
+
+    render_friend_recent_activity();
 
     if (showing_movies) {
         load_movie_recommendations(movie_library);
@@ -6232,6 +6273,11 @@ function show_entertainment_category(category) {
     } else if (showing_anime) {
         load_anime_recommendations(anime_library);
         load_release_rows("anime");
+    } else if (showing_manga) {
+        load_manga_recommendations(
+            manga_library
+        );
+        load_release_rows("manga");
     }
 }
 
