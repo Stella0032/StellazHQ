@@ -2583,6 +2583,7 @@ html[data-theme="sunset"] .nav-links {
 }
 
 .recommendation-watch-later,
+.recommendation-watched,
 .recommendation-dismiss {
     position: absolute;
     z-index: 4;
@@ -2605,9 +2606,11 @@ html[data-theme="sunset"] .nav-links {
 }
 
 .recommendation-poster-wrap:hover .recommendation-watch-later,
+.recommendation-poster-wrap:hover .recommendation-watched,
 .recommendation-poster-wrap:hover .recommendation-dismiss,
 .recommendation-poster-wrap:hover .recommendation-refresh,
 .recommendation-poster-wrap:focus-within .recommendation-watch-later,
+.recommendation-poster-wrap:focus-within .recommendation-watched,
 .recommendation-poster-wrap:focus-within .recommendation-dismiss,
 .recommendation-poster-wrap:focus-within .recommendation-refresh {
     opacity: 1;
@@ -2619,6 +2622,12 @@ html[data-theme="sunset"] .nav-links {
     bottom: 9px;
 }
 
+.recommendation-watched {
+    top: 9px;
+    left: 9px;
+    font-size: 16px;
+}
+
 .recommendation-dismiss {
     top: 9px;
     right: 9px;
@@ -2627,6 +2636,10 @@ html[data-theme="sunset"] .nav-links {
 
 .recommendation-watch-later:hover {
     background: rgba(194, 120, 255, 0.82);
+}
+
+.recommendation-watched:hover {
+    background: rgba(70, 190, 130, 0.88);
 }
 
 .recommendation-dismiss:hover {
@@ -4056,3 +4069,34 @@ html.anime-category-active .anime-library-panel .movie-filter-clear {
     letter-spacing: -.5px;
 }
 
+
+
+/* Anime detail actions share the save row so remove is always available. */
+.anime-detail-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 14px;
+}
+
+.anime-detail-actions .anime-detail-save {
+    margin-left: auto;
+}
+
+.anime-detail-delete {
+    min-height: 40px;
+}
+
+@media (max-width: 620px) {
+    .anime-detail-actions {
+        align-items: stretch;
+        flex-direction: column-reverse;
+    }
+
+    .anime-detail-actions .anime-detail-save,
+    .anime-detail-actions .anime-detail-delete {
+        width: 100%;
+        margin-left: 0;
+    }
+}
