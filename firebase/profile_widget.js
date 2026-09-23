@@ -181,6 +181,103 @@ if(!friends_button){
     menu.insertBefore(friends_button,services_button);
 }
 
+let guild_button=widget.querySelector("[data-profile-guild]");
+if(!guild_button){
+    guild_button=document.createElement("button");
+    guild_button.type="button";
+    guild_button.dataset.profileGuild="";
+    guild_button.textContent="Guild";
+    menu.insertBefore(guild_button,services_button);
+}
+
+const guild_dialog=document.createElement("dialog");
+guild_dialog.className="profile-dialog guild-dialog";
+guild_dialog.innerHTML=`
+    <div class="profile-form guild-shell">
+        <div class="profile-dialog-head">
+            <div>
+                <h2>Guild</h2>
+                <p data-guild-subtitle>Create a guild with friends and build shared stats together.</p>
+            </div>
+            <button class="profile-close" type="button" aria-label="Close">×</button>
+        </div>
+
+        <p class="guild-message" aria-live="polite"></p>
+
+        <section class="guild-empty-state" data-guild-empty>
+            <form class="guild-create-form">
+                <label for="guild_name_input">Create a guild</label>
+                <div>
+                    <input id="guild_name_input" maxlength="40"
+                           autocomplete="off" placeholder="Guild name" required>
+                    <button type="submit">Create</button>
+                </div>
+            </form>
+
+            <section class="guild-section">
+                <div class="guild-section-head">
+                    <strong>Invitations</strong>
+                    <span data-guild-invite-count>0</span>
+                </div>
+                <div class="guild-list" data-guild-incoming>
+                    <p class="guild-empty">No guild invitations.</p>
+                </div>
+            </section>
+        </section>
+
+        <section class="guild-active-state" data-guild-active hidden>
+            <div class="guild-summary">
+                <div>
+                    <span>YOUR GUILD</span>
+                    <h3 data-guild-name>Guild</h3>
+                </div>
+                <span class="guild-role" data-guild-role>Member</span>
+            </div>
+
+            <section class="guild-section">
+                <div class="guild-section-head">
+                    <strong>Members</strong>
+                    <span data-guild-member-count>0</span>
+                </div>
+                <div class="guild-list" data-guild-members></div>
+            </section>
+
+            <section class="guild-section">
+                <div class="guild-section-head">
+                    <strong>Invite a friend</strong>
+                </div>
+                <form class="guild-invite-form">
+                    <select data-guild-friend-select aria-label="Friend to invite"></select>
+                    <button type="submit">Invite</button>
+                </form>
+                <div class="guild-list guild-pending-list" data-guild-pending></div>
+            </section>
+
+            <button class="guild-leave-button" type="button">Leave guild</button>
+        </section>
+    </div>
+`;
+document.body.appendChild(guild_dialog);
+
+const guild_message=guild_dialog.querySelector(".guild-message");
+const guild_empty_state=guild_dialog.querySelector("[data-guild-empty]");
+const guild_active_state=guild_dialog.querySelector("[data-guild-active]");
+const guild_name_input=guild_dialog.querySelector("#guild_name_input");
+const guild_incoming=guild_dialog.querySelector("[data-guild-incoming]");
+const guild_invite_count=guild_dialog.querySelector("[data-guild-invite-count]");
+const guild_name=guild_dialog.querySelector("[data-guild-name]");
+const guild_role=guild_dialog.querySelector("[data-guild-role]");
+const guild_member_count=guild_dialog.querySelector("[data-guild-member-count]");
+const guild_members=guild_dialog.querySelector("[data-guild-members]");
+const guild_friend_select=guild_dialog.querySelector("[data-guild-friend-select]");
+const guild_pending=guild_dialog.querySelector("[data-guild-pending]");
+let guild_overview={
+    guild:null,
+    incoming_invites:[],
+    inviteable_friends:[],
+    pending_invites:[]
+};
+
 let feedback_button=widget.querySelector("[data-profile-feedback]");
 if(!feedback_button){
     feedback_button=document.createElement("button");
