@@ -643,9 +643,8 @@ exports.getAniListMangaRecommendations =
             "  Media(",
             "    id: $id,",
             "    search: $search,",
-            "    type: MANGA,",
-            "    isAdult: false",
-            "  ) {",
+            "    type: MANGA",
+            "  ) {"
             "    id",
             "    title { english romaji native userPreferred }",
             "    recommendations(",
@@ -657,6 +656,7 @@ exports.getAniListMangaRecommendations =
             "        rating",
             "        mediaRecommendation {",
             "          id",
+            "          isAdult",
             "          title { english romaji native userPreferred }",
             "          synonyms",
             "          countryOfOrigin",
@@ -736,6 +736,7 @@ exports.getAniListMangaRecommendations =
                     node?.mediaRecommendation;
 
                 if (!media?.id ||
+                    media.isAdult === true ||
                     media.format === "NOVEL") {
                     continue;
                 }
