@@ -4249,40 +4249,55 @@ if (anime_add_button && anime_add_dialog && anime_add_close &&
             '<p class="recommendation-loading">Searching anime...</p>';
 
         try {
-            const search_anilist =
-                httpsCallable(functions, "searchAniListAnime");
-            const result = await search_anilist({query});
+            const search_catalog =
+                httpsCallable(functions, "searchAnimeCatalog");
+            const result = await search_catalog({query});
             anime_add_candidates = result.data.results || [];
 
             anime_add_results.innerHTML = anime_add_candidates.length
-                ? anime_add_candidates.map((item) => `
+                ? anime_add_candidates.map((item, index) => {
+                    const source_label =
+                        (item.sources || []).join(" · ");
+                    const score =
+                        item.anilist_score != null
+                            ? "⭐ " + Number(item.anilist_score) + "% AniList"
+                            : item.mal_score != null
+                                ? "⭐ " + Number(item.mal_score).toFixed(2) + " MAL"
+                                : item.kitsu_score != null
+                                    ? "⭐ " + Number(item.kitsu_score).toFixed(1) + "% Kitsu"
+                                    : "";
+                    const meta = [
+                        item.start_date
+                            ? item.start_date.slice(0, 4)
+                            : "",
+                        source_label,
+                        score
+                    ].filter(Boolean).join(" · ");
+
+                    return `
                     <button class="anime-add-result" type="button"
-                            data-anilist-add-id="${item.anilist_id}">
+                            data-anime-add-index="${index}">
                         ${item.poster_url ? `<img src="${item.poster_url}" alt="">` : ""}
-                        <span><strong>${item.title}</strong><small>${
-                            item.start_date ? item.start_date.slice(0, 4) : ""
-                        }${item.anilist_score != null
-                            ? ` · ⭐ ${Number(item.anilist_score)}%`
-                            : ""}</small></span>
+                        <span><strong>${item.title}</strong><small>${meta}</small></span>
                         <b>＋ Watched</b>
-                    </button>`).join("")
+                    </button>`;
+                }).join("")
                 : '<p class="recommendation-loading">No anime found.</p>';
         } catch (error) {
-            console.error("Unable to search anime:", error);
+            console.error("Unable to search anime catalog:", error);
             anime_add_results.innerHTML =
-                '<p class="recommendation-loading">Unable to search anime.</p>';
+                '<p class="recommendation-loading">Unable to search anime right now.</p>';
         }
     });
 
     anime_add_results.addEventListener("click", async (event) => {
-        const button = event.target.closest("[data-anilist-add-id]");
+        const button = event.target.closest("[data-anime-add-index]");
         if (!button) return;
 
-        const item = anime_add_candidates.find(
-            (entry) =>
-                entry.anilist_id ===
-                Number(button.dataset.anilistAddId)
-        );
+        const item =
+            anime_add_candidates[
+                Number(button.dataset.animeAddIndex)
+            ];
         if (!item) return;
 
         button.disabled = true;
@@ -4292,9 +4307,9 @@ if (anime_add_button && anime_add_dialog && anime_add_close &&
                 Number(item.total_episodes || 0);
 
             const row = {
-                mal_id: null,
-                anilist_id: item.anilist_id,
-                kitsu_id: null,
+                mal_id: item.mal_id || null,
+                anilist_id: item.anilist_id || null,
+                kitsu_id: item.kitsu_id || null,
                 title: item.title,
                 title_romaji: item.title_romaji,
                 title_native: item.title_native,
@@ -4311,9 +4326,9 @@ if (anime_add_button && anime_add_dialog && anime_add_close &&
                 average_episode_duration_ms:
                     Number(item.average_episode_duration_seconds || 0) ||
                     null,
-                mal_score: null,
-                anilist_score: item.anilist_score,
-                kitsu_score: null,
+                mal_score: item.mal_score ?? null,
+                anilist_score: item.anilist_score ?? null,
+                kitsu_score: item.kitsu_score ?? null,
                 description: item.description,
                 genres: item.genres || [],
                 site_url: item.site_url,
