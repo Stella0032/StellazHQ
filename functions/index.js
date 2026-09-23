@@ -948,12 +948,13 @@ exports.getAniListMangaRecommendations =
         const seeds =
             Array.isArray(request.data?.seeds) ?
                 request.data.seeds
-                    .filter(
-                        (item) =>
-                            item &&
-                            String(
-                                item.title || ""
-                            ).trim()
+                    .filter((item) =>
+                        item &&
+                        (
+                            Number(item.anilist_id || 0) > 0 ||
+                            Number(item.mal_id || 0) > 0 ||
+                            String(item.title || "").trim()
+                        )
                     )
                     .slice(0, 8) :
                 [];
@@ -970,6 +971,21 @@ exports.getAniListMangaRecommendations =
                     request.data?.library_ids
                 ) ?
                     request.data.library_ids
+                        .map(Number)
+                        .filter(
+                            (id) =>
+                                Number.isInteger(id) &&
+                                id > 0
+                        ) :
+                    []
+            );
+
+        const library_mal_ids =
+            new Set(
+                Array.isArray(
+                    request.data?.library_mal_ids
+                ) ?
+                    request.data.library_mal_ids
                         .map(Number)
                         .filter(
                             (id) =>
@@ -997,16 +1013,21 @@ exports.getAniListMangaRecommendations =
 
         const candidates =
             new Map();
+        const genre_weights =
+            new Map();
 
         const query = [
-            "query ($id: Int, $search: String) {",
+            "query ($id: Int, $malId: Int, $search: String) {",
             "  Media(",
             "    id: $id,",
+            "    idMal: $malId,",
             "    search: $search,",
             "    type: MANGA",
             "  ) {",
             "    id",
+            "    idMal",
             "    title { english romaji native userPreferred }",
+            "    genres",
             "    recommendations(",
             "      page: 1,",
             "      perPage: 20,",
@@ -1016,6 +1037,7 @@ exports.getAniListMangaRecommendations =
             "        rating",
             "        mediaRecommendation {",
             "          id",
+            "          idMal",
             "          isAdult",
             "          title { english romaji native userPreferred }",
             "          synonyms",
@@ -1039,9 +1061,154 @@ exports.getAniListMangaRecommendations =
             "}",
         ].join("\n");
 
+        const add_candidate = (
+            media,
+            strength,
+            because_of
+        ) => {
+            if (!media?.id ||
+                media.isAdult === true ||
+                media.format === "NOVEL") {
+                return;
+            }
+
+            const anilist_id =
+                Number(media.id);
+            const mal_id =
+                Number(media.idMal || 0) ||
+                null;
+
+            const title =
+                media.title?.english ||
+                media.title?.userPreferred ||
+                media.title?.romaji ||
+                media.title?.native ||
+                "Untitled";
+
+            if (library_ids.has(
+                anilist_id
+            ) ||
+                (mal_id &&
+                 library_mal_ids.has(
+                     mal_id
+                 )) ||
+                library_titles.has(
+                    notification_normalize_title(
+                        title
+                    )
+                )) {
+                return;
+            }
+
+            const existing =
+                candidates.get(
+                    anilist_id
+                ) || {
+                    anilist_id,
+                    mal_id,
+                    title,
+                    title_romaji:
+                        media.title?.romaji ||
+                        null,
+                    title_native:
+                        media.title?.native ||
+                        null,
+                    synonyms:
+                        Array.isArray(
+                            media.synonyms
+                        ) ?
+                            media.synonyms
+                                .filter(Boolean)
+                                .slice(0, 20) :
+                            [],
+                    country_of_origin:
+                        media.countryOfOrigin ||
+                        null,
+                    media_kind:
+                        anilist_media_kind(
+                            media.countryOfOrigin
+                        ),
+                    format:
+                        media.format || null,
+                    publication_status:
+                        media.status || null,
+                    total_chapters:
+                        Number(
+                            media.chapters ||
+                            0
+                        ) || null,
+                    total_volumes:
+                        Number(
+                            media.volumes ||
+                            0
+                        ) || null,
+                    anilist_score:
+                        Number(
+                            media.averageScore ||
+                            0
+                        ) || null,
+                    poster_url:
+                        media.coverImage
+                            ?.extraLarge ||
+                        media.coverImage
+                            ?.large ||
+                        null,
+                    banner_url:
+                        media.bannerImage ||
+                        null,
+                    description:
+                        clean_anilist_description(
+                            media.description
+                        ),
+                    genres:
+                        Array.isArray(
+                            media.genres
+                        ) ?
+                            media.genres :
+                            [],
+                    site_url:
+                        media.siteUrl ||
+                        null,
+                    start_date:
+                        anilist_date_to_iso(
+                            media.startDate
+                        ),
+                    end_date:
+                        anilist_date_to_iso(
+                            media.endDate
+                        ),
+                    recommendation_strength:
+                        0,
+                    because_of: [],
+                };
+
+            existing
+                .recommendation_strength +=
+                Math.max(
+                    1,
+                    Number(strength || 0)
+                );
+
+            if (because_of &&
+                !existing.because_of.includes(
+                    because_of
+                )) {
+                existing.because_of.push(
+                    because_of
+                );
+            }
+
+            candidates.set(
+                anilist_id,
+                existing
+            );
+        };
+
         for (const seed of seeds) {
             const seed_id =
                 Number(seed.anilist_id || 0);
+            const mal_id =
+                Number(seed.mal_id || 0);
             const seed_title =
                 String(
                     seed.title || ""
@@ -1060,13 +1227,19 @@ exports.getAniListMangaRecommendations =
                                 seed_id > 0 ?
                                     seed_id :
                                     null,
+                            malId:
+                                (!seed_id &&
+                                 Number.isInteger(
+                                     mal_id
+                                 ) &&
+                                 mal_id > 0) ?
+                                    mal_id :
+                                    null,
                             search:
-                                Number.isInteger(
-                                    seed_id
-                                ) &&
-                                seed_id > 0 ?
-                                    null :
-                                    seed_title,
+                                (!seed_id &&
+                                 !mal_id) ?
+                                    seed_title :
+                                    null,
                         }
                     );
             } catch (error) {
@@ -1074,7 +1247,9 @@ exports.getAniListMangaRecommendations =
                     "AniList manga recommendation seed failed.",
                     {
                         seed:
-                            seed_title,
+                            seed_title ||
+                            mal_id ||
+                            seed_id,
                         error:
                             error.message,
                     }
@@ -1082,160 +1257,126 @@ exports.getAniListMangaRecommendations =
                 continue;
             }
 
+            const media =
+                data?.Media;
+            if (!media) continue;
+
             const resolved_seed_title =
-                data?.Media?.title?.english ||
-                data?.Media?.title
-                    ?.userPreferred ||
-                data?.Media?.title?.romaji ||
-                seed_title;
+                media.title?.english ||
+                media.title?.userPreferred ||
+                media.title?.romaji ||
+                seed_title ||
+                "Manga";
 
-            for (const node of
-                data?.Media?.recommendations
-                    ?.nodes || []) {
-                const media =
-                    node?.mediaRecommendation;
-
-                if (!media?.id ||
-                    media.isAdult === true ||
-                    media.format === "NOVEL") {
-                    continue;
-                }
-
-                const anilist_id =
-                    Number(media.id);
-
-                const title =
-                    media.title?.english ||
-                    media.title
-                        ?.userPreferred ||
-                    media.title?.romaji ||
-                    media.title?.native ||
-                    "Untitled";
-
-                if (library_ids.has(
-                    anilist_id
-                ) ||
-                    library_titles.has(
-                        notification_normalize_title(
-                            title
-                        )
-                    )) {
-                    continue;
-                }
-
-                const existing =
-                    candidates.get(
-                        anilist_id
-                    ) || {
-                        anilist_id,
-                        title,
-                        title_romaji:
-                            media.title
-                                ?.romaji ||
-                            null,
-                        title_native:
-                            media.title
-                                ?.native ||
-                            null,
-                        synonyms:
-                            Array.isArray(
-                                media.synonyms
-                            ) ?
-                                media.synonyms
-                                    .filter(Boolean)
-                                    .slice(0, 20) :
-                                [],
-                        country_of_origin:
-                            media.countryOfOrigin ||
-                            null,
-                        media_kind:
-                            anilist_media_kind(
-                                media.countryOfOrigin
-                            ),
-                        format:
-                            media.format || null,
-                        publication_status:
-                            media.status || null,
-                        total_chapters:
-                            Number(
-                                media.chapters ||
-                                0
-                            ) || null,
-                        total_volumes:
-                            Number(
-                                media.volumes ||
-                                0
-                            ) || null,
-                        anilist_score:
-                            Number(
-                                media.averageScore ||
-                                0
-                            ) || null,
-                        poster_url:
-                            media.coverImage
-                                ?.extraLarge ||
-                            media.coverImage
-                                ?.large ||
-                            null,
-                        banner_url:
-                            media.bannerImage ||
-                            null,
-                        description:
-                            clean_anilist_description(
-                                media.description
-                            ),
-                        genres:
-                            Array.isArray(
-                                media.genres
-                            ) ?
-                                media.genres :
-                                [],
-                        site_url:
-                            media.siteUrl ||
-                            null,
-                        start_date:
-                            anilist_date_to_iso(
-                                media.startDate
-                            ),
-                        end_date:
-                            anilist_date_to_iso(
-                                media.endDate
-                            ),
-                        recommendation_strength:
-                            0,
-                        because_of: [],
-                    };
-
-                const seed_weight =
+            const seed_weight =
+                Math.max(
+                    1,
                     Number(
                         seed.my_rating || 0
+                    )
+                );
+
+            for (const genre of
+                media.genres || []) {
+                genre_weights.set(
+                    genre,
+                    Number(
+                        genre_weights.get(
+                            genre
+                        ) || 0
+                    ) +
+                    seed_weight
+                );
+            }
+
+            for (const node of
+                media.recommendations
+                    ?.nodes || []) {
+                add_candidate(
+                    node?.mediaRecommendation,
+                    Number(
+                        node?.rating || 0
+                    ) + seed_weight,
+                    resolved_seed_title
+                );
+            }
+        }
+
+        if (candidates.size < 7 &&
+            genre_weights.size) {
+            const top_genres =
+                [...genre_weights.entries()]
+                    .sort(
+                        (a, b) =>
+                            b[1] - a[1]
+                    )
+                    .slice(0, 3)
+                    .map(
+                        ([genre]) => genre
                     );
 
-                existing
-                    .recommendation_strength +=
-                    Math.max(
-                        1,
+            const fallback_query = [
+                "query ($genres: [String]) {",
+                "  Page(page: 1, perPage: 30) {",
+                "    media(",
+                "      type: MANGA,",
+                "      isAdult: false,",
+                "      format_not: NOVEL,",
+                "      genre_in: $genres,",
+                "      sort: [SCORE_DESC, POPULARITY_DESC]",
+                "    ) {",
+                "      id",
+                "      idMal",
+                "      isAdult",
+                "      title { english romaji native userPreferred }",
+                "      synonyms",
+                "      countryOfOrigin",
+                "      format",
+                "      status",
+                "      chapters",
+                "      volumes",
+                "      averageScore",
+                "      description(asHtml: false)",
+                "      genres",
+                "      siteUrl",
+                "      coverImage { extraLarge large }",
+                "      bannerImage",
+                "      startDate { year month day }",
+                "      endDate { year month day }",
+                "    }",
+                "  }",
+                "}",
+            ].join("\n");
+
+            try {
+                const fallback =
+                    await anilist_graphql_public(
+                        fallback_query,
+                        {
+                            genres:
+                                top_genres,
+                        }
+                    );
+
+                for (const media of
+                    fallback?.Page?.media ||
+                    []) {
+                    add_candidate(
+                        media,
                         Number(
-                            node.rating || 0
-                        )
-                    ) +
-                    seed_weight;
-
-                if (!existing
-                    .because_of
-                    .includes(
-                        resolved_seed_title
-                    )) {
-                    existing
-                        .because_of
-                        .push(
-                            resolved_seed_title
-                        );
+                            media.averageScore ||
+                            0
+                        ) / 10,
+                        top_genres[0] ?
+                            top_genres[0] +
+                            " favorites" :
+                            "your reading history"
+                    );
                 }
-
-                candidates.set(
-                    anilist_id,
-                    existing
+            } catch (error) {
+                logger.warn(
+                    "AniList manga recommendation fallback failed.",
+                    {error: error.message}
                 );
             }
         }
