@@ -5989,6 +5989,947 @@ exports.getFriendOverview =
 
 
 //? ------------------------------
+//* ----- Stellaz Guilds --------
+//? ------------------------------
+//#region
+function normalize_guild_name(value) {
+    const name = String(value || "")
+        .normalize("NFKC")
+        .trim()
+        .replace(/\s+/g, " ");
+
+    if (name.length < 2 || name.length > 40) {
+        throw new HttpsError(
+            "invalid-argument",
+            "Guild name must be between 2 and 40 characters."
+        );
+    }
+
+    if (/[ -]/.test(name)) {
+        throw new HttpsError(
+            "invalid-argument",
+            "Guild name contains unsupported characters."
+        );
+    }
+
+    return name;
+}
+
+function guild_invite_id(guild_id, receiver_uid) {
+    return createHash("sha256")
+        .update(
+            String(guild_id) +
+            ":" +
+            String(receiver_uid)
+        )
+        .digest("hex");
+}
+
+async function guild_profiles(member_uids) {
+    const unique_uids =
+        [...new Set(
+            (member_uids || [])
+                .filter(Boolean)
+        )];
+
+    if (!unique_uids.length) {
+        return new Map();
+    }
+
+    const snapshots =
+        await db.getAll(
+            ...unique_uids.map(
+                (uid) =>
+                    db.collection("users")
+                        .doc(uid)
+            )
+        );
+
+    return new Map(
+        snapshots.map(
+            (snapshot) => [
+                snapshot.id,
+                public_friend_profile(
+                    snapshot.id,
+                    snapshot.exists
+                        ? snapshot.data()
+                        : {}
+                ),
+            ]
+        )
+    );
+}
+
+exports.createGuild =
+    onCall(async (request) => {
+        if (!request.auth) {
+            throw new HttpsError(
+                "unauthenticated",
+                "You must be logged in."
+            );
+        }
+
+        const uid = request.auth.uid;
+        const name =
+            normalize_guild_name(
+                request.data?.name
+            );
+        const membership_ref =
+            db.collection("guild_memberships")
+                .doc(uid);
+        const guild_ref =
+            db.collection("guilds")
+                .doc();
+
+        await db.runTransaction(
+            async (transaction) => {
+                const membership_snapshot =
+                    await transaction.get(
+                        membership_ref
+                    );
+
+                if (membership_snapshot.exists) {
+                    throw new HttpsError(
+                        "failed-precondition",
+                        "You are already in a guild."
+                    );
+                }
+
+                const now = new Date();
+
+                transaction.set(
+                    guild_ref,
+                    {
+                        name,
+                        owner_uid: uid,
+                        members: [uid],
+                        created_at: now,
+                        updated_at: now,
+                    }
+                );
+
+                transaction.set(
+                    membership_ref,
+                    {
+                        guild_id: guild_ref.id,
+                        role: "owner",
+                        joined_at: now,
+                    }
+                );
+            }
+        );
+
+        return {
+            created: true,
+            guild_id: guild_ref.id,
+            name,
+        };
+    });
+
+exports.inviteFriendToGuild =
+    onCall(async (request) => {
+        if (!request.auth) {
+            throw new HttpsError(
+                "unauthenticated",
+                "You must be logged in."
+            );
+        }
+
+        const sender_uid =
+            request.auth.uid;
+        const friend_uid =
+            String(
+                request.data?.friend_uid || ""
+            ).trim();
+
+        if (!friend_uid ||
+            friend_uid === sender_uid) {
+            throw new HttpsError(
+                "invalid-argument",
+                "Choose a friend to invite."
+            );
+        }
+
+        const sender_membership_ref =
+            db.collection("guild_memberships")
+                .doc(sender_uid);
+        const target_membership_ref =
+            db.collection("guild_memberships")
+                .doc(friend_uid);
+        const friendship_ref =
+            db.collection("friendships")
+                .doc(
+                    friend_pair_id(
+                        sender_uid,
+                        friend_uid
+                    )
+                );
+
+        let guild_id = "";
+
+        await db.runTransaction(
+            async (transaction) => {
+                const [
+                    sender_membership_snapshot,
+                    target_membership_snapshot,
+                    friendship_snapshot,
+                ] = await Promise.all([
+                    transaction.get(
+                        sender_membership_ref
+                    ),
+                    transaction.get(
+                        target_membership_ref
+                    ),
+                    transaction.get(
+                        friendship_ref
+                    ),
+                ]);
+
+                if (!sender_membership_snapshot.exists) {
+                    throw new HttpsError(
+                        "failed-precondition",
+                        "Join or create a guild first."
+                    );
+                }
+
+                if (!friendship_snapshot.exists) {
+                    throw new HttpsError(
+                        "permission-denied",
+                        "You can only invite an accepted friend."
+                    );
+                }
+
+                const friendship_members =
+                    friendship_snapshot.data()
+                        ?.members || [];
+
+                if (!friendship_members.includes(
+                    sender_uid
+                ) ||
+                    !friendship_members.includes(
+                        friend_uid
+                    )) {
+                    throw new HttpsError(
+                        "permission-denied",
+                        "You can only invite an accepted friend."
+                    );
+                }
+
+                if (target_membership_snapshot.exists) {
+                    throw new HttpsError(
+                        "failed-precondition",
+                        "That friend is already in a guild."
+                    );
+                }
+
+                guild_id =
+                    String(
+                        sender_membership_snapshot
+                            .data()?.guild_id || ""
+                    );
+
+                if (!guild_id) {
+                    throw new HttpsError(
+                        "internal",
+                        "Your guild membership is invalid."
+                    );
+                }
+
+                const guild_ref =
+                    db.collection("guilds")
+                        .doc(guild_id);
+                const guild_snapshot =
+                    await transaction.get(
+                        guild_ref
+                    );
+
+                if (!guild_snapshot.exists ||
+                    !(guild_snapshot.data()
+                        ?.members || [])
+                        .includes(sender_uid)) {
+                    throw new HttpsError(
+                        "failed-precondition",
+                        "Your guild could not be found."
+                    );
+                }
+
+                const invite_ref =
+                    db.collection("guild_invites")
+                        .doc(
+                            guild_invite_id(
+                                guild_id,
+                                friend_uid
+                            )
+                        );
+                const invite_snapshot =
+                    await transaction.get(
+                        invite_ref
+                    );
+
+                if (invite_snapshot.exists &&
+                    invite_snapshot.data()
+                        ?.status === "pending") {
+                    throw new HttpsError(
+                        "already-exists",
+                        "That friend already has a pending guild invitation."
+                    );
+                }
+
+                const now = new Date();
+
+                transaction.set(
+                    invite_ref,
+                    {
+                        guild_id,
+                        sender_uid,
+                        receiver_uid:
+                            friend_uid,
+                        status: "pending",
+                        created_at: now,
+                        updated_at: now,
+                    }
+                );
+            }
+        );
+
+        return {
+            invited: true,
+            guild_id,
+            friend_uid,
+        };
+    });
+
+exports.respondGuildInvite =
+    onCall(async (request) => {
+        if (!request.auth) {
+            throw new HttpsError(
+                "unauthenticated",
+                "You must be logged in."
+            );
+        }
+
+        const uid =
+            request.auth.uid;
+        const invite_id =
+            String(
+                request.data?.invite_id || ""
+            ).trim();
+        const action =
+            String(
+                request.data?.action || ""
+            ).trim();
+
+        if (!/^[a-f0-9]{64}$/.test(
+            invite_id
+        ) ||
+            !["accept", "decline"].includes(
+                action
+            )) {
+            throw new HttpsError(
+                "invalid-argument",
+                "A valid guild invitation action is required."
+            );
+        }
+
+        const invite_ref =
+            db.collection("guild_invites")
+                .doc(invite_id);
+        const membership_ref =
+            db.collection("guild_memberships")
+                .doc(uid);
+
+        await db.runTransaction(
+            async (transaction) => {
+                const [
+                    invite_snapshot,
+                    membership_snapshot,
+                ] = await Promise.all([
+                    transaction.get(
+                        invite_ref
+                    ),
+                    transaction.get(
+                        membership_ref
+                    ),
+                ]);
+
+                if (!invite_snapshot.exists) {
+                    throw new HttpsError(
+                        "not-found",
+                        "Guild invitation not found."
+                    );
+                }
+
+                const invite =
+                    invite_snapshot.data();
+
+                if (invite.receiver_uid !== uid) {
+                    throw new HttpsError(
+                        "permission-denied",
+                        "That guild invitation does not belong to you."
+                    );
+                }
+
+                if (invite.status !== "pending") {
+                    throw new HttpsError(
+                        "failed-precondition",
+                        "That guild invitation has already been answered."
+                    );
+                }
+
+                if (action === "decline") {
+                    transaction.update(
+                        invite_ref,
+                        {
+                            status: "declined",
+                            responded_at:
+                                new Date(),
+                            updated_at:
+                                new Date(),
+                        }
+                    );
+                    return;
+                }
+
+                if (membership_snapshot.exists) {
+                    throw new HttpsError(
+                        "failed-precondition",
+                        "You are already in a guild."
+                    );
+                }
+
+                const guild_ref =
+                    db.collection("guilds")
+                        .doc(invite.guild_id);
+                const guild_snapshot =
+                    await transaction.get(
+                        guild_ref
+                    );
+
+                if (!guild_snapshot.exists) {
+                    throw new HttpsError(
+                        "not-found",
+                        "That guild no longer exists."
+                    );
+                }
+
+                const guild =
+                    guild_snapshot.data();
+                const members =
+                    [...new Set([
+                        ...(guild.members || []),
+                        uid,
+                    ])];
+                const now = new Date();
+
+                transaction.update(
+                    guild_ref,
+                    {
+                        members,
+                        updated_at: now,
+                    }
+                );
+
+                transaction.set(
+                    membership_ref,
+                    {
+                        guild_id:
+                            invite.guild_id,
+                        role: "member",
+                        joined_at: now,
+                    }
+                );
+
+                transaction.update(
+                    invite_ref,
+                    {
+                        status: "accepted",
+                        responded_at: now,
+                        updated_at: now,
+                    }
+                );
+            }
+        );
+
+        return {
+            accepted:
+                action === "accept",
+        };
+    });
+
+exports.leaveGuild =
+    onCall(async (request) => {
+        if (!request.auth) {
+            throw new HttpsError(
+                "unauthenticated",
+                "You must be logged in."
+            );
+        }
+
+        const uid =
+            request.auth.uid;
+        const membership_ref =
+            db.collection("guild_memberships")
+                .doc(uid);
+        let guild_id = "";
+        let guild_deleted = false;
+
+        await db.runTransaction(
+            async (transaction) => {
+                const membership_snapshot =
+                    await transaction.get(
+                        membership_ref
+                    );
+
+                if (!membership_snapshot.exists) {
+                    throw new HttpsError(
+                        "failed-precondition",
+                        "You are not in a guild."
+                    );
+                }
+
+                guild_id =
+                    String(
+                        membership_snapshot
+                            .data()?.guild_id || ""
+                    );
+
+                const guild_ref =
+                    db.collection("guilds")
+                        .doc(guild_id);
+                const guild_snapshot =
+                    await transaction.get(
+                        guild_ref
+                    );
+
+                if (!guild_snapshot.exists) {
+                    transaction.delete(
+                        membership_ref
+                    );
+                    guild_deleted = true;
+                    return;
+                }
+
+                const guild =
+                    guild_snapshot.data();
+                const remaining_members =
+                    (guild.members || [])
+                        .filter(
+                            (member_uid) =>
+                                member_uid !== uid
+                        );
+
+                transaction.delete(
+                    membership_ref
+                );
+
+                if (!remaining_members.length) {
+                    transaction.delete(
+                        guild_ref
+                    );
+                    guild_deleted = true;
+                    return;
+                }
+
+                const next_owner_uid =
+                    guild.owner_uid === uid
+                        ? remaining_members[0]
+                        : guild.owner_uid;
+
+                transaction.update(
+                    guild_ref,
+                    {
+                        members:
+                            remaining_members,
+                        owner_uid:
+                            next_owner_uid,
+                        updated_at:
+                            new Date(),
+                    }
+                );
+
+                if (guild.owner_uid === uid) {
+                    transaction.set(
+                        db.collection(
+                            "guild_memberships"
+                        ).doc(next_owner_uid),
+                        {
+                            guild_id,
+                            role: "owner",
+                        },
+                        {merge: true}
+                    );
+                }
+            }
+        );
+
+        if (guild_deleted && guild_id) {
+            const invite_snapshot =
+                await db.collection(
+                    "guild_invites"
+                )
+                    .where(
+                        "guild_id",
+                        "==",
+                        guild_id
+                    )
+                    .get();
+
+            if (!invite_snapshot.empty) {
+                const batch =
+                    db.batch();
+
+                invite_snapshot.docs
+                    .forEach(
+                        (snapshot) =>
+                            batch.delete(
+                                snapshot.ref
+                            )
+                    );
+
+                await batch.commit();
+            }
+        }
+
+        return {
+            left: true,
+            guild_deleted,
+        };
+    });
+
+exports.getGuildOverview =
+    onCall(async (request) => {
+        if (!request.auth) {
+            throw new HttpsError(
+                "unauthenticated",
+                "You must be logged in."
+            );
+        }
+
+        const uid =
+            request.auth.uid;
+        const membership_ref =
+            db.collection("guild_memberships")
+                .doc(uid);
+
+        const [
+            membership_snapshot,
+            incoming_snapshot,
+            friendship_snapshot,
+        ] = await Promise.all([
+            membership_ref.get(),
+            db.collection("guild_invites")
+                .where(
+                    "receiver_uid",
+                    "==",
+                    uid
+                )
+                .get(),
+            db.collection("friendships")
+                .where(
+                    "members",
+                    "array-contains",
+                    uid
+                )
+                .get(),
+        ]);
+
+        const pending_incoming =
+            incoming_snapshot.docs
+                .map(
+                    (snapshot) => ({
+                        id: snapshot.id,
+                        ...snapshot.data(),
+                    })
+                )
+                .filter(
+                    (invite) =>
+                        invite.status ===
+                            "pending"
+                );
+
+        const incoming_guild_ids =
+            [...new Set(
+                pending_incoming
+                    .map(
+                        (invite) =>
+                            invite.guild_id
+                    )
+                    .filter(Boolean)
+            )];
+
+        const incoming_guild_snapshots =
+            incoming_guild_ids.length
+                ? await db.getAll(
+                    ...incoming_guild_ids.map(
+                        (guild_id) =>
+                            db.collection(
+                                "guilds"
+                            ).doc(guild_id)
+                    )
+                )
+                : [];
+
+        const incoming_guilds =
+            new Map(
+                incoming_guild_snapshots
+                    .filter(
+                        (snapshot) =>
+                            snapshot.exists
+                    )
+                    .map(
+                        (snapshot) => [
+                            snapshot.id,
+                            snapshot.data(),
+                        ]
+                    )
+            );
+
+        const sender_profiles =
+            await guild_profiles(
+                pending_incoming.map(
+                    (invite) =>
+                        invite.sender_uid
+                )
+            );
+
+        const incoming_invites =
+            pending_incoming
+                .filter(
+                    (invite) =>
+                        incoming_guilds.has(
+                            invite.guild_id
+                        )
+                )
+                .map((invite) => ({
+                    invite_id:
+                        invite.id,
+                    guild_id:
+                        invite.guild_id,
+                    guild_name:
+                        incoming_guilds.get(
+                            invite.guild_id
+                        )?.name ||
+                        "Guild",
+                    sender:
+                        sender_profiles.get(
+                            invite.sender_uid
+                        ) ||
+                        public_friend_profile(
+                            invite.sender_uid
+                        ),
+                }));
+
+        if (!membership_snapshot.exists) {
+            return {
+                guild: null,
+                incoming_invites,
+                inviteable_friends: [],
+                pending_invites: [],
+            };
+        }
+
+        const guild_id =
+            String(
+                membership_snapshot
+                    .data()?.guild_id || ""
+            );
+        const guild_snapshot =
+            await db.collection("guilds")
+                .doc(guild_id)
+                .get();
+
+        if (!guild_snapshot.exists) {
+            await membership_ref.delete();
+            return {
+                guild: null,
+                incoming_invites,
+                inviteable_friends: [],
+                pending_invites: [],
+            };
+        }
+
+        const guild =
+            guild_snapshot.data();
+        const member_uids =
+            guild.members || [];
+        const member_profiles =
+            await guild_profiles(
+                member_uids
+            );
+
+        const members =
+            member_uids.map(
+                (member_uid) => ({
+                    ...(
+                        member_profiles.get(
+                            member_uid
+                        ) ||
+                        public_friend_profile(
+                            member_uid
+                        )
+                    ),
+                    role:
+                        member_uid ===
+                            guild.owner_uid
+                            ? "owner"
+                            : "member",
+                })
+            );
+
+        const guild_invites_snapshot =
+            await db.collection(
+                "guild_invites"
+            )
+                .where(
+                    "guild_id",
+                    "==",
+                    guild_id
+                )
+                .get();
+        const pending_guild_invites =
+            guild_invites_snapshot.docs
+                .map(
+                    (snapshot) => ({
+                        id: snapshot.id,
+                        ...snapshot.data(),
+                    })
+                )
+                .filter(
+                    (invite) =>
+                        invite.status ===
+                            "pending"
+                );
+        const invited_uids =
+            new Set(
+                pending_guild_invites.map(
+                    (invite) =>
+                        invite.receiver_uid
+                )
+            );
+
+        const friend_uids =
+            [...new Set(
+                friendship_snapshot.docs
+                    .flatMap(
+                        (snapshot) =>
+                            snapshot.data()
+                                ?.members || []
+                    )
+                    .filter(
+                        (friend_uid) =>
+                            friend_uid &&
+                            friend_uid !== uid &&
+                            !member_uids.includes(
+                                friend_uid
+                            )
+                    )
+            )];
+
+        const friend_memberships =
+            friend_uids.length
+                ? await db.getAll(
+                    ...friend_uids.map(
+                        (friend_uid) =>
+                            db.collection(
+                                "guild_memberships"
+                            ).doc(friend_uid)
+                    )
+                )
+                : [];
+        const unavailable_friend_uids =
+            new Set(
+                friend_memberships
+                    .filter(
+                        (snapshot) =>
+                            snapshot.exists
+                    )
+                    .map(
+                        (snapshot) =>
+                            snapshot.id
+                    )
+            );
+        const friend_profiles =
+            await guild_profiles(
+                friend_uids
+            );
+
+        const inviteable_friends =
+            friend_uids
+                .filter(
+                    (friend_uid) =>
+                        !unavailable_friend_uids
+                            .has(friend_uid) &&
+                        !invited_uids
+                            .has(friend_uid)
+                )
+                .map(
+                    (friend_uid) =>
+                        friend_profiles.get(
+                            friend_uid
+                        ) ||
+                        public_friend_profile(
+                            friend_uid
+                        )
+                )
+                .sort(
+                    (a, b) =>
+                        String(a.username)
+                            .localeCompare(
+                                String(
+                                    b.username
+                                )
+                            )
+                );
+
+        const invited_profiles =
+            await guild_profiles(
+                [...invited_uids]
+            );
+        const pending_invites =
+            pending_guild_invites
+                .map((invite) => ({
+                    invite_id:
+                        invite.id,
+                    ...(
+                        invited_profiles.get(
+                            invite.receiver_uid
+                        ) ||
+                        public_friend_profile(
+                            invite.receiver_uid
+                        )
+                    ),
+                }))
+                .sort(
+                    (a, b) =>
+                        String(a.username)
+                            .localeCompare(
+                                String(
+                                    b.username
+                                )
+                            )
+                );
+
+        return {
+            guild: {
+                id: guild_id,
+                name:
+                    guild.name || "Guild",
+                owner_uid:
+                    guild.owner_uid,
+                is_owner:
+                    guild.owner_uid === uid,
+                members,
+            },
+            incoming_invites: [],
+            inviteable_friends,
+            pending_invites,
+        };
+    });
+//#endregion
+
+
+
+//? ------------------------------
 //* ----- Seerr (via Plex) -------
 //? ------------------------------
 //#region
