@@ -267,7 +267,7 @@ let ignored_recommendation_ids = new Set();
 function recommendation_id(item) {
     return Number(
         active_recommendation_type === "anime"
-            ? item.mal_id
+            ? (item.mal_id || item.anilist_id)
             : active_recommendation_type === "manga"
                 ? item.anilist_id
                 : item.tmdb_id
@@ -540,8 +540,20 @@ async function load_anime_recommendations(anime) {
         const get_recommendations =
             httpsCallable(functions, "getMALAnimeRecommendations");
         const result = await get_recommendations({
-            seed_ids: seeds.map((item) => item.mal_id),
-            library_ids: anime.map((item) => item.mal_id)
+            seeds: seeds.map((item) => ({
+                mal_id: item.mal_id,
+                anilist_id: item.anilist_id,
+                title: item.title,
+                my_rating: item.my_rating
+            })),
+            library_mal_ids: anime
+                .map((item) => item.mal_id)
+                .filter(Boolean),
+            library_anilist_ids: anime
+                .map((item) => item.anilist_id)
+                .filter(Boolean),
+            library_titles: anime
+                .map((item) => item.title)
         });
         await finish_recommendation_load(result.data.recommendations || []);
     } catch (error) {
@@ -591,6 +603,8 @@ async function load_manga_recommendations(manga) {
                 seeds: seeds.map((item) => ({
                     anilist_id:
                         item.anilist_id,
+                    mal_id:
+                        item.mal_id,
                     title:
                         item.title,
                     my_rating:
@@ -601,6 +615,13 @@ async function load_manga_recommendations(manga) {
                         .map(
                             (item) =>
                                 item.anilist_id
+                        )
+                        .filter(Boolean),
+                library_mal_ids:
+                    manga
+                        .map(
+                            (item) =>
+                                item.mal_id
                         )
                         .filter(Boolean),
                 library_titles:
