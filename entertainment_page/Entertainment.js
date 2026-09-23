@@ -64,7 +64,10 @@ function create_release_card(item) {
                 : "";
     const controls =
         release_rows_type === "anime"
-            ? ""
+            ? `
+        <button class="recommendation-watched" type="button"
+                data-release-action="watched" title="Add as watched"
+                aria-label="Add ${item.title} as watched">✓</button>`
             : release_rows_type === "manga"
                 ? `
         <button class="recommendation-watch-later" type="button"
@@ -352,7 +355,10 @@ function create_recommendation_card(item) {
                 : "";
     const controls =
         active_recommendation_type === "anime"
-            ? ""
+            ? `
+        <button class="recommendation-watched" type="button"
+                data-rec-action="watched" title="Add as watched"
+                aria-label="Add ${item.title} as watched">✓</button>`
             : active_recommendation_type === "manga"
                 ? `
         <button class="recommendation-watch-later" type="button"
@@ -747,8 +753,21 @@ async function open_recommendation_details(item) {
         active_recommendation_type === "manga"
             ? `${recommendation_year || "Year unavailable"}${item.anilist_score != null ?
                 ` · ⭐ ${Number(item.anilist_score)}% AniList` : ""}`
-            : `${item.year || "Year unavailable"}${item.tmdb_rating != null ?
-                ` · ⭐ ${Number(item.tmdb_rating).toFixed(1)} TMDB` : ""}`;
+            : active_recommendation_type === "anime"
+                ? [
+                    recommendation_year || "Year unavailable",
+                    item.anilist_score != null
+                        ? `⭐ ${Number(item.anilist_score)}% AniList`
+                        : null,
+                    item.mal_score != null
+                        ? `⭐ ${Number(item.mal_score).toFixed(2)} MAL`
+                        : null,
+                    item.kitsu_score != null
+                        ? `⭐ ${Number(item.kitsu_score).toFixed(1)}% Kitsu`
+                        : null
+                ].filter(Boolean).join(" · ")
+                : `${item.year || "Year unavailable"}${item.tmdb_rating != null ?
+                    ` · ⭐ ${Number(item.tmdb_rating).toFixed(1)} TMDB` : ""}`;
     recommendation_dialog_description.textContent =
         item.overview || "No description available.";
     recommendation_dialog_reason.textContent = recommendation_reason(item);
@@ -756,7 +775,9 @@ async function open_recommendation_details(item) {
         '<span>Loading full details…</span>';
     recommendation_dialog_actions.innerHTML =
         active_recommendation_type === "anime"
-            ? ""
+            ? `
+            <button type="button" class="recommendation-action primary"
+                    data-dialog-action="watched">✓ Add as watched</button>`
             : active_recommendation_type === "manga"
                 ? `
             <button type="button" class="recommendation-action primary"
@@ -821,8 +842,42 @@ async function open_recommendation_details(item) {
     }
 
     if (active_recommendation_type === "anime") {
+        recommendation_dialog_description.textContent =
+            item.description ||
+            item.overview ||
+            "No description available.";
+
+        const facts = [
+            item.media_type
+                ? `Type: ${String(item.media_type).replaceAll("_", " ")}`
+                : null,
+            item.total_episodes
+                ? `Episodes: ${item.total_episodes}`
+                : null,
+            item.average_episode_duration_seconds
+                ? `Episode runtime: ~${Math.round(
+                    Number(item.average_episode_duration_seconds) / 60
+                )} min`
+                : null,
+            item.start_date
+                ? `Aired: ${item.start_date}`
+                : null,
+            item.finish_date
+                ? `Ended: ${item.finish_date}`
+                : null,
+            item.status
+                ? `Status: ${String(item.status).replaceAll("_", " ")}`
+                : null,
+            item.genres?.length
+                ? `Genres: ${item.genres.join(", ")}`
+                : null,
+            item.sources?.length
+                ? `Data: ${item.sources.join(" · ")}`
+                : "Data: AniList public catalog"
+        ].filter(Boolean);
+
         recommendation_dialog_facts.innerHTML =
-            '<span>More anime details are provided through MyAnimeList.</span>';
+            facts.map((fact) => `<span>${fact}</span>`).join("");
         return;
     }
 
@@ -968,6 +1023,22 @@ async function refresh_seerr_status_slot(
 }
 
 async function run_recommendation_action(item, action, button) {
+    if (active_recommendation_type === "anime" &&
+        action === "watched") {
+        await add_global_anime_watched(
+            item,
+            button
+        );
+        ignored_recommendation_ids.add(
+            recommendation_id(item)
+        );
+        apply_recommendation_filter();
+        if (recommendation_dialog.open) {
+            recommendation_dialog.close();
+        }
+        return;
+    }
+
     if (active_recommendation_type === "manga" &&
         action === "manga_reading") {
         await add_global_manga_reading(
