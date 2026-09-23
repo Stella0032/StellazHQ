@@ -644,7 +644,7 @@ exports.getAniListMangaRecommendations =
             "    id: $id,",
             "    search: $search,",
             "    type: MANGA",
-            "  ) {"
+            "  ) {",
             "    id",
             "    title { english romaji native userPreferred }",
             "    recommendations(",
