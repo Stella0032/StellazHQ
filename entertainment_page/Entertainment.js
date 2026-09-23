@@ -5223,67 +5223,107 @@ anime_edit_form.addEventListener("submit", async (event) => {
     anime_edit_save.textContent = "Saving...";
 
     try {
-        const score = anime_edit_score.value === ""
-            ? null
-            : Number(anime_edit_score.value);
-
-        const can_write_to_mal =
-            Boolean(active_anime.mal_id) &&
-            mal_connect_button?.dataset.connected === "true";
-
-        if (can_write_to_mal) {
-            const update_mal = httpsCallable(
-                functions,
-                "updateMALAnimeStatus"
-            );
-            const result = await update_mal({
-                anime_id: active_anime.mal_id,
-                status: anime_edit_status.value,
-                episodes_watched: selected_anime_episode,
-                total_episodes: Number(active_anime.total_episodes || 0),
-                score
-            });
-            if (result.data?.status !== anime_edit_status.value) {
-                throw new Error(
-                    "MyAnimeList did not save the selected status."
+        const score =
+            anime_edit_score.value === ""
+                ? null
+                : Number(
+                    anime_edit_score.value
                 );
-            }
 
-            anime_edit_dialog.close();
-            await sync_mal_anime();
-            show_toast("Updated on MyAnimeList.");
-        } else {
-            let watched = selected_anime_episode;
-            const total = Number(active_anime.total_episodes || 0);
-            if (anime_edit_status.value === "completed" && total > 0) {
-                watched = total;
-            }
+        let watched =
+            selected_anime_episode;
+        const total =
+            Number(
+                active_anime.total_episodes ||
+                0
+            );
 
-            const {error} = await supabase
+        if (anime_edit_status.value ===
+                "completed" &&
+            total > 0) {
+            watched = total;
+        }
+
+        const {error} =
+            await supabase
                 .from("anime")
                 .update({
-                    status: anime_edit_status.value,
-                    episodes_watched: watched,
-                    my_rating: score,
-                    synced_at: new Date().toISOString()
+                    status:
+                        anime_edit_status.value,
+                    episodes_watched:
+                        watched,
+                    my_rating:
+                        score,
+                    synced_at:
+                        new Date().toISOString()
                 })
-                .eq("id", active_anime.id);
-            if (error) throw error;
+                .eq(
+                    "id",
+                    active_anime.id
+                );
 
-            anime_edit_dialog.close();
-            await load_anime_library();
-            show_toast("Anime progress saved in Stellaz.");
+        if (error) throw error;
+
+        const should_sync_mal =
+            Boolean(
+                active_anime.mal_id
+            ) &&
+            mal_connect_button
+                ?.dataset.connected ===
+                "true";
+
+        let mal_sync_failed = false;
+
+        if (should_sync_mal) {
+            try {
+                const update_mal =
+                    httpsCallable(
+                        functions,
+                        "updateMALAnimeStatus"
+                    );
+
+                await update_mal({
+                    anime_id:
+                        active_anime.mal_id,
+                    status:
+                        anime_edit_status.value,
+                    episodes_watched:
+                        watched,
+                    total_episodes:
+                        total,
+                    score
+                });
+            } catch (mal_error) {
+                mal_sync_failed = true;
+                console.warn(
+                    "Saved in Stellaz, but MAL sync failed:",
+                    mal_error
+                );
+            }
         }
+
+        anime_edit_dialog.close();
+        await load_anime_library();
+
+        show_toast(
+            mal_sync_failed
+                ? "Saved in Stellaz. MyAnimeList sync failed."
+                : should_sync_mal
+                    ? "Saved in Stellaz and synced to MyAnimeList."
+                    : "Anime progress saved in Stellaz."
+        );
     } catch (error) {
-        console.error("Unable to update anime:", error);
-        alert("Unable to save this anime. Please try again.");
+        console.error(
+            "Unable to update anime:",
+            error
+        );
+        alert(
+            "Unable to save this anime. Please try again."
+        );
     } finally {
         anime_edit_save.disabled = false;
         anime_edit_save.textContent =
-            active_anime?.mal_id &&
-            mal_connect_button?.dataset.connected === "true"
-                ? "Save to MyAnimeList"
-                : "Save in Stellaz";
+            "Save changes";
     }
 });
 
