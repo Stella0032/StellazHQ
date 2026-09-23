@@ -367,6 +367,12 @@ function create_recommendation_card(item) {
                 data-rec-action="watch_later" title="Add to Watch Later"
                 aria-label="Add ${item.title} to Watch Later">＋</button>`;
 
+    const display_year =
+        item.year ||
+        (item.start_date
+            ? String(item.start_date).slice(0, 4)
+            : "");
+
     return `
         <article class="recommendation-card"
                  data-recommendation-id="${recommendation_id(item)}">
@@ -383,7 +389,7 @@ function create_recommendation_card(item) {
             </div>
             <button class="recommendation-title-button" type="button"
                     data-rec-open title="${item.title}">${item.title}</button>
-            <p>${item.year || ""}${rating}</p>
+            <p>${display_year}${rating}</p>
             <p class="recommendation-reason">${recommendation_reason(item)}</p>
         </article>`;
 }
