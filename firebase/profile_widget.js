@@ -181,6 +181,50 @@ if(!friends_button){
     menu.insertBefore(friends_button,services_button);
 }
 
+let feedback_button=widget.querySelector("[data-profile-feedback]");
+if(!feedback_button){
+    feedback_button=document.createElement("button");
+    feedback_button.type="button";
+    feedback_button.dataset.profileFeedback="";
+    feedback_button.textContent="Feedback";
+    const logout_button=widget.querySelector("[data-profile-logout]");
+    menu.insertBefore(feedback_button,logout_button);
+}
+
+const feedback_dialog=document.createElement("dialog");
+feedback_dialog.className="profile-dialog feedback-dialog";
+feedback_dialog.innerHTML=`
+    <form class="profile-form feedback-form">
+        <div class="profile-dialog-head">
+            <div>
+                <h2>Send Feedback</h2>
+                <p>Tell the Stellaz developer what you would like changed, fixed, or added.</p>
+            </div>
+            <button class="profile-close" type="button" aria-label="Close">×</button>
+        </div>
+        <label class="feedback-label" for="stellaz_feedback_message">
+            Your message
+        </label>
+        <textarea id="stellaz_feedback_message" maxlength="2000"
+                  placeholder="What would you like to see changed?"
+                  required></textarea>
+        <div class="feedback-footer">
+            <span class="feedback-hint">For now, this goes directly to the Stellaz developer.</span>
+            <span class="feedback-counter" data-feedback-counter>0 / 2000</span>
+        </div>
+        <button class="profile-save" type="submit">Send feedback</button>
+        <p class="profile-message feedback-message" aria-live="polite"></p>
+    </form>
+`;
+document.body.appendChild(feedback_dialog);
+
+const feedback_textarea=
+    feedback_dialog.querySelector("#stellaz_feedback_message");
+const feedback_message=
+    feedback_dialog.querySelector(".feedback-message");
+const feedback_counter=
+    feedback_dialog.querySelector("[data-feedback-counter]");
+
 const friends_dialog=document.createElement("dialog");
 friends_dialog.className="profile-dialog friends-dialog";
 friends_dialog.innerHTML=`
@@ -708,9 +752,43 @@ function apply_theme(theme){selected_theme=themes.some(t=>t.id===theme)?theme:"s
 
 function render(n,a){name_el.textContent=n||"Account";const avatar=avatars.includes(a)?a:default_avatar;avatar_el.textContent="";let img=avatar_el.querySelector("img");if(!img){img=document.createElement("img");img.alt="";avatar_el.appendChild(img)}img.src=avatar}function select(a){selected_avatar=a;dialog.querySelectorAll(".avatar-choice").forEach(b=>b.classList.toggle("selected",b.dataset.avatar===a))}
 trigger.addEventListener("click",e=>{e.stopPropagation();notification_panel.hidden=true;notification_button.setAttribute("aria-expanded","false");menu.hidden=!menu.hidden;trigger.setAttribute("aria-expanded",String(!menu.hidden))});document.addEventListener("click",e=>{if(!widget.contains(e.target)){menu.hidden=true;notification_panel.hidden=true;trigger.setAttribute("aria-expanded","false");notification_button.setAttribute("aria-expanded","false")}});
-widget.querySelector("[data-profile-edit]").addEventListener("click",()=>{menu.hidden=true;message.textContent="";dialog.showModal()});widget.querySelector("[data-profile-theme]")?.addEventListener("click",()=>{menu.hidden=true;apply_theme(selected_theme);theme_dialog.showModal()});services_button.addEventListener("click",()=>{menu.hidden=true;trigger.setAttribute("aria-expanded","false");const services_dialog=document.getElementById("connected_services_dialog");if(services_dialog){if(!services_dialog.open)services_dialog.showModal();return}window.location.href="../entertainment_page/Entertainment.html?services=1"});widget.querySelector("[data-profile-logout]").addEventListener("click",async()=>{await signOut(auth);window.location.href="../index.html"});
-dialog.querySelector(".profile-close").addEventListener("click",()=>dialog.close());theme_dialog.querySelector(".profile-close").addEventListener("click",()=>theme_dialog.close());theme_dialog.querySelectorAll(".theme-choice").forEach(b=>b.addEventListener("click",async()=>{if(!current_user)return;const theme=b.dataset.theme;apply_theme(theme);try{await setDoc(doc(db,"users",current_user.uid),{theme},{merge:true});theme_dialog.close()}catch(error){console.error(error)}}));dialog.querySelectorAll(".avatar-choice").forEach(b=>b.addEventListener("click",()=>select(b.dataset.avatar)));
+widget.querySelector("[data-profile-edit]").addEventListener("click",()=>{menu.hidden=true;message.textContent="";dialog.showModal()});widget.querySelector("[data-profile-theme]")?.addEventListener("click",()=>{menu.hidden=true;apply_theme(selected_theme);theme_dialog.showModal()});services_button.addEventListener("click",()=>{menu.hidden=true;trigger.setAttribute("aria-expanded","false");const services_dialog=document.getElementById("connected_services_dialog");if(services_dialog){if(!services_dialog.open)services_dialog.showModal();return}window.location.href="../entertainment_page/Entertainment.html?services=1"});feedback_button.addEventListener("click",()=>{menu.hidden=true;feedback_message.textContent="";feedback_counter.textContent=feedback_textarea.value.length+" / 2000";feedback_dialog.showModal();feedback_textarea.focus()});widget.querySelector("[data-profile-logout]").addEventListener("click",async()=>{await signOut(auth);window.location.href="../index.html"});
+dialog.querySelector(".profile-close").addEventListener("click",()=>dialog.close());theme_dialog.querySelector(".profile-close").addEventListener("click",()=>theme_dialog.close());feedback_dialog.querySelector(".profile-close").addEventListener("click",()=>feedback_dialog.close());theme_dialog.querySelectorAll(".theme-choice").forEach(b=>b.addEventListener("click",async()=>{if(!current_user)return;const theme=b.dataset.theme;apply_theme(theme);try{await setDoc(doc(db,"users",current_user.uid),{theme},{merge:true});theme_dialog.close()}catch(error){console.error(error)}}));dialog.querySelectorAll(".avatar-choice").forEach(b=>b.addEventListener("click",()=>select(b.dataset.avatar)));
 dialog.querySelector(".profile-form").addEventListener("submit",async e=>{e.preventDefault();if(!current_user)return;const display_name=input.value.trim();if(!display_name)return;message.textContent="Saving...";try{const save_profile=httpsCallable(functions,"saveStellazProfile");const result=await save_profile({username:display_name,profile_avatar:selected_avatar});const saved_name=result.data?.username||display_name;input.value=saved_name;render(saved_name,selected_avatar);message.textContent="Profile saved.";await load_friend_overview();setTimeout(()=>dialog.close(),450)}catch(error){console.error(error);message.textContent=error?.code==="functions/already-exists"?"That username is already taken.":(error?.message||"Unable to save profile.");}});
+feedback_textarea.addEventListener("input",()=>{
+    feedback_counter.textContent=feedback_textarea.value.length+" / 2000";
+});
+feedback_dialog.querySelector(".feedback-form").addEventListener("submit",async event=>{
+    event.preventDefault();
+    if(!current_user)return;
+
+    const feedback=feedback_textarea.value.trim();
+    if(!feedback)return;
+
+    const submit_button=feedback_dialog.querySelector(".profile-save");
+    submit_button.disabled=true;
+    submit_button.textContent="Sending...";
+    feedback_message.textContent="";
+
+    try{
+        const submit_feedback=httpsCallable(functions,"submitFeedback");
+        await submit_feedback({
+            message:feedback,
+            page:window.location.pathname
+        });
+        feedback_textarea.value="";
+        feedback_counter.textContent="0 / 2000";
+        feedback_message.textContent="Thanks — your feedback was sent.";
+        setTimeout(()=>feedback_dialog.close(),700);
+    }catch(error){
+        console.error("Unable to send feedback:",error);
+        feedback_message.textContent=
+            error?.message||"Unable to send feedback right now.";
+    }finally{
+        submit_button.disabled=false;
+        submit_button.textContent="Send feedback";
+    }
+});
 onAuthStateChanged(auth,async user=>{if(!user){window.location.href="../index.html";return}current_user=user;const fallback=user.email?.split("@")[0]||"Account";try{const snap=await getDoc(doc(db,"users",user.uid)),profile=snap.exists()?snap.data():{};const display_name=profile.display_name||fallback;selected_avatar=avatars.includes(profile.profile_avatar)?profile.profile_avatar:default_avatar;selected_theme=profile.theme||"stellaz";apply_theme(selected_theme);input.value=display_name;select(selected_avatar);render(display_name,selected_avatar)}catch(error){console.error(error);apply_theme("stellaz");input.value=fallback;render(fallback,default_avatar)}await ensure_friend_username();await Promise.allSettled([load_notifications(),load_friend_overview()]);if(notification_timer)clearInterval(notification_timer);notification_timer=setInterval(()=>load_notifications({mark_seen:!notification_panel.hidden}),60000)});
 }
 // Profile, Friends, and Friend Library dialogs can all be dismissed
