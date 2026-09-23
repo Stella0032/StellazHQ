@@ -181,6 +181,103 @@ if(!friends_button){
     menu.insertBefore(friends_button,services_button);
 }
 
+let guild_button=widget.querySelector("[data-profile-guild]");
+if(!guild_button){
+    guild_button=document.createElement("button");
+    guild_button.type="button";
+    guild_button.dataset.profileGuild="";
+    guild_button.textContent="Guild";
+    menu.insertBefore(guild_button,services_button);
+}
+
+const guild_dialog=document.createElement("dialog");
+guild_dialog.className="profile-dialog guild-dialog";
+guild_dialog.innerHTML=`
+    <div class="profile-form guild-shell">
+        <div class="profile-dialog-head">
+            <div>
+                <h2>Guild</h2>
+                <p data-guild-subtitle>Create a guild with friends and build shared stats together.</p>
+            </div>
+            <button class="profile-close" type="button" aria-label="Close">×</button>
+        </div>
+
+        <p class="guild-message" aria-live="polite"></p>
+
+        <section class="guild-empty-state" data-guild-empty>
+            <form class="guild-create-form">
+                <label for="guild_name_input">Create a guild</label>
+                <div>
+                    <input id="guild_name_input" maxlength="40"
+                           autocomplete="off" placeholder="Guild name" required>
+                    <button type="submit">Create</button>
+                </div>
+            </form>
+
+            <section class="guild-section">
+                <div class="guild-section-head">
+                    <strong>Invitations</strong>
+                    <span data-guild-invite-count>0</span>
+                </div>
+                <div class="guild-list" data-guild-incoming>
+                    <p class="guild-empty">No guild invitations.</p>
+                </div>
+            </section>
+        </section>
+
+        <section class="guild-active-state" data-guild-active hidden>
+            <div class="guild-summary">
+                <div>
+                    <span>YOUR GUILD</span>
+                    <h3 data-guild-name>Guild</h3>
+                </div>
+                <span class="guild-role" data-guild-role>Member</span>
+            </div>
+
+            <section class="guild-section">
+                <div class="guild-section-head">
+                    <strong>Members</strong>
+                    <span data-guild-member-count>0</span>
+                </div>
+                <div class="guild-list" data-guild-members></div>
+            </section>
+
+            <section class="guild-section">
+                <div class="guild-section-head">
+                    <strong>Invite a friend</strong>
+                </div>
+                <form class="guild-invite-form">
+                    <select data-guild-friend-select aria-label="Friend to invite"></select>
+                    <button type="submit">Invite</button>
+                </form>
+                <div class="guild-list guild-pending-list" data-guild-pending></div>
+            </section>
+
+            <button class="guild-leave-button" type="button">Leave guild</button>
+        </section>
+    </div>
+`;
+document.body.appendChild(guild_dialog);
+
+const guild_message=guild_dialog.querySelector(".guild-message");
+const guild_empty_state=guild_dialog.querySelector("[data-guild-empty]");
+const guild_active_state=guild_dialog.querySelector("[data-guild-active]");
+const guild_name_input=guild_dialog.querySelector("#guild_name_input");
+const guild_incoming=guild_dialog.querySelector("[data-guild-incoming]");
+const guild_invite_count=guild_dialog.querySelector("[data-guild-invite-count]");
+const guild_name=guild_dialog.querySelector("[data-guild-name]");
+const guild_role=guild_dialog.querySelector("[data-guild-role]");
+const guild_member_count=guild_dialog.querySelector("[data-guild-member-count]");
+const guild_members=guild_dialog.querySelector("[data-guild-members]");
+const guild_friend_select=guild_dialog.querySelector("[data-guild-friend-select]");
+const guild_pending=guild_dialog.querySelector("[data-guild-pending]");
+let guild_overview={
+    guild:null,
+    incoming_invites:[],
+    inviteable_friends:[],
+    pending_invites:[]
+};
+
 let feedback_button=widget.querySelector("[data-profile-feedback]");
 if(!feedback_button){
     feedback_button=document.createElement("button");
@@ -747,6 +844,288 @@ friend_request_list.addEventListener("click",async event=>{
         button.disabled=false;
     }
 });
+
+function guild_identity(profile){
+    const identity=document.createElement("div");
+    identity.className="guild-identity";
+
+    const avatar=document.createElement("img");
+    avatar.className="friend-avatar";
+    avatar.src=friend_avatar_src(profile);
+    avatar.alt="";
+
+    const copy=document.createElement("div");
+    copy.className="guild-identity-copy";
+
+    const username=document.createElement("strong");
+    username.textContent=profile?.username||"Stellaz user";
+
+    copy.appendChild(username);
+    identity.append(avatar,copy);
+    return identity;
+}
+
+function render_guild_overview(){
+    const guild=guild_overview.guild||null;
+    const incoming=guild_overview.incoming_invites||[];
+    const inviteable=guild_overview.inviteable_friends||[];
+    const pending=guild_overview.pending_invites||[];
+
+    guild_button.textContent=incoming.length
+        ?"Guild ("+incoming.length+")"
+        :"Guild";
+
+    guild_empty_state.hidden=Boolean(guild);
+    guild_active_state.hidden=!guild;
+
+    guild_incoming.replaceChildren();
+    guild_invite_count.textContent=String(incoming.length);
+
+    if(!incoming.length){
+        const empty=document.createElement("p");
+        empty.className="guild-empty";
+        empty.textContent="No guild invitations.";
+        guild_incoming.appendChild(empty);
+    }else{
+        incoming.forEach(invite=>{
+            const row=document.createElement("div");
+            row.className="guild-row guild-invite-row";
+
+            const copy=document.createElement("div");
+            copy.className="guild-invite-copy";
+
+            const name=document.createElement("strong");
+            name.textContent=invite.guild_name||"Guild";
+
+            const sender=document.createElement("span");
+            sender.textContent="Invited by "+(invite.sender?.username||"a friend");
+
+            copy.append(name,sender);
+
+            const actions=document.createElement("div");
+            actions.className="guild-row-actions";
+
+            const accept=document.createElement("button");
+            accept.type="button";
+            accept.dataset.guildInviteAction="accept";
+            accept.dataset.guildInviteId=invite.invite_id;
+            accept.textContent="Accept";
+
+            const decline=document.createElement("button");
+            decline.type="button";
+            decline.className="guild-secondary-button";
+            decline.dataset.guildInviteAction="decline";
+            decline.dataset.guildInviteId=invite.invite_id;
+            decline.textContent="Decline";
+
+            actions.append(accept,decline);
+            row.append(copy,actions);
+            guild_incoming.appendChild(row);
+        });
+    }
+
+    if(!guild)return;
+
+    guild_name.textContent=guild.name||"Guild";
+    guild_role.textContent=guild.is_owner?"Owner":"Member";
+    guild_member_count.textContent=String((guild.members||[]).length);
+
+    guild_members.replaceChildren();
+    (guild.members||[]).forEach(member=>{
+        const row=document.createElement("div");
+        row.className="guild-row";
+
+        const identity=guild_identity(member);
+        const role=document.createElement("span");
+        role.className="guild-member-role";
+        role.textContent=member.role==="owner"?"Owner":"Member";
+
+        row.append(identity,role);
+        guild_members.appendChild(row);
+    });
+
+    guild_friend_select.replaceChildren();
+    const placeholder=document.createElement("option");
+    placeholder.value="";
+    placeholder.textContent=inviteable.length
+        ?"Choose a friend..."
+        :"No available friends to invite";
+    guild_friend_select.appendChild(placeholder);
+
+    inviteable.forEach(friend=>{
+        const option=document.createElement("option");
+        option.value=friend.uid;
+        option.textContent=friend.username||"Stellaz user";
+        guild_friend_select.appendChild(option);
+    });
+
+    guild_friend_select.disabled=!inviteable.length;
+    const invite_button=guild_dialog.querySelector(".guild-invite-form button");
+    invite_button.disabled=!inviteable.length;
+
+    guild_pending.replaceChildren();
+    if(!pending.length){
+        const empty=document.createElement("p");
+        empty.className="guild-empty guild-pending-empty";
+        empty.textContent="No pending invitations.";
+        guild_pending.appendChild(empty);
+    }else{
+        pending.forEach(friend=>{
+            const row=document.createElement("div");
+            row.className="guild-row";
+
+            const identity=guild_identity(friend);
+            const status=document.createElement("span");
+            status.className="guild-member-role";
+            status.textContent="Invited";
+
+            row.append(identity,status);
+            guild_pending.appendChild(row);
+        });
+    }
+}
+
+async function load_guild_overview(){
+    if(!current_user)return;
+
+    guild_message.textContent="Loading guild...";
+
+    try{
+        const get_overview=httpsCallable(functions,"getGuildOverview");
+        const result=await get_overview();
+        guild_overview=result.data||{
+            guild:null,
+            incoming_invites:[],
+            inviteable_friends:[],
+            pending_invites:[]
+        };
+        guild_message.textContent="";
+        render_guild_overview();
+    }catch(error){
+        console.error("Unable to load guild:",error);
+        guild_message.textContent=
+            error?.message||"Unable to load your guild right now.";
+    }
+}
+
+guild_button.addEventListener("click",async()=>{
+    menu.hidden=true;
+    trigger.setAttribute("aria-expanded","false");
+    guild_message.textContent="";
+    if(!guild_dialog.open)guild_dialog.showModal();
+    await load_guild_overview();
+});
+
+guild_dialog.querySelector(".profile-close")
+    .addEventListener("click",()=>guild_dialog.close());
+
+guild_dialog.querySelector(".guild-create-form")
+    .addEventListener("submit",async event=>{
+        event.preventDefault();
+        const name=guild_name_input.value.trim();
+        if(!name)return;
+
+        const button=event.currentTarget.querySelector("button");
+        button.disabled=true;
+        guild_message.textContent="Creating guild...";
+
+        try{
+            const create_guild=httpsCallable(functions,"createGuild");
+            await create_guild({name});
+            guild_name_input.value="";
+            guild_message.textContent="Guild created.";
+            await load_guild_overview();
+        }catch(error){
+            console.error("Unable to create guild:",error);
+            guild_message.textContent=
+                error?.message||"Unable to create that guild.";
+        }finally{
+            button.disabled=false;
+        }
+    });
+
+guild_dialog.querySelector(".guild-invite-form")
+    .addEventListener("submit",async event=>{
+        event.preventDefault();
+        const friend_uid=guild_friend_select.value;
+        if(!friend_uid)return;
+
+        const button=event.currentTarget.querySelector("button");
+        button.disabled=true;
+        guild_message.textContent="Sending guild invitation...";
+
+        try{
+            const invite_friend=httpsCallable(functions,"inviteFriendToGuild");
+            await invite_friend({friend_uid});
+            guild_message.textContent="Guild invitation sent.";
+            await load_guild_overview();
+        }catch(error){
+            console.error("Unable to invite friend to guild:",error);
+            guild_message.textContent=
+                error?.message||"Unable to send that guild invitation.";
+        }finally{
+            button.disabled=false;
+        }
+    });
+
+guild_incoming.addEventListener("click",async event=>{
+    const button=event.target.closest("[data-guild-invite-action]");
+    if(!button)return;
+
+    const invite_id=button.dataset.guildInviteId;
+    const action=button.dataset.guildInviteAction;
+    button.disabled=true;
+    guild_message.textContent=
+        action==="accept"
+            ?"Joining guild..."
+            :"Declining guild invitation...";
+
+    try{
+        const respond=httpsCallable(functions,"respondGuildInvite");
+        await respond({invite_id,action});
+        guild_message.textContent=
+            action==="accept"
+                ?"Joined guild."
+                :"Guild invitation declined.";
+        await load_guild_overview();
+    }catch(error){
+        console.error("Unable to answer guild invitation:",error);
+        guild_message.textContent=
+            error?.message||"Unable to answer that guild invitation.";
+        button.disabled=false;
+    }
+});
+
+guild_dialog.querySelector(".guild-leave-button")
+    .addEventListener("click",async event=>{
+        if(!guild_overview.guild)return;
+
+        const confirmed=confirm(
+            "Leave "+guild_overview.guild.name+"? "+
+            (guild_overview.guild.is_owner
+                ?"Ownership will pass to another member if anyone remains."
+                :"You can be invited again later.")
+        );
+        if(!confirmed)return;
+
+        const button=event.currentTarget;
+        button.disabled=true;
+        guild_message.textContent="Leaving guild...";
+
+        try{
+            const leave_guild=httpsCallable(functions,"leaveGuild");
+            await leave_guild();
+            guild_message.textContent="You left the guild.";
+            await load_guild_overview();
+        }catch(error){
+            console.error("Unable to leave guild:",error);
+            guild_message.textContent=
+                error?.message||"Unable to leave the guild.";
+        }finally{
+            button.disabled=false;
+        }
+    });
+
 const theme_dialog=document.createElement("dialog");theme_dialog.className="profile-dialog theme-dialog";theme_dialog.innerHTML=`<div class="profile-form"><div class="profile-dialog-head"><div><h2>Theme</h2><p>Choose how Stellaz looks for your account.</p></div><button class="profile-close" type="button">×</button></div><div class="theme-options">${themes.map(t=>`<button class="theme-choice" type="button" data-theme="${t.id}"><strong>${t.name}</strong><span>${t.description}</span></button>`).join("")}</div></div>`;document.body.appendChild(theme_dialog);
 function apply_theme(theme){selected_theme=themes.some(t=>t.id===theme)?theme:"stellaz";document.documentElement.dataset.theme=selected_theme;theme_dialog.querySelectorAll(".theme-choice").forEach(b=>b.classList.toggle("selected",b.dataset.theme===selected_theme))}
 
@@ -789,7 +1168,7 @@ feedback_dialog.querySelector(".feedback-form").addEventListener("submit",async 
         submit_button.textContent="Send feedback";
     }
 });
-onAuthStateChanged(auth,async user=>{if(!user){window.location.href="../index.html";return}current_user=user;const fallback=user.email?.split("@")[0]||"Account";try{const snap=await getDoc(doc(db,"users",user.uid)),profile=snap.exists()?snap.data():{};const display_name=profile.display_name||fallback;selected_avatar=avatars.includes(profile.profile_avatar)?profile.profile_avatar:default_avatar;selected_theme=profile.theme||"stellaz";apply_theme(selected_theme);input.value=display_name;select(selected_avatar);render(display_name,selected_avatar)}catch(error){console.error(error);apply_theme("stellaz");input.value=fallback;render(fallback,default_avatar)}await ensure_friend_username();await Promise.allSettled([load_notifications(),load_friend_overview()]);if(notification_timer)clearInterval(notification_timer);notification_timer=setInterval(()=>load_notifications({mark_seen:!notification_panel.hidden}),60000)});
+onAuthStateChanged(auth,async user=>{if(!user){window.location.href="../index.html";return}current_user=user;const fallback=user.email?.split("@")[0]||"Account";try{const snap=await getDoc(doc(db,"users",user.uid)),profile=snap.exists()?snap.data():{};const display_name=profile.display_name||fallback;selected_avatar=avatars.includes(profile.profile_avatar)?profile.profile_avatar:default_avatar;selected_theme=profile.theme||"stellaz";apply_theme(selected_theme);input.value=display_name;select(selected_avatar);render(display_name,selected_avatar)}catch(error){console.error(error);apply_theme("stellaz");input.value=fallback;render(fallback,default_avatar)}await ensure_friend_username();await Promise.allSettled([load_notifications(),load_friend_overview(),load_guild_overview()]);if(notification_timer)clearInterval(notification_timer);notification_timer=setInterval(()=>load_notifications({mark_seen:!notification_panel.hidden}),60000)});
 }
 // Profile, Friends, and Friend Library dialogs can all be dismissed
 // by clicking the backdrop as well as their close button.
