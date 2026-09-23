@@ -6966,7 +6966,7 @@ async function run_global_search(query) {
     const anime_search_function =
         httpsCallable(
             functions,
-            "searchAniListAnime"
+            "searchAnimeCatalog"
         );
     const manga_search_function =
         httpsCallable(
@@ -7105,10 +7105,12 @@ async function add_global_anime_watched(
             );
 
         const row = {
-            mal_id: null,
+            mal_id:
+                item.mal_id || null,
             anilist_id:
-                item.anilist_id,
-            kitsu_id: null,
+                item.anilist_id || null,
+            kitsu_id:
+                item.kitsu_id || null,
             title: item.title,
             title_romaji:
                 item.title_romaji,
@@ -7135,10 +7137,12 @@ async function add_global_anime_watched(
                     item.average_episode_duration_seconds ||
                     0
                 ) || null,
-            mal_score: null,
+            mal_score:
+                item.mal_score ?? null,
             anilist_score:
-                item.anilist_score,
-            kitsu_score: null,
+                item.anilist_score ?? null,
+            kitsu_score:
+                item.kitsu_score ?? null,
             description:
                 item.description,
             genres:
