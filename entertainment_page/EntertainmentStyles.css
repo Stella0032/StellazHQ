@@ -2987,20 +2987,17 @@ html.anime-category-active .library-add-button {
 }
 
 html[data-theme="neon"].anime-category-active .library-card,
-html[data-theme="neon"].anime-category-active .recommendations-panel,
-html[data-theme="neon"].anime-category-active .mal-connect-card {
+html[data-theme="neon"].anime-category-active .recommendations-panel {
     background-color: rgba(3, 13, 9, .34);
 }
 
 html[data-theme="flurple"].anime-category-active .library-card,
-html[data-theme="flurple"].anime-category-active .recommendations-panel,
-html[data-theme="flurple"].anime-category-active .mal-connect-card {
+html[data-theme="flurple"].anime-category-active .recommendations-panel {
     background-color: rgba(29, 12, 44, .34);
 }
 
 html[data-theme="sunset"].anime-category-active .library-card,
-html[data-theme="sunset"].anime-category-active .recommendations-panel,
-html[data-theme="sunset"].anime-category-active .mal-connect-card {
+html[data-theme="sunset"].anime-category-active .recommendations-panel {
     background-color: rgba(28, 10, 5, .34);
 }
 
@@ -3227,8 +3224,7 @@ html.anime-category-active body::after {
 .plex-loading-spinner { width:24px; height:24px; flex:0 0 24px; border:3px solid rgba(255,255,255,.15); border-top-color:currentColor; border-radius:50%; animation:plex-spin .85s linear infinite; }
 
 @keyframes plex-spin { to { transform:rotate(360deg); } }
-@keyframes plex-dots { 0%{content:""} 25%{content:"."} 50%{content:".."} 75%,100%{content:"..."} }
-@media (prefers-reduced-motion:reduce) { .plex-loading-spinner { animation:none; } .plex-loading-dots::after { content:"…"; } }
+@media (prefers-reduced-motion:reduce) { .plex-loading-spinner { animation:none; } }
 
 @media (max-width:900px) and (min-width:621px) {
     .plex-import-stats { grid-template-columns:repeat(3,1fr); }
