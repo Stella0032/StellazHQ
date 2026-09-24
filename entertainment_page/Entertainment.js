@@ -2231,19 +2231,6 @@ show_details_close.addEventListener("click", () => {
     show_details_dialog.close();
 });
 
-show_details_dialog.addEventListener("click", (event) => {
-    const bounds = show_details_dialog.getBoundingClientRect();
-    const clicked_outside =
-        event.clientX < bounds.left ||
-        event.clientX > bounds.right ||
-        event.clientY < bounds.top ||
-        event.clientY > bounds.bottom;
-
-    if (clicked_outside) {
-        show_details_dialog.close();
-    }
-});
-
 [show_search, show_genre_filter, show_status_filter, show_sort].forEach((control) => {
     control.addEventListener("input", render_show_library);
     control.addEventListener("change", render_show_library);
@@ -3455,16 +3442,6 @@ function manga_escape(value) {
     })[character]);
 }
 
-function manga_status_label(status) {
-    return ({
-        reading: "Reading",
-        completed: "Completed",
-        on_hold: "On hold",
-        dropped: "Dropped",
-        plan_to_read: "Plan to read"
-    })[status] || status || "Reading";
-}
-
 async function load_anilist_connection_status() {
     try {
         const get_status =
@@ -4183,61 +4160,52 @@ manga_add_search_form.addEventListener("submit", async (event) => {
 });
 
 manga_add_results.addEventListener("click", async (event) => {
-    const button = event.target.closest("[data-anilist-add-id]");
+    const button =
+        event.target.closest(
+            "[data-anilist-add-id]"
+        );
     if (!button) return;
 
-    const item = manga_add_candidates.find(
-        (entry) => entry.anilist_id === Number(button.dataset.anilistAddId)
-    );
+    const item =
+        manga_add_candidates.find(
+            (entry) =>
+                entry.anilist_id ===
+                Number(
+                    button.dataset.anilistAddId
+                )
+        );
     if (!item) return;
 
     button.disabled = true;
-    try {
-        const {data: existing, error: existing_error} = await supabase
-            .from("manga_library")
-            .select("id")
-            .eq("anilist_id", item.anilist_id)
-            .limit(1);
-        if (existing_error) throw existing_error;
 
-        if (existing?.length) {
-            show_toast(item.title + " is already in your library.");
+    try {
+        const result =
+            await add_manga_catalog_item(
+                item
+            );
+
+        if (!result.added) {
+            show_toast(
+                item.title +
+                " is already in your library."
+            );
             button.disabled = false;
             return;
         }
 
-        const {error} = await supabase.from("manga_library").insert({
-            anilist_id: item.anilist_id,
-            title: item.title,
-            title_romaji: item.title_romaji,
-            title_native: item.title_native,
-            synonyms: item.synonyms || [],
-            country_of_origin: item.country_of_origin,
-            media_kind: item.media_kind,
-            format: item.format,
-            publication_status: item.publication_status,
-            user_status: "reading",
-            chapters_read: 0,
-            total_chapters: item.total_chapters,
-            volumes_read: 0,
-            total_volumes: item.total_volumes,
-            anilist_score: item.anilist_score,
-            poster_url: item.poster_url,
-            banner_url: item.banner_url,
-            description: item.description,
-            genres: item.genres || [],
-            site_url: item.site_url,
-            start_date: item.start_date,
-            end_date: item.end_date
-        });
-        if (error) throw error;
-
         manga_add_dialog.close();
-        await load_manga_library();
-        show_toast(item.title + " added to your reading library.");
+        show_toast(
+            item.title +
+            " added to your reading library."
+        );
     } catch (error) {
-        console.error("Unable to add AniList manga:", error);
-        alert("Unable to add this title. Please try again.");
+        console.error(
+            "Unable to add AniList manga:",
+            error
+        );
+        alert(
+            "Unable to add this title. Please try again."
+        );
         button.disabled = false;
     }
 });
@@ -4380,66 +4348,48 @@ if (anime_add_button && anime_add_dialog && anime_add_close &&
     });
 
     anime_add_results.addEventListener("click", async (event) => {
-        const button = event.target.closest("[data-anime-add-index]");
+        const button =
+            event.target.closest(
+                "[data-anime-add-index]"
+            );
         if (!button) return;
 
         const item =
             anime_add_candidates[
-                Number(button.dataset.animeAddIndex)
+                Number(
+                    button.dataset.animeAddIndex
+                )
             ];
         if (!item) return;
 
         button.disabled = true;
 
         try {
-            const total_episodes =
-                Number(item.total_episodes || 0);
-
-            const row = {
-                mal_id: item.mal_id || null,
-                anilist_id: item.anilist_id || null,
-                kitsu_id: item.kitsu_id || null,
-                title: item.title,
-                title_romaji: item.title_romaji,
-                title_native: item.title_native,
-                synonyms: item.synonyms || [],
-                status: "completed",
-                episodes_watched: total_episodes,
-                total_episodes:
-                    total_episodes || null,
-                my_rating: null,
-                poster_url: item.poster_url,
-                media_type: item.media_type,
-                start_date: item.start_date,
-                finish_date: item.finish_date,
-                average_episode_duration_ms:
-                    Number(item.average_episode_duration_seconds || 0) ||
-                    null,
-                mal_score: item.mal_score ?? null,
-                anilist_score: item.anilist_score ?? null,
-                kitsu_score: item.kitsu_score ?? null,
-                description: item.description,
-                genres: item.genres || [],
-                site_url: item.site_url,
-                synced_at: new Date().toISOString()
-            };
-
             const merged =
-                await merge_anime_import_rows([row]);
+                await add_anime_catalog_item_as_watched(
+                    item
+                );
 
             anime_add_dialog.close();
 
-            const action = merged.added
-                ? "added"
-                : "updated";
+            const action =
+                merged.added
+                    ? "added"
+                    : "updated";
             show_toast(
                 item.title +
-                " " + action +
+                " " +
+                action +
                 " in Stellaz as watched."
             );
         } catch (error) {
-            console.error("Unable to add anime:", error);
-            alert("Unable to add this anime to Stellaz.");
+            console.error(
+                "Unable to add anime:",
+                error
+            );
+            alert(
+                "Unable to add this anime to Stellaz."
+            );
             button.disabled = false;
         }
     });
@@ -7398,6 +7348,68 @@ async function run_global_search(query) {
     global_search_set_filter("all");
 }
 
+function anime_catalog_watched_row(item) {
+    const total_episodes =
+        Number(item.total_episodes || 0);
+
+    return {
+        mal_id:
+            item.mal_id || null,
+        anilist_id:
+            item.anilist_id || null,
+        kitsu_id:
+            item.kitsu_id || null,
+        title: item.title,
+        title_romaji:
+            item.title_romaji,
+        title_native:
+            item.title_native,
+        synonyms:
+            item.synonyms || [],
+        status: "completed",
+        episodes_watched:
+            total_episodes,
+        total_episodes:
+            total_episodes || null,
+        my_rating: null,
+        poster_url:
+            item.poster_url,
+        media_type:
+            item.media_type,
+        start_date:
+            item.start_date,
+        finish_date:
+            item.finish_date,
+        average_episode_duration_ms:
+            Number(
+                item.average_episode_duration_seconds ||
+                0
+            ) || null,
+        mal_score:
+            item.mal_score ?? null,
+        anilist_score:
+            item.anilist_score ?? null,
+        kitsu_score:
+            item.kitsu_score ?? null,
+        description:
+            item.description,
+        genres:
+            item.genres || [],
+        site_url:
+            item.site_url,
+        synced_at:
+            new Date().toISOString()
+    };
+}
+
+async function add_anime_catalog_item_as_watched(
+    item
+) {
+    return await merge_anime_import_rows([
+        anime_catalog_watched_row(item)
+    ]);
+}
+
 async function add_global_anime_watched(
     item,
     button
@@ -7408,64 +7420,11 @@ async function add_global_anime_watched(
     button.textContent = "Adding...";
 
     try {
-        const total_episodes =
-            Number(
-                item.total_episodes || 0
-            );
-
-        const row = {
-            mal_id:
-                item.mal_id || null,
-            anilist_id:
-                item.anilist_id || null,
-            kitsu_id:
-                item.kitsu_id || null,
-            title: item.title,
-            title_romaji:
-                item.title_romaji,
-            title_native:
-                item.title_native,
-            synonyms:
-                item.synonyms || [],
-            status: "completed",
-            episodes_watched:
-                total_episodes,
-            total_episodes:
-                total_episodes || null,
-            my_rating: null,
-            poster_url:
-                item.poster_url,
-            media_type:
-                item.media_type,
-            start_date:
-                item.start_date,
-            finish_date:
-                item.finish_date,
-            average_episode_duration_ms:
-                Number(
-                    item.average_episode_duration_seconds ||
-                    0
-                ) || null,
-            mal_score:
-                item.mal_score ?? null,
-            anilist_score:
-                item.anilist_score ?? null,
-            kitsu_score:
-                item.kitsu_score ?? null,
-            description:
-                item.description,
-            genres:
-                item.genres || [],
-            site_url:
-                item.site_url,
-            synced_at:
-                new Date().toISOString()
-        };
-
         const merged =
-            await merge_anime_import_rows(
-                [row]
+            await add_anime_catalog_item_as_watched(
+                item
             );
+
         button.textContent = "✓ Added";
         show_toast(
             item.title +
@@ -7486,6 +7445,82 @@ async function add_global_anime_watched(
     }
 }
 
+async function add_manga_catalog_item(
+    item
+) {
+    const {data: existing,
+        error: existing_error} =
+        await supabase
+            .from("manga_library")
+            .select("id")
+            .eq(
+                "anilist_id",
+                item.anilist_id
+            )
+            .limit(1);
+
+    if (existing_error) {
+        throw existing_error;
+    }
+
+    if (existing?.length) {
+        return {added: false};
+    }
+
+    const {error} =
+        await supabase
+            .from("manga_library")
+            .insert({
+                anilist_id:
+                    item.anilist_id,
+                title:
+                    item.title,
+                title_romaji:
+                    item.title_romaji,
+                title_native:
+                    item.title_native,
+                synonyms:
+                    item.synonyms || [],
+                country_of_origin:
+                    item.country_of_origin,
+                media_kind:
+                    item.media_kind,
+                format:
+                    item.format,
+                publication_status:
+                    item.publication_status,
+                user_status:
+                    "reading",
+                chapters_read: 0,
+                total_chapters:
+                    item.total_chapters,
+                volumes_read: 0,
+                total_volumes:
+                    item.total_volumes,
+                anilist_score:
+                    item.anilist_score,
+                poster_url:
+                    item.poster_url,
+                banner_url:
+                    item.banner_url,
+                description:
+                    item.description,
+                genres:
+                    item.genres || [],
+                site_url:
+                    item.site_url,
+                start_date:
+                    item.start_date,
+                end_date:
+                    item.end_date
+            });
+
+    if (error) throw error;
+
+    await load_manga_library();
+    return {added: true};
+}
+
 async function add_global_manga_reading(
     item,
     button
@@ -7496,22 +7531,12 @@ async function add_global_manga_reading(
     button.textContent = "Adding...";
 
     try {
-        const {data: existing,
-            error: existing_error} =
-            await supabase
-                .from("manga_library")
-                .select("id")
-                .eq(
-                    "anilist_id",
-                    item.anilist_id
-                )
-                .limit(1);
+        const result =
+            await add_manga_catalog_item(
+                item
+            );
 
-        if (existing_error) {
-            throw existing_error;
-        }
-
-        if (existing?.length) {
+        if (!result.added) {
             button.textContent =
                 "✓ In library";
             show_toast(
@@ -7521,57 +7546,6 @@ async function add_global_manga_reading(
             return;
         }
 
-        const {error} =
-            await supabase
-                .from("manga_library")
-                .insert({
-                    anilist_id:
-                        item.anilist_id,
-                    title:
-                        item.title,
-                    title_romaji:
-                        item.title_romaji,
-                    title_native:
-                        item.title_native,
-                    synonyms:
-                        item.synonyms || [],
-                    country_of_origin:
-                        item.country_of_origin,
-                    media_kind:
-                        item.media_kind,
-                    format:
-                        item.format,
-                    publication_status:
-                        item.publication_status,
-                    user_status:
-                        "reading",
-                    chapters_read: 0,
-                    total_chapters:
-                        item.total_chapters,
-                    volumes_read: 0,
-                    total_volumes:
-                        item.total_volumes,
-                    anilist_score:
-                        item.anilist_score,
-                    poster_url:
-                        item.poster_url,
-                    banner_url:
-                        item.banner_url,
-                    description:
-                        item.description,
-                    genres:
-                        item.genres || [],
-                    site_url:
-                        item.site_url,
-                    start_date:
-                        item.start_date,
-                    end_date:
-                        item.end_date
-                });
-
-        if (error) throw error;
-
-        await load_manga_library();
         button.textContent = "✓ Added";
         show_toast(
             item.title +
@@ -7589,6 +7563,7 @@ async function add_global_manga_reading(
         );
     }
 }
+
 
 global_search_form?.addEventListener(
     "submit",
