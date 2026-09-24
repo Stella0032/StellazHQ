@@ -3874,7 +3874,7 @@ html.anime-category-active .anime-library-panel .movie-filter-clear {
 
 /* Global entertainment discovery search */
 .global-search-panel{
-    margin:26px 0 0;
+    margin:26px 0;
 }
 .global-search-form{
     max-width:920px;
