@@ -165,19 +165,7 @@ a {
     box-shadow: 0 0 12px rgba(198, 108, 255, 0.7);
 }
 
-.back-home {
-    width: 42px;
-    height: 42px;
-    display: grid;
-    place-items: center;
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    border-radius: 50%;
-    color: #fff;
-    text-decoration: none;
-    background: rgba(255, 255, 255, 0.06);
-    font-size: 11px;
-    letter-spacing: 1px;
-}
+
 /*#endregion*/
 
 
@@ -190,12 +178,7 @@ a {
     margin: 24px auto 45px;
 }
 
-.hero {
-    min-height: 104px;
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-}
+
 
 .eyebrow {
     margin: 0 0 10px;
@@ -205,34 +188,11 @@ a {
     letter-spacing: 4px;
 }
 
-.hero h1 {
-    margin: 0;
-    font-family: "Trebuchet MS", Arial, sans-serif;
-    font-size: clamp(34px, 4vw, 52px);
-    font-weight: 600;
-    line-height: 1;
-    letter-spacing: -1px;
-    background: linear-gradient(90deg, #e8dcff, #d9a8ff, #ffb8dc);
-    background-clip: text;
-    -webkit-background-clip: text;
-    color: transparent;
-}
 
-.hero > div > p:last-child {
-    margin: 15px 0 0;
-    color: var(--muted);
-    font-size: 15px;
-}
 
-.hero blockquote {
-    margin: 13px 0 0;
-    padding: 8px 18px 8px 0;
-    border-right: 2px solid #b76cff;
-    color: #d7c9e7;
-    text-align: right;
-    font-size: 13px;
-    line-height: 1.6;
-}
+
+
+
 /*#endregion*/
 
 
@@ -371,11 +331,7 @@ a {
     min-width: 150px;
 }
 
-.recommendation-actions {
-    margin-top: 10px;
-    display: grid;
-    gap: 6px;
-}
+
 
 .recommendation-action {
     width: 100%;
@@ -422,38 +378,13 @@ a.recommendation-action {
     text-decoration: none;
 }
 
-.recommendation-tabs {
-    margin-top: 22px;
-    display: flex;
-    gap: 30px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
 
-.recommendation-tab {
-    position: relative;
-    padding: 0 2px 13px;
-    border: 0;
-    color: #aeb3c7;
-    background: transparent;
-    cursor: pointer;
-    font-size: 12px;
-}
 
-.recommendation-tab:hover,
-.recommendation-tab.active {
-    color: #fff;
-}
 
-.recommendation-tab.active::after {
-    content: "";
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: -1px;
-    height: 2px;
-    background: linear-gradient(90deg, #b86dff, #ff76b8);
-    box-shadow: 0 0 10px rgba(195, 105, 255, 0.65);
-}
+
+
+
+
 
 .recommendation-grid {
     min-height: 230px;
@@ -564,17 +495,11 @@ a.recommendation-action {
         margin-top: 30px;
     }
 
-    .hero {
-        min-height: 135px;
-    }
 
-    .hero blockquote {
-        display: none;
-    }
 
-    .hero h1 {
-        font-size: 40px;
-    }
+
+
+
 
     .library-grid {
         grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -623,14 +548,9 @@ a.recommendation-action {
         padding: 20px;
     }
 
-    .recommendation-tabs {
-        gap: 18px;
-        overflow-x: auto;
-    }
 
-    .recommendation-tab {
-        flex: 0 0 auto;
-    }
+
+
 
     .recommendation-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -842,10 +762,6 @@ a.recommendation-action {
 }
 
 @media (max-width: 700px) {
-    .movie-filters {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
     .movie-filters > :nth-child(-n + 4) {
         grid-column: 1 / -1;
     }
@@ -881,34 +797,11 @@ a.recommendation-action {
     border-radius: 11px;
 }
 
-.movie-rating-overlay {
-    position: absolute;
-    inset: 0;
-    padding: 14px 8px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    border-radius: 11px;
-    background: rgba(7, 9, 22, 0.82);
-    backdrop-filter: blur(5px);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.18s ease;
-}
 
-.movie-poster-wrap:hover .movie-rating-overlay,
-.movie-poster-wrap:focus-within .movie-rating-overlay {
-    opacity: 1;
-    pointer-events: auto;
-}
 
-.movie-rating-overlay p {
-    margin: 0 0 12px;
-    color: #fff;
-    font-size: 12px;
-    font-weight: 700;
-}
+
+
+
 
 .rating-stars {
     width: 100%;
@@ -948,16 +841,9 @@ a.recommendation-action {
 /*#endregion*/
 
 @media (hover: none) {
-    .movie-rating-overlay {
-        inset: auto 0 0;
-        padding: 9px 6px;
-        background: rgba(7, 9, 22, 0.88);
-    }
 
-    .movie-rating-overlay p {
-        margin-bottom: 7px;
-        font-size: 10px;
-    }
+
+
 
     .rating-stars {
         grid-template-columns: repeat(10, 1fr);
@@ -1023,58 +909,19 @@ a.recommendation-action {
     position: relative;
 }
 
-.recommendation-expand-icon {
-    position: absolute;
-    right: 9px;
-    bottom: 9px;
-    width: 30px;
-    height: 30px;
-    display: grid;
-    place-items: center;
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    border-radius: 50%;
-    color: #fff;
-    background: rgba(8, 9, 22, 0.82);
-    backdrop-filter: blur(8px);
-    font-size: 18px;
-    transition: transform 0.2s ease, background 0.2s ease;
-}
 
-.recommendation-card:hover .recommendation-expand-icon {
-    background: rgba(194, 120, 255, 0.8);
-}
 
-.recommendation-card.expanded .recommendation-expand-icon {
-    transform: rotate(45deg);
-}
 
-.recommendation-details {
-    max-height: 0;
-    overflow: hidden;
-    opacity: 0;
-    transition: max-height 0.28s ease, opacity 0.2s ease, margin 0.2s ease;
-}
 
-.recommendation-card.expanded .recommendation-details {
-    max-height: 240px;
-    margin-top: 10px;
-    opacity: 1;
-}
 
-.recommendation-description {
-    color: #d7dbea !important;
-    font-size: 11px !important;
-    line-height: 1.55 !important;
-}
 
-.recommendation-match {
-    margin-top: 9px !important;
-    padding-top: 8px;
-    border-top: 1px solid rgba(255, 255, 255, 0.09);
-    color: #c796ff !important;
-    font-size: 9px !important;
-    line-height: 1.4 !important;
-}
+
+
+
+
+
+
+
 /*#endregion*/
 
 
@@ -1180,7 +1027,6 @@ a.recommendation-action {
         font-size: 7px;
     }
 
-    .recommendation-expand-icon,
     .recommendation-refresh {
         width: 22px;
         height: 22px;
@@ -1188,9 +1034,7 @@ a.recommendation-action {
         font-size: 13px;
     }
 
-    .recommendation-expand-icon {
-        right: 4px;
-    }
+
 
     .recommendation-refresh {
         left: 4px;
@@ -1797,52 +1641,17 @@ a.recommendation-action {
     background: rgba(103, 226, 173, 0.055);
 }
 
-.season-open-button {
-    width: 100%;
-    padding: 0;
-    display: grid;
-    gap: 6px;
-    border: 0;
-    color: inherit;
-    background: transparent;
-    cursor: pointer;
-    text-align: left;
-}
 
-.season-open-button img,
-.season-open-button .season-poster-placeholder {
-    transition: transform 0.18s ease, filter 0.18s ease;
-}
 
-.season-open-button:hover img,
-.season-open-button:focus-visible img {
-    transform: scale(1.025);
-    filter: brightness(1.08);
-}
 
-.season-watched-toggle {
-    margin: 2px 3px 4px;
-    padding: 7px 8px;
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    border-radius: 8px;
-    color: #aeb4c7;
-    background: rgba(255, 255, 255, 0.045);
-    cursor: pointer;
-    font-size: 10px;
-    font-weight: 700;
-}
 
-.season-watched-toggle input {
-    accent-color: #b978ff;
-    cursor: pointer;
-}
 
-.season-card.watched .season-watched-toggle {
-    color: #aef0d0;
-    background: rgba(103, 226, 173, 0.09);
-}
+
+
+
+
+
+
 
 @media (max-width: 700px) {
     .show-title-button {
@@ -1855,11 +1664,7 @@ a.recommendation-action {
         transform: scale(1.04);
     }
 
-    .season-watched-toggle {
-        padding: 5px;
-        gap: 4px;
-        font-size: 8px;
-    }
+
 }
 /*#endregion*/
 
@@ -1872,9 +1677,7 @@ a.recommendation-action {
     position: relative;
 }
 
-.season-open-button {
-    display: block;
-}
+
 
 .season-watch-overlay {
     position: absolute;
@@ -2133,34 +1936,14 @@ a.recommendation-action {
 /*^ ----- MyAnimeList Connection ---- */
 /*? --------------------------------- */
 /*#region*/
-.mal-connect-card {
-    margin-top: 20px;
-    padding: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 24px;
-    border: 1px solid rgba(194, 120, 255, 0.28);
-    border-radius: 16px;
-    background: rgba(18, 20, 45, 0.5);
-}
 
-.mal-connect-card h3 {
-    margin: 0 0 7px;
-    font-size: 18px;
-}
 
-.mal-connect-card p {
-    margin: 0;
-    color: var(--muted);
-    font-size: 13px;
-}
+
+
+
 
 @media (max-width: 700px) {
-    .mal-connect-card {
-        align-items: stretch;
-        flex-direction: column;
-    }
+
 }
 /*#endregion*/
 
@@ -2180,22 +1963,9 @@ a.recommendation-action {
 .anime-card p { margin: 4px 0 0; color: var(--muted); font-size: 11px; }
 
 
-.anime-rating-overlay {
-    position: absolute;
-    right: 7px;
-    bottom: 7px;
-    padding: 5px 7px;
-    border-radius: 8px;
-    color: #fff;
-    background: rgba(5, 8, 20, 0.82);
-    backdrop-filter: blur(7px);
-    font-size: 10px;
-    font-weight: 700;
-}
 
-.mal-connect-card[hidden] {
-    display: none;
-}
+
+
 
 
 .anime-edit-title {
@@ -2208,55 +1978,24 @@ a.recommendation-action {
     text-shadow: 0 0 12px rgba(194, 120, 255, 0.45);
 }
 
-.anime-edit-shell {
-    max-width: 480px;
-}
-
-.anime-edit-form {
-    display: grid;
-    gap: 18px;
-    padding: 20px 24px 26px;
-}
-
-.anime-edit-form label {
-    display: grid;
-    gap: 8px;
-    color: var(--muted);
-    font-size: 12px;
-}
-
-.anime-edit-form .movie-filter,
-.anime-edit-form .movie-search {
-    width: 100%;
-}
 
 
-.anime-edit-shell {
-    max-width: 980px;
-}
 
-.anime-edit-form {
-    display: block;
-}
 
-.anime-edit-layout {
-    display: grid;
-    grid-template-columns: minmax(240px, 0.8fr) minmax(300px, 1.2fr) 230px;
-    gap: 28px;
-    align-items: start;
-}
 
-.anime-edit-controls {
-    display: grid;
-    gap: 18px;
-}
 
-.anime-edit-controls label {
-    display: grid;
-    gap: 8px;
-    color: var(--muted);
-    font-size: 12px;
-}
+
+
+
+
+
+
+
+
+
+
+
+
 
 .anime-edit-section-label {
     margin: 0 0 10px;
@@ -2293,23 +2032,12 @@ a.recommendation-action {
     color: #d9ffe7;
 }
 
-.anime-edit-cover {
-    display: block;
-    width: 100%;
-    aspect-ratio: 2 / 3;
-    object-fit: cover;
-    border-radius: 14px;
-}
+
 
 @media (max-width: 800px) {
-    .anime-edit-layout {
-        grid-template-columns: 1fr;
-    }
 
-    .anime-edit-cover-wrap {
-        order: -1;
-        max-width: 180px;
-    }
+
+
 }
 
 
@@ -3246,7 +2974,7 @@ html[data-theme="sunset"].anime-category-active .anime-library-panel {
 /* Glass treatment for the visible Anime-page cards and controls. */
 html.anime-category-active .library-card,
 html.anime-category-active .recommendations-panel,
-html.anime-category-active .mal-connect-card,
+
 html.anime-category-active .movie-filter,
 html.anime-category-active .movie-search,
 html.anime-category-active .movie-filter-clear,
@@ -3453,9 +3181,9 @@ html.anime-category-active body::after {
     }
 }
 
-.plex-connect-card { margin: 0 0 18px; padding: 18px 20px; display:flex; align-items:center; justify-content:space-between; gap:18px; border:1px solid var(--glass-border); border-radius:16px; background:rgba(15,18,40,.48); }
-.plex-connect-card h3 { margin:0 0 5px; }
-.plex-connect-card p { margin:0; color:var(--muted); }
+
+
+
 
 .connection-badges { margin-left:auto; display:flex; align-items:center; gap:7px; }
 .connection-badge { width:32px; height:32px; display:grid; place-items:center; border:1px solid rgba(255,255,255,.18); border-radius:50%; font-size:9px; font-weight:800; letter-spacing:-.2px; color:#fff; box-shadow:0 5px 18px rgba(0,0,0,.24); }
@@ -3480,9 +3208,7 @@ html.anime-category-active body::after {
 }
 
 /* A connected Plex account uses the navbar badge instead of the setup card. */
-.plex-connect-card[hidden] {
-    display: none;
-}
+
 
 .plex-import-dialog { width:min(900px,calc(100% - 28px)); border:1px solid var(--glass-border); border-radius:20px; padding:28px; color:var(--text); background:#101126; box-shadow:0 28px 90px rgba(0,0,0,.55); }
 .plex-import-dialog::backdrop { background:rgba(4,5,16,.76); backdrop-filter:blur(7px); }
@@ -3499,10 +3225,10 @@ html.anime-category-active body::after {
 .plex-loading-row strong { display:block; color:var(--text); font-size:17px; }
 .plex-loading-row small { display:block; margin-top:5px; color:var(--muted); font-size:13px; }
 .plex-loading-spinner { width:24px; height:24px; flex:0 0 24px; border:3px solid rgba(255,255,255,.15); border-top-color:currentColor; border-radius:50%; animation:plex-spin .85s linear infinite; }
-.plex-loading-dots::after { content:""; animation:plex-dots 1.4s steps(4,end) infinite; }
+
 @keyframes plex-spin { to { transform:rotate(360deg); } }
 @keyframes plex-dots { 0%{content:""} 25%{content:"."} 50%{content:".."} 75%,100%{content:"..."} }
-@media (prefers-reduced-motion:reduce) { .plex-loading-spinner,.plex-loading-dots::after { animation:none; } .plex-loading-dots::after { content:"…"; } }
+@media (prefers-reduced-motion:reduce) { .plex-loading-spinner { animation:none; } .plex-loading-dots::after { content:"…"; } }
 
 @media (max-width:900px) and (min-width:621px) {
     .plex-import-stats { grid-template-columns:repeat(3,1fr); }
@@ -3736,32 +3462,13 @@ html.anime-category-active .anime-library-panel .movie-filter-clear {
 
 
 /* AniList account connection */
-.anilist-connect-card {
-    margin: 0 0 18px;
-    padding: 18px 20px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 18px;
-    border: 1px solid rgba(102, 229, 179, 0.25);
-    border-radius: 16px;
-    background: rgba(15, 22, 36, 0.5);
-}
 
-.anilist-connect-card h3 {
-    margin: 0 0 5px;
-    font-size: 18px;
-}
 
-.anilist-connect-card p {
-    margin: 0;
-    color: var(--muted);
-    font-size: 13px;
-}
 
-.anilist-connect-card[hidden] {
-    display: none;
-}
+
+
+
+
 
 .anilist-connection-badge {
     background: linear-gradient(135deg, #2b2d42, #02a9ff);
@@ -3770,14 +3477,9 @@ html.anime-category-active .anime-library-panel .movie-filter-clear {
 }
 
 @media (max-width: 700px) {
-    .anilist-connect-card {
-        align-items: stretch;
-        flex-direction: column;
-    }
 
-    .anilist-connect-card .library-add-button {
-        width: 100%;
-    }
+
+
 }
 
 
