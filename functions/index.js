@@ -499,8 +499,8 @@ async function get_valid_mal_access_token(uid) {
     return tokens.access_token;
 }
 
-exports.getMALAnimeRecommendations = onCall(
-    async (request) => {
+exports.getAnimeRecommendations =
+    onCall(async (request) => {
         if (!request.auth) {
             throw new HttpsError(
                 "unauthenticated",
@@ -508,103 +508,86 @@ exports.getMALAnimeRecommendations = onCall(
             );
         }
 
-        const supplied_seeds =
-            Array.isArray(request.data?.seeds) ?
-                request.data.seeds :
-                Array.isArray(request.data?.seed_ids) ?
-                    request.data.seed_ids.map((mal_id) => ({
-                        mal_id,
-                    })) :
-                    [];
-
-        const seeds = supplied_seeds
-            .filter((item) =>
-                item &&
-                (
-                    Number(item.anilist_id || 0) > 0 ||
-                    Number(item.mal_id || 0) > 0 ||
-                    String(item.title || "").trim()
-                )
-            )
-            .slice(0, 8);
+        const seeds =
+            Array.isArray(request.data?.seeds)
+                ? request.data.seeds
+                    .filter(
+                        (item) =>
+                            item &&
+                            String(
+                                item.title || ""
+                            ).trim()
+                    )
+                    .slice(0, 8)
+                : [];
 
         if (!seeds.length) {
-            return {recommendations: []};
+            return {
+                recommendations: [],
+            };
         }
 
         const library_anilist_ids =
             new Set(
                 Array.isArray(
                     request.data?.library_anilist_ids
-                ) ?
-                    request.data.library_anilist_ids
+                )
+                    ? request.data
+                        .library_anilist_ids
                         .map(Number)
                         .filter(
                             (id) =>
                                 Number.isInteger(id) &&
                                 id > 0
-                        ) :
-                    []
+                        )
+                    : []
             );
-
-        const legacy_library_ids =
-            Array.isArray(request.data?.library_ids) ?
-                request.data.library_ids :
-                [];
 
         const library_mal_ids =
             new Set(
-                [
-                    ...(Array.isArray(
-                        request.data?.library_mal_ids
-                    ) ?
-                        request.data.library_mal_ids :
-                        []),
-                    ...legacy_library_ids,
-                ]
-                    .map(Number)
-                    .filter(
-                        (id) =>
-                            Number.isInteger(id) &&
-                            id > 0
-                    )
+                Array.isArray(
+                    request.data?.library_mal_ids
+                )
+                    ? request.data
+                        .library_mal_ids
+                        .map(Number)
+                        .filter(
+                            (id) =>
+                                Number.isInteger(id) &&
+                                id > 0
+                        )
+                    : []
             );
 
         const library_titles =
             new Set(
                 Array.isArray(
                     request.data?.library_titles
-                ) ?
-                    request.data.library_titles
+                )
+                    ? request.data
+                        .library_titles
                         .map(
-                            (title) =>
-                                notification_normalize_title(
-                                    title
-                                )
+                            anime_catalog_normalize_title
                         )
-                        .filter(Boolean) :
-                    []
+                        .filter(Boolean)
+                    : []
             );
 
-        const candidates = new Map();
-        const genre_weights = new Map();
+        const candidates =
+            new Map();
+        const genre_weights =
+            new Map();
 
-        const query = [
-            "query ($id: Int, $malId: Int, $search: String) {",
-            "  Media(",
-            "    id: $id,",
-            "    idMal: $malId,",
-            "    search: $search,",
-            "    type: ANIME",
-            "  ) {",
+        const recommendation_query = [
+            "query ($id: Int!) {",
+            "  Media(id: $id, type: ANIME) {",
             "    id",
-            "    idMal",
             "    title { english romaji native userPreferred }",
             "    genres",
             "    recommendations(",
             "      page: 1,",
-            "      perPage: 20,",
-            "      sort: RATING_DESC",
+            "      perPage: 25,",
+            "      sort: [RATING_DESC]",
             "    ) {",
             "      nodes {",
             "        rating",
@@ -613,6 +596,7 @@ exports.getMALAnimeRecommendations = onCall(
             "          idMal",
             "          isAdult",
             "          title { english romaji native userPreferred }",
+            "          synonyms",
             "          format",
             "          status",
             "          episodes",
@@ -635,91 +619,43 @@ exports.getMALAnimeRecommendations = onCall(
         const add_candidate = (
             media,
             strength,
-            because_of
+            reason
         ) => {
             if (!media?.id ||
                 media.isAdult === true) {
                 return;
             }
 
-            const anilist_id =
-                Number(media.id);
-            const mal_id =
-                Number(media.idMal || 0) ||
-                null;
-            const title =
-                media.title?.english ||
-                media.title?.userPreferred ||
-                media.title?.romaji ||
-                media.title?.native ||
-                "Untitled";
+            const mapped =
+                map_anilist_anime_catalog_item(
+                    media
+                );
+            const normalized_title =
+                anime_catalog_normalize_title(
+                    mapped.title
+                );
 
             if (library_anilist_ids.has(
-                anilist_id
+                Number(mapped.anilist_id)
             ) ||
-                (mal_id &&
-                 library_mal_ids.has(mal_id)) ||
-                library_titles.has(
-                    notification_normalize_title(
-                        title
+                (
+                    mapped.mal_id &&
+                    library_mal_ids.has(
+                        Number(mapped.mal_id)
                     )
+                ) ||
+                library_titles.has(
+                    normalized_title
                 )) {
                 return;
             }
 
+            const key =
+                Number(mapped.anilist_id);
             const existing =
-                candidates.get(
-                    anilist_id
-                ) || {
-                    anilist_id,
-                    mal_id,
-                    title,
-                    poster_url:
-                        media.coverImage
-                            ?.extraLarge ||
-                        media.coverImage
-                            ?.large ||
-                        "",
-                    anilist_score:
-                        Number(
-                            media.averageScore || 0
-                        ) || null,
-                    overview:
-                        clean_anilist_description(
-                            media.description
-                        ),
-                    genres:
-                        Array.isArray(media.genres) ?
-                            media.genres :
-                            [],
-                    media_type:
-                        String(
-                            media.format || ""
-                        ).toLowerCase() ||
-                        null,
-                    total_episodes:
-                        Number(
-                            media.episodes || 0
-                        ) || null,
-                    average_episode_duration_seconds:
-                        Number(
-                            media.duration || 0
-                        ) > 0 ?
-                            Number(media.duration) *
-                            60 :
-                            null,
-                    start_date:
-                        anilist_date_to_iso(
-                            media.startDate
-                        ),
-                    finish_date:
-                        anilist_date_to_iso(
-                            media.endDate
-                        ),
-                    site_url:
-                        media.siteUrl || null,
-                    recommendation_strength:
-                        0,
+                candidates.get(key) || {
+                    ...mapped,
+                    recommendation_strength: 0,
                     because_of: [],
                 };
 
@@ -730,161 +666,157 @@ exports.getMALAnimeRecommendations = onCall(
                     Number(strength || 0)
                 );
 
-            if (because_of &&
+            if (reason &&
                 !existing.because_of.includes(
-                    because_of
+                    reason
                 )) {
                 existing.because_of.push(
-                    because_of
+                    reason
                 );
             }
 
             candidates.set(
-                anilist_id,
+                key,
                 existing
             );
         };
 
         for (const seed of seeds) {
-            const anilist_id =
-                Number(seed.anilist_id || 0);
-            const mal_id =
-                Number(seed.mal_id || 0);
             const seed_title =
                 String(
                     seed.title || ""
                 ).trim();
+            const seed_anilist_id =
+                Number(
+                    seed.anilist_id || 0
+                );
+            const seed_mal_id =
+                Number(
+                    seed.mal_id || 0
+                );
 
-            let data;
-            try {
-                data =
-                    await anilist_graphql_public(
-                        query,
-                        {
-                            id:
-                                Number.isInteger(
-                                    anilist_id
-                                ) &&
-                                anilist_id > 0 ?
-                                    anilist_id :
-                                    null,
-                            malId:
-                                (!anilist_id &&
-                                 Number.isInteger(
-                                     mal_id
-                                 ) &&
-                                 mal_id > 0) ?
-                                    mal_id :
-                                    null,
-                            search:
-                                (!anilist_id &&
-                                 !mal_id) ?
-                                    seed_title :
-                                    null,
-                        }
-                    );
-            } catch (error) {
-                if (seed_title) {
-                    try {
-                        data =
-                            await anilist_graphql_public(
-                                query,
-                                {
-                                    id: null,
-                                    malId: null,
-                                    search: seed_title,
-                                }
-                            );
-                    } catch (title_error) {
-                        logger.warn(
-                            "AniList anime recommendation seed failed.",
-                            {
-                                seed: seed_title ||
-                                    mal_id ||
-                                    anilist_id,
-                                error:
-                                    title_error.message,
-                            }
-                        );
-                        continue;
-                    }
-                } else {
-                    logger.warn(
-                        "AniList anime recommendation seed failed.",
-                        {
-                            seed: seed_title ||
-                                mal_id ||
-                                anilist_id,
-                            error: error.message,
-                        }
-                    );
-                    continue;
-                }
-            }
+            let resolved_id =
+                Number.isInteger(
+                    seed_anilist_id
+                ) &&
+                seed_anilist_id > 0
+                    ? seed_anilist_id
+                    : null;
 
-            let media = data?.Media;
-            if (!media && seed_title) {
+            let resolved_title =
+                seed_title;
+
+            if (!resolved_id) {
                 try {
-                    data =
-                        await anilist_graphql_public(
-                            query,
-                            {
-                                id: null,
-                                malId: null,
-                                search: seed_title,
-                            }
+                    const matches =
+                        await search_anilist_anime_catalog(
+                            seed_title,
+                            8
                         );
+
+                    const exact =
+                        matches.find(
+                            (item) =>
+                                seed_mal_id &&
+                                Number(
+                                    item.mal_id
+                                ) ===
+                                seed_mal_id
+                        ) ||
+                        matches.find(
+                            (item) =>
+                                anime_catalog_normalize_title(
+                                    item.title
+                                ) ===
+                                anime_catalog_normalize_title(
+                                    seed_title
+                                )
+                        ) ||
+                        matches[0];
+
+                    if (exact?.anilist_id) {
+                        resolved_id =
+                            Number(
+                                exact.anilist_id
+                            );
+                        resolved_title =
+                            exact.title ||
+                            seed_title;
+                    }
                 } catch (error) {
                     logger.warn(
-                        "AniList anime title fallback failed.",
+                        "AniList anime seed resolution failed.",
                         {
                             seed: seed_title,
-                            error: error.message,
+                            error:
+                                error.message,
                         }
                     );
                 }
             }
 
-            media = data?.Media;
-            if (!media) continue;
-
-            const resolved_seed_title =
-                media.title?.english ||
-                media.title?.userPreferred ||
-                media.title?.romaji ||
-                seed_title ||
-                "Anime";
-
-            const seed_weight =
-                Math.max(
-                    1,
-                    Number(
-                        seed.my_rating || 0
-                    )
-                );
-
-            for (const genre of
-                media.genres || []) {
-                genre_weights.set(
-                    genre,
-                    Number(
-                        genre_weights.get(
-                            genre
-                        ) || 0
-                    ) +
-                    seed_weight
-                );
+            if (!resolved_id) {
+                continue;
             }
 
-            for (const node of
-                media.recommendations
-                    ?.nodes || []) {
-                add_candidate(
-                    node?.mediaRecommendation,
-                    Number(
-                        node?.rating || 0
-                    ) + seed_weight,
-                    resolved_seed_title
+            try {
+                const data =
+                    await anilist_graphql_public(
+                        recommendation_query,
+                        {
+                            id:
+                                resolved_id,
+                        }
+                    );
+                const media =
+                    data?.Media;
+
+                if (!media) continue;
+
+                const weight =
+                    Math.max(
+                        1,
+                        Number(
+                            seed.my_rating ||
+                            0
+                        )
+                    );
+
+                for (const genre of
+                    media.genres || []) {
+                    genre_weights.set(
+                        genre,
+                        Number(
+                            genre_weights.get(
+                                genre
+                            ) || 0
+                        ) + weight
+                    );
+                }
+
+                for (const node of
+                    media.recommendations
+                        ?.nodes || []) {
+                    add_candidate(
+                        node
+                            ?.mediaRecommendation,
+                        Number(
+                            node?.rating || 0
+                        ) + weight,
+                        resolved_title
+                    );
+                }
+            } catch (error) {
+                logger.warn(
+                    "AniList anime recommendation lookup failed.",
+                    {
+                        seed:
+                            resolved_title,
+                        anilist_id:
+                            resolved_id,
+                        error:
+                            error.message,
+                    }
                 );
             }
         }
@@ -899,7 +831,8 @@ exports.getMALAnimeRecommendations = onCall(
                     )
                     .slice(0, 3)
                     .map(
-                        ([genre]) => genre
+                        ([genre]) =>
+                            genre
                     );
 
             const fallback_query = [
@@ -915,6 +848,7 @@ exports.getMALAnimeRecommendations = onCall(
                 "      idMal",
                 "      isAdult",
                 "      title { english romaji native userPreferred }",
+                "      synonyms",
                 "      format",
                 "      status",
                 "      episodes",
@@ -951,38 +885,47 @@ exports.getMALAnimeRecommendations = onCall(
                             media.averageScore ||
                             0
                         ) / 10,
-                        top_genres[0] ?
-                            top_genres[0] +
-                            " favorites" :
-                            "your anime history"
+                        top_genres.length
+                            ? top_genres
+                                .slice(0, 2)
+                                .join(" / ")
+                            : "your anime history"
                     );
                 }
             } catch (error) {
                 logger.warn(
                     "AniList anime recommendation fallback failed.",
-                    {error: error.message}
+                    {
+                        error:
+                            error.message,
+                    }
                 );
             }
         }
 
-        const recommendations =
-            [...candidates.values()]
-                .sort(
-                    (a, b) =>
-                        b.recommendation_strength -
-                        a.recommendation_strength
-                )
-                .slice(0, 18)
-                .map((item) => ({
-                    ...item,
-                    because_of:
-                        item.because_of
-                            .slice(0, 2),
-                }));
+        return {
+            recommendations:
+                [...candidates.values()]
+                    .sort(
+                        (a, b) =>
+                            b.recommendation_strength -
+                            a.recommendation_strength
+                    )
+                    .slice(0, 18)
+                    .map((item) => ({
+                        ...item,
+                        because_of:
+                            item.because_of
+                                .slice(0, 2),
+                    })),
+        };
+    });
 
-        return {recommendations};
-    }
-);
+
+// Backward-compatible name for older clients. This no longer requires
+// a connected MyAnimeList account; it uses the same public-catalog handler.
+exports.getMALAnimeRecommendations =
+    exports.getAnimeRecommendations;
 
 
 exports.getAniListMangaRecommendations =
@@ -995,18 +938,17 @@ exports.getAniListMangaRecommendations =
         }
 
         const seeds =
-            Array.isArray(request.data?.seeds) ?
-                request.data.seeds
-                    .filter((item) =>
-                        item &&
-                        (
-                            Number(item.anilist_id || 0) > 0 ||
-                            Number(item.mal_id || 0) > 0 ||
-                            String(item.title || "").trim()
-                        )
+            Array.isArray(request.data?.seeds)
+                ? request.data.seeds
+                    .filter(
+                        (item) =>
+                            item &&
+                            String(
+                                item.title || ""
+                            ).trim()
                     )
-                    .slice(0, 8) :
-                [];
+                    .slice(0, 8)
+                : [];
 
         if (!seeds.length) {
             return {
@@ -1018,46 +960,43 @@ exports.getAniListMangaRecommendations =
             new Set(
                 Array.isArray(
                     request.data?.library_ids
-                ) ?
-                    request.data.library_ids
+                )
+                    ? request.data.library_ids
                         .map(Number)
                         .filter(
                             (id) =>
                                 Number.isInteger(id) &&
                                 id > 0
-                        ) :
-                    []
+                        )
+                    : []
             );
 
         const library_mal_ids =
             new Set(
                 Array.isArray(
                     request.data?.library_mal_ids
-                ) ?
-                    request.data.library_mal_ids
+                )
+                    ? request.data.library_mal_ids
                         .map(Number)
                         .filter(
                             (id) =>
                                 Number.isInteger(id) &&
                                 id > 0
-                        ) :
-                    []
+                        )
+                    : []
             );
 
         const library_titles =
             new Set(
                 Array.isArray(
                     request.data?.library_titles
-                ) ?
-                    request.data.library_titles
+                )
+                    ? request.data.library_titles
                         .map(
-                            (title) =>
-                                notification_normalize_title(
-                                    title
-                                )
+                            anime_catalog_normalize_title
                         )
-                        .filter(Boolean) :
-                    []
+                        .filter(Boolean)
+                    : []
             );
 
         const candidates =
@@ -1065,22 +1004,33 @@ exports.getAniListMangaRecommendations =
         const genre_weights =
             new Map();
 
-        const query = [
-            "query ($id: Int, $malId: Int, $search: String) {",
-            "  Media(",
-            "    id: $id,",
-            "    idMal: $malId,",
-            "    search: $search,",
-            "    type: MANGA",
-            "  ) {",
+        const search_query = [
+            "query ($search: String!) {",
+            "  Page(page: 1, perPage: 8) {",
+            "    media(",
+            "      search: $search,",
+            "      type: MANGA,",
+            "      isAdult: false",
+            "    ) {",
+            "      id",
+            "      idMal",
+            "      title { english romaji native userPreferred }",
+            "      format",
+            "    }",
+            "  }",
+            "}",
+        ].join("\n");
+
+        const recommendation_query = [
+            "query ($id: Int!) {",
+            "  Media(id: $id, type: MANGA) {",
             "    id",
-            "    idMal",
             "    title { english romaji native userPreferred }",
             "    genres",
             "    recommendations(",
             "      page: 1,",
-            "      perPage: 20,",
-            "      sort: RATING_DESC",
+            "      perPage: 25,",
+            "      sort: [RATING_DESC]",
             "    ) {",
             "      nodes {",
             "        rating",
@@ -1110,10 +1060,94 @@ exports.getAniListMangaRecommendations =
             "}",
         ].join("\n");
 
+        const map_manga_candidate =
+            (media) => ({
+                anilist_id:
+                    Number(media.id),
+                mal_id:
+                    Number(
+                        media.idMal || 0
+                    ) || null,
+                title:
+                    media.title?.english ||
+                    media.title?.userPreferred ||
+                    media.title?.romaji ||
+                    media.title?.native ||
+                    "Untitled",
+                title_romaji:
+                    media.title?.romaji ||
+                    null,
+                title_native:
+                    media.title?.native ||
+                    null,
+                synonyms:
+                    Array.isArray(
+                        media.synonyms
+                    )
+                        ? media.synonyms
+                            .filter(Boolean)
+                            .slice(0, 20)
+                        : [],
+                country_of_origin:
+                    media.countryOfOrigin ||
+                    null,
+                media_kind:
+                    anilist_media_kind(
+                        media.countryOfOrigin
+                    ),
+                format:
+                    media.format || null,
+                publication_status:
+                    media.status || null,
+                total_chapters:
+                    Number(
+                        media.chapters || 0
+                    ) || null,
+                total_volumes:
+                    Number(
+                        media.volumes || 0
+                    ) || null,
+                anilist_score:
+                    Number(
+                        media.averageScore ||
+                        0
+                    ) || null,
+                poster_url:
+                    media.coverImage
+                        ?.extraLarge ||
+                    media.coverImage
+                        ?.large ||
+                    null,
+                banner_url:
+                    media.bannerImage ||
+                    null,
+                description:
+                    clean_anilist_description(
+                        media.description
+                    ),
+                genres:
+                    Array.isArray(
+                        media.genres
+                    )
+                        ? media.genres
+                        : [],
+                site_url:
+                    media.siteUrl ||
+                    null,
+                start_date:
+                    anilist_date_to_iso(
+                        media.startDate
+                    ),
+                end_date:
+                    anilist_date_to_iso(
+                        media.endDate
+                    ),
+            });
+
         const add_candidate = (
             media,
             strength,
-            because_of
+            reason
         ) => {
             if (!media?.id ||
                 media.isAdult === true ||
@@ -1121,113 +1155,40 @@ exports.getAniListMangaRecommendations =
                 return;
             }
 
-            const anilist_id =
-                Number(media.id);
-            const mal_id =
-                Number(media.idMal || 0) ||
-                null;
-
-            const title =
-                media.title?.english ||
-                media.title?.userPreferred ||
-                media.title?.romaji ||
-                media.title?.native ||
-                "Untitled";
+            const mapped =
+                map_manga_candidate(
+                    media
+                );
 
             if (library_ids.has(
-                anilist_id
+                Number(
+                    mapped.anilist_id
+                )
             ) ||
-                (mal_id &&
-                 library_mal_ids.has(
-                     mal_id
-                 )) ||
+                (
+                    mapped.mal_id &&
+                    library_mal_ids.has(
+                        Number(
+                            mapped.mal_id
+                        )
+                    )
+                ) ||
                 library_titles.has(
-                    notification_normalize_title(
-                        title
+                    anime_catalog_normalize_title(
+                        mapped.title
                     )
                 )) {
                 return;
             }
 
+            const key =
+                Number(
+                    mapped.anilist_id
+                );
             const existing =
-                candidates.get(
-                    anilist_id
-                ) || {
-                    anilist_id,
-                    mal_id,
-                    title,
-                    title_romaji:
-                        media.title?.romaji ||
-                        null,
-                    title_native:
-                        media.title?.native ||
-                        null,
-                    synonyms:
-                        Array.isArray(
-                            media.synonyms
-                        ) ?
-                            media.synonyms
-                                .filter(Boolean)
-                                .slice(0, 20) :
-                            [],
-                    country_of_origin:
-                        media.countryOfOrigin ||
-                        null,
-                    media_kind:
-                        anilist_media_kind(
-                            media.countryOfOrigin
-                        ),
-                    format:
-                        media.format || null,
-                    publication_status:
-                        media.status || null,
-                    total_chapters:
-                        Number(
-                            media.chapters ||
-                            0
-                        ) || null,
-                    total_volumes:
-                        Number(
-                            media.volumes ||
-                            0
-                        ) || null,
-                    anilist_score:
-                        Number(
-                            media.averageScore ||
-                            0
-                        ) || null,
-                    poster_url:
-                        media.coverImage
-                            ?.extraLarge ||
-                        media.coverImage
-                            ?.large ||
-                        null,
-                    banner_url:
-                        media.bannerImage ||
-                        null,
-                    description:
-                        clean_anilist_description(
-                            media.description
-                        ),
-                    genres:
-                        Array.isArray(
-                            media.genres
-                        ) ?
-                            media.genres :
-                            [],
-                    site_url:
-                        media.siteUrl ||
-                        null,
-                    start_date:
-                        anilist_date_to_iso(
-                            media.startDate
-                        ),
-                    end_date:
-                        anilist_date_to_iso(
-                            media.endDate
-                        ),
-                    recommendation_strength:
-                        0,
+                candidates.get(key) || {
+                    ...mapped,
+                    recommendation_strength: 0,
                     because_of: [],
                 };
 
@@ -1235,122 +1196,114 @@ exports.getAniListMangaRecommendations =
                 .recommendation_strength +=
                 Math.max(
                     1,
-                    Number(strength || 0)
+                    Number(
+                        strength || 0
+                    )
                 );
 
-            if (because_of &&
+            if (reason &&
                 !existing.because_of.includes(
-                    because_of
+                    reason
                 )) {
                 existing.because_of.push(
-                    because_of
+                    reason
                 );
             }
 
             candidates.set(
-                anilist_id,
+                key,
                 existing
             );
         };
 
         for (const seed of seeds) {
-            const seed_id =
-                Number(seed.anilist_id || 0);
-            const mal_id =
-                Number(seed.mal_id || 0);
             const seed_title =
                 String(
                     seed.title || ""
                 ).trim();
+            const seed_anilist_id =
+                Number(
+                    seed.anilist_id ||
+                    0
+                );
+            const seed_mal_id =
+                Number(
+                    seed.mal_id ||
+                    0
+                );
 
-            let data;
-            try {
-                data =
-                    await anilist_graphql_public(
-                        query,
-                        {
-                            id:
-                                Number.isInteger(
-                                    seed_id
-                                ) &&
-                                seed_id > 0 ?
-                                    seed_id :
-                                    null,
-                            malId:
-                                (!seed_id &&
-                                 Number.isInteger(
-                                     mal_id
-                                 ) &&
-                                 mal_id > 0) ?
-                                    mal_id :
-                                    null,
-                            search:
-                                (!seed_id &&
-                                 !mal_id) ?
-                                    seed_title :
-                                    null,
-                        }
-                    );
-            } catch (error) {
-                if (seed_title) {
-                    try {
-                        data =
-                            await anilist_graphql_public(
-                                query,
-                                {
-                                    id: null,
-                                    malId: null,
-                                    search: seed_title,
-                                }
-                            );
-                    } catch (title_error) {
-                        logger.warn(
-                            "AniList manga recommendation seed failed.",
-                            {
-                                seed:
-                                    seed_title ||
-                                    mal_id ||
-                                    seed_id,
-                                error:
-                                    title_error.message,
-                            }
-                        );
-                        continue;
-                    }
-                } else {
-                    logger.warn(
-                        "AniList manga recommendation seed failed.",
-                        {
-                            seed:
-                                seed_title ||
-                                mal_id ||
-                                seed_id,
-                            error:
-                                error.message,
-                        }
-                    );
-                    continue;
-                }
-            }
+            let resolved_id =
+                Number.isInteger(
+                    seed_anilist_id
+                ) &&
+                seed_anilist_id > 0
+                    ? seed_anilist_id
+                    : null;
 
-            let media =
-                data?.Media;
+            let resolved_title =
+                seed_title;
 
-            if (!media && seed_title) {
+            if (!resolved_id) {
                 try {
-                    data =
+                    const search_data =
                         await anilist_graphql_public(
-                            query,
+                            search_query,
                             {
-                                id: null,
-                                malId: null,
-                                search: seed_title,
+                                search:
+                                    seed_title,
                             }
                         );
-                    media = data?.Media;
+
+                    const matches =
+                        (
+                            search_data?.Page
+                                ?.media ||
+                            []
+                        )
+                            .filter(
+                                (item) =>
+                                    item.format !==
+                                    "NOVEL"
+                            );
+
+                    const exact =
+                        matches.find(
+                            (item) =>
+                                seed_mal_id &&
+                                Number(
+                                    item.idMal
+                                ) ===
+                                seed_mal_id
+                        ) ||
+                        matches.find(
+                            (item) =>
+                                anime_catalog_normalize_title(
+                                    item.title?.english ||
+                                    item.title?.userPreferred ||
+                                    item.title?.romaji ||
+                                    item.title?.native
+                                ) ===
+                                anime_catalog_normalize_title(
+                                    seed_title
+                                )
+                        ) ||
+                        matches[0];
+
+                    if (exact?.id) {
+                        resolved_id =
+                            Number(
+                                exact.id
+                            );
+                        resolved_title =
+                            exact.title?.english ||
+                            exact.title
+                                ?.userPreferred ||
+                            exact.title?.romaji ||
+                            seed_title;
+                    }
                 } catch (error) {
                     logger.warn(
-                        "AniList manga title fallback failed.",
+                        "AniList manga seed resolution failed.",
                         {
                             seed:
                                 seed_title,
@@ -1361,45 +1314,69 @@ exports.getAniListMangaRecommendations =
                 }
             }
 
-            if (!media) continue;
-
-            const resolved_seed_title =
-                media.title?.english ||
-                media.title?.userPreferred ||
-                media.title?.romaji ||
-                seed_title ||
-                "Manga";
-
-            const seed_weight =
-                Math.max(
-                    1,
-                    Number(
-                        seed.my_rating || 0
-                    )
-                );
-
-            for (const genre of
-                media.genres || []) {
-                genre_weights.set(
-                    genre,
-                    Number(
-                        genre_weights.get(
-                            genre
-                        ) || 0
-                    ) +
-                    seed_weight
-                );
+            if (!resolved_id) {
+                continue;
             }
 
-            for (const node of
-                media.recommendations
-                    ?.nodes || []) {
-                add_candidate(
-                    node?.mediaRecommendation,
-                    Number(
-                        node?.rating || 0
-                    ) + seed_weight,
-                    resolved_seed_title
+            try {
+                const data =
+                    await anilist_graphql_public(
+                        recommendation_query,
+                        {
+                            id:
+                                resolved_id,
+                        }
+                    );
+                const media =
+                    data?.Media;
+
+                if (!media) continue;
+
+                const weight =
+                    Math.max(
+                        1,
+                        Number(
+                            seed.my_rating ||
+                            0
+                        )
+                    );
+
+                for (const genre of
+                    media.genres || []) {
+                    genre_weights.set(
+                        genre,
+                        Number(
+                            genre_weights.get(
+                                genre
+                            ) || 0
+                        ) + weight
+                    );
+                }
+
+                for (const node of
+                    media.recommendations
+                        ?.nodes || []) {
+                    add_candidate(
+                        node
+                            ?.mediaRecommendation,
+                        Number(
+                            node?.rating ||
+                            0
+                        ) + weight,
+                        resolved_title
+                    );
+                }
+            } catch (error) {
+                logger.warn(
+                    "AniList manga recommendation lookup failed.",
+                    {
+                        seed:
+                            resolved_title,
+                        anilist_id:
+                            resolved_id,
+                        error:
+                            error.message,
+                    }
                 );
             }
         }
@@ -1414,7 +1391,8 @@ exports.getAniListMangaRecommendations =
                     )
                     .slice(0, 3)
                     .map(
-                        ([genre]) => genre
+                        ([genre]) =>
+                            genre
                     );
 
             const fallback_query = [
@@ -1469,37 +1447,44 @@ exports.getAniListMangaRecommendations =
                             media.averageScore ||
                             0
                         ) / 10,
-                        top_genres[0] ?
-                            top_genres[0] +
-                            " favorites" :
-                            "your reading history"
+                        top_genres.length
+                            ? top_genres
+                                .slice(0, 2)
+                                .join(" / ")
+                            : "your reading history"
                     );
                 }
             } catch (error) {
                 logger.warn(
                     "AniList manga recommendation fallback failed.",
-                    {error: error.message}
+                    {
+                        error:
+                            error.message,
+                    }
                 );
             }
         }
 
-        const recommendations =
-            [...candidates.values()]
-                .sort(
-                    (a, b) =>
-                        b.recommendation_strength -
-                        a.recommendation_strength
-                )
-                .slice(0, 18)
-                .map((item) => ({
-                    ...item,
-                    because_of:
-                        item.because_of
-                            .slice(0, 2),
-                }));
-
         return {
-            recommendations,
+            recommendations:
+                [...candidates.values()]
+                    .sort(
+                        (a, b) =>
+                            b.recommendation_strength -
+                            a.recommendation_strength
+                    )
+                    .slice(0, 18)
+                    .map(
+                        (item) => ({
+                            ...item,
+                            because_of:
+                                item.because_of
+                                    .slice(
+                                        0,
+                                        2
+                                    ),
+                        })
+                    ),
         };
     });
 
@@ -3182,7 +3167,7 @@ exports.getMovieMetadata = onCall(
 
 
 exports.getEntertainmentReleases = onCall(
-    {secrets: [tmdb_read_access_token, mal_client_id, mal_client_secret]},
+    {secrets: [tmdb_read_access_token]},
     async (request) => {
         if (!request.auth) {
             throw new HttpsError("unauthenticated", "You must be logged in.");
@@ -3409,76 +3394,140 @@ exports.getEntertainmentReleases = onCall(
         }
 
         if (type === "anime") {
-            const access_token =
-                await get_valid_mal_access_token(request.auth.uid);
-            const mal_headers = {Authorization: `Bearer ${access_token}`};
             const now = new Date();
-            const month = now.getUTCMonth() + 1;
-            const season = month <= 3 ? "winter" :
-                month <= 6 ? "spring" :
-                    month <= 9 ? "summer" : "fall";
-            const year = now.getUTCFullYear();
-            const today = now.toISOString().slice(0, 10);
+            const today =
+                Number(
+                    now.toISOString()
+                        .slice(0, 10)
+                        .replaceAll("-", "")
+                );
+            const recent_start =
+                new Date(
+                    now.getTime() -
+                    120 * 24 * 60 * 60 * 1000
+                );
+            const recent_start_value =
+                Number(
+                    recent_start.toISOString()
+                        .slice(0, 10)
+                        .replaceAll("-", "")
+                );
+            const future_end =
+                new Date(
+                    now.getTime() +
+                    365 * 24 * 60 * 60 * 1000
+                );
+            const future_end_value =
+                Number(
+                    future_end.toISOString()
+                        .slice(0, 10)
+                        .replaceAll("-", "")
+                );
 
-            const season_url = new URL(
-                `https://api.myanimelist.net/v2/anime/season/${year}/${season}`
-            );
-            season_url.searchParams.set("limit", "100");
-            season_url.searchParams.set(
-                "fields",
-                "start_date,mean,main_picture"
-            );
+            const fields = [
+                "id",
+                "idMal",
+                "title { english romaji native userPreferred }",
+                "synonyms",
+                "format",
+                "status",
+                "episodes",
+                "duration",
+                "averageScore",
+                "description(asHtml: false)",
+                "genres",
+                "siteUrl",
+                "coverImage { extraLarge large }",
+                "bannerImage",
+                "startDate { year month day }",
+                "endDate { year month day }",
+            ].join("\n");
 
-            const upcoming_url = new URL(
-                "https://api.myanimelist.net/v2/anime/ranking"
-            );
-            upcoming_url.searchParams.set("ranking_type", "upcoming");
-            upcoming_url.searchParams.set("limit", "20");
-            upcoming_url.searchParams.set(
-                "fields",
-                "start_date,mean,main_picture"
-            );
+            const query = [
+                "query {",
+                "  recent: Page(page: 1, perPage: 30) {",
+                "    media(",
+                "      type: ANIME,",
+                "      isAdult: false,",
+                "      startDate_greater: " +
+                    recent_start_value + ",",
+                "      startDate_lesser: " +
+                    today + ",",
+                "      sort: START_DATE_DESC",
+                "    ) {",
+                fields,
+                "    }",
+                "  }",
+                "  upcoming: Page(page: 1, perPage: 30) {",
+                "    media(",
+                "      type: ANIME,",
+                "      isAdult: false,",
+                "      startDate_greater: " +
+                    today + ",",
+                "      startDate_lesser: " +
+                    future_end_value + ",",
+                "      sort: START_DATE",
+                "    ) {",
+                fields,
+                "    }",
+                "  }",
+                "}",
+            ].join("\n");
 
-            const [season_response, upcoming_response] = await Promise.all([
-                fetch(season_url, {headers: mal_headers}),
-                fetch(upcoming_url, {headers: mal_headers}),
-            ]);
+            let data;
+            try {
+                data =
+                    await anilist_graphql_public(
+                        query
+                    );
+            } catch (error) {
+                logger.error(
+                    "AniList anime release lookup failed.",
+                    {error: error.message}
+                );
+                throw new HttpsError(
+                    "internal",
+                    "Anime release lookup failed."
+                );
+            }
 
-            const season_data = season_response.ok ?
-                await season_response.json() : {data: []};
-            const upcoming_data = upcoming_response.ok ?
-                await upcoming_response.json() : {data: []};
-
-            const map_anime = (item) => {
-                const node = item.node || {};
-                return {
-                    mal_id: node.id,
-                    title: node.title,
-                    release_date: node.start_date || null,
-                    poster_url: node.main_picture?.large ||
-                        node.main_picture?.medium || "",
-                    rating: node.mean ?? null,
+            const map_release =
+                (item) => {
+                    const mapped =
+                        map_anilist_anime_catalog_item(
+                            item
+                        );
+                    return {
+                        ...mapped,
+                        release_date:
+                            mapped.start_date,
+                        rating:
+                            mapped.anilist_score != null
+                                ? Number(
+                                    mapped.anilist_score
+                                ) / 10
+                                : null,
+                    };
                 };
+
+            return {
+                newly_released:
+                    (data?.recent?.media || [])
+                        .map(map_release)
+                        .filter(
+                            (item) =>
+                                item.poster_url
+                        )
+                        .slice(0, 7),
+                upcoming:
+                    (data?.upcoming?.media || [])
+                        .map(map_release)
+                        .filter(
+                            (item) =>
+                                item.poster_url
+                        )
+                        .slice(0, 7),
             };
-
-            const newly_released = (season_data.data || [])
-                .map(map_anime)
-                .filter((item) =>
-                    item.release_date && item.release_date <= today
-                )
-                .sort((a, b) =>
-                    String(b.release_date).localeCompare(a.release_date)
-                )
-                .slice(0, 7);
-
-            const upcoming = (upcoming_data.data || [])
-                .map(map_anime)
-                .filter((item) =>
-                    !item.release_date || item.release_date > today
-                )
-                .slice(0, 7);
-
-            return {newly_released, upcoming};
         }
 
         const media_type = type === "show" ? "tv" : "movie";
@@ -6155,6 +6204,739 @@ function clean_anilist_description(value) {
         .replace(/!~/g, "")
         .trim();
 }
+
+
+function anime_catalog_normalize_title(value) {
+    return String(value || "")
+        .normalize("NFKD")
+        .toLowerCase()
+        .replace(/&/g, " and ")
+        .replace(/[^a-z0-9]+/g, " ")
+        .trim();
+}
+
+function anime_catalog_year(item) {
+    const value =
+        item?.start_date ||
+        item?.startDate ||
+        "";
+    return /^\d{4}/.test(String(value))
+        ? Number(String(value).slice(0, 4))
+        : null;
+}
+
+function map_anilist_anime_catalog_item(item) {
+    return {
+        anilist_id:
+            Number(item.id) || null,
+        mal_id:
+            Number(item.idMal || 0) || null,
+        kitsu_id: null,
+        title:
+            item.title?.english ||
+            item.title?.userPreferred ||
+            item.title?.romaji ||
+            item.title?.native ||
+            "Untitled",
+        title_romaji:
+            item.title?.romaji || null,
+        title_native:
+            item.title?.native || null,
+        synonyms:
+            Array.isArray(item.synonyms)
+                ? item.synonyms
+                    .filter(Boolean)
+                    .slice(0, 30)
+                : [],
+        media_type:
+            String(item.format || "")
+                .toLowerCase() || null,
+        status:
+            item.status || null,
+        total_episodes:
+            Number(item.episodes || 0) || null,
+        average_episode_duration_seconds:
+            Number(item.duration || 0) > 0
+                ? Number(item.duration) * 60
+                : null,
+        mal_score: null,
+        anilist_score:
+            Number(item.averageScore || 0) || null,
+        kitsu_score: null,
+        poster_url:
+            item.coverImage?.extraLarge ||
+            item.coverImage?.large ||
+            null,
+        banner_url:
+            item.bannerImage || null,
+        description:
+            clean_anilist_description(
+                item.description
+            ),
+        genres:
+            Array.isArray(item.genres)
+                ? item.genres
+                : [],
+        site_url:
+            item.siteUrl || null,
+        start_date:
+            anilist_date_to_iso(
+                item.startDate
+            ),
+        finish_date:
+            anilist_date_to_iso(
+                item.endDate
+            ),
+        sources: ["AniList"],
+    };
+}
+
+async function search_anilist_anime_catalog(
+    search,
+    per_page = 12
+) {
+    const query_text = [
+        "query ($search: String!, $perPage: Int!) {",
+        "  Page(page: 1, perPage: $perPage) {",
+        "    media(search: $search, type: ANIME, isAdult: false) {",
+        "      id",
+        "      idMal",
+        "      title { romaji english native userPreferred }",
+        "      synonyms",
+        "      format",
+        "      status",
+        "      episodes",
+        "      duration",
+        "      averageScore",
+        "      description(asHtml: false)",
+        "      genres",
+        "      siteUrl",
+        "      coverImage { extraLarge large }",
+        "      bannerImage",
+        "      startDate { year month day }",
+        "      endDate { year month day }",
+        "    }",
+        "  }",
+        "}",
+    ].join("\n");
+
+    const data =
+        await anilist_graphql_public(
+            query_text,
+            {
+                search,
+                perPage:
+                    Math.max(
+                        1,
+                        Math.min(
+                            25,
+                            Number(per_page) || 12
+                        )
+                    ),
+            }
+        );
+
+    return (data?.Page?.media || [])
+        .map(
+            map_anilist_anime_catalog_item
+        );
+}
+
+async function search_mal_anime_catalog(
+    search,
+    limit = 12
+) {
+    const url =
+        new URL(
+            "https://api.myanimelist.net/v2/anime"
+        );
+    url.searchParams.set("q", search);
+    url.searchParams.set(
+        "limit",
+        String(
+            Math.max(
+                1,
+                Math.min(
+                    100,
+                    Number(limit) || 12
+                )
+            )
+        )
+    );
+    url.searchParams.set(
+        "fields",
+        [
+            "id",
+            "title",
+            "main_picture",
+            "alternative_titles",
+            "start_date",
+            "end_date",
+            "synopsis",
+            "mean",
+            "genres",
+            "media_type",
+            "status",
+            "num_episodes",
+            "average_episode_duration",
+        ].join(",")
+    );
+
+    const response =
+        await fetch(
+            url,
+            {
+                headers: {
+                    "X-MAL-CLIENT-ID":
+                        mal_client_id.value(),
+                },
+            }
+        );
+
+    if (!response.ok) {
+        throw new Error(
+            "MyAnimeList public search failed with " +
+            response.status
+        );
+    }
+
+    const payload =
+        await response.json();
+
+    return (payload.data || [])
+        .map(({node}) => {
+            const alternatives =
+                node.alternative_titles || {};
+            const synonyms = [
+                alternatives.en,
+                alternatives.ja,
+                ...(alternatives.synonyms || []),
+            ].filter(Boolean);
+
+            return {
+                anilist_id: null,
+                mal_id:
+                    Number(node.id) || null,
+                kitsu_id: null,
+                title:
+                    alternatives.en ||
+                    node.title ||
+                    "Untitled",
+                title_romaji:
+                    node.title || null,
+                title_native:
+                    alternatives.ja || null,
+                synonyms,
+                media_type:
+                    node.media_type || null,
+                status:
+                    node.status || null,
+                total_episodes:
+                    Number(
+                        node.num_episodes || 0
+                    ) || null,
+                average_episode_duration_seconds:
+                    Number(
+                        node.average_episode_duration ||
+                        0
+                    ) || null,
+                mal_score:
+                    Number(node.mean || 0) || null,
+                anilist_score: null,
+                kitsu_score: null,
+                poster_url:
+                    node.main_picture?.large ||
+                    node.main_picture?.medium ||
+                    null,
+                banner_url: null,
+                description:
+                    node.synopsis || null,
+                genres:
+                    (node.genres || [])
+                        .map(
+                            (genre) =>
+                                genre.name
+                        )
+                        .filter(Boolean),
+                site_url:
+                    node.id
+                        ? "https://myanimelist.net/anime/" +
+                            Number(node.id)
+                        : null,
+                start_date:
+                    node.start_date || null,
+                finish_date:
+                    node.end_date || null,
+                sources: ["MyAnimeList"],
+            };
+        });
+}
+
+async function search_kitsu_anime_catalog(
+    search,
+    limit = 12
+) {
+    const url =
+        new URL(
+            kitsu_api_base + "/anime"
+        );
+    url.searchParams.set(
+        "filter[text]",
+        search
+    );
+    url.searchParams.set(
+        "page[limit]",
+        String(
+            Math.max(
+                1,
+                Math.min(
+                    20,
+                    Number(limit) || 12
+                )
+            )
+        )
+    );
+
+    const response =
+        await fetch(
+            url,
+            {
+                headers:
+                    kitsu_headers(),
+            }
+        );
+
+    if (!response.ok) {
+        throw new Error(
+            "Kitsu public search failed with " +
+            response.status
+        );
+    }
+
+    const payload =
+        await response.json();
+
+    return (payload.data || [])
+        .map((item) => {
+            const attrs =
+                item.attributes || {};
+
+            return {
+                anilist_id: null,
+                mal_id: null,
+                kitsu_id:
+                    Number(item.id) || null,
+                title:
+                    kitsu_media_title(attrs),
+                title_romaji:
+                    attrs.titles?.en_jp ||
+                    null,
+                title_native:
+                    attrs.titles?.ja_jp ||
+                    null,
+                synonyms:
+                    kitsu_aliases(attrs),
+                media_type:
+                    String(
+                        attrs.subtype || ""
+                    ).toLowerCase() ||
+                    null,
+                status:
+                    attrs.status || null,
+                total_episodes:
+                    Number(
+                        attrs.episodeCount || 0
+                    ) || null,
+                average_episode_duration_seconds:
+                    Number(
+                        attrs.episodeLength || 0
+                    ) > 0
+                        ? Number(
+                            attrs.episodeLength
+                        ) * 60
+                        : null,
+                mal_score: null,
+                anilist_score: null,
+                kitsu_score:
+                    Number(
+                        attrs.averageRating ||
+                        0
+                    ) || null,
+                poster_url:
+                    kitsu_image(
+                        attrs.posterImage
+                    ),
+                banner_url:
+                    kitsu_image(
+                        attrs.coverImage
+                    ),
+                description:
+                    attrs.synopsis ||
+                    attrs.description ||
+                    null,
+                genres: [],
+                site_url:
+                    "https://kitsu.app/anime/" +
+                    (
+                        attrs.slug ||
+                        String(item.id)
+                    ),
+                start_date:
+                    attrs.startDate ||
+                    null,
+                finish_date:
+                    attrs.endDate ||
+                    null,
+                sources: ["Kitsu"],
+            };
+        });
+}
+
+function merge_anime_catalog_rows(rows) {
+    const merged = [];
+
+    const aliases_for = (item) => {
+        return [
+            item.title,
+            item.title_romaji,
+            item.title_native,
+            ...(item.synonyms || []),
+        ]
+            .map(
+                anime_catalog_normalize_title
+            )
+            .filter(Boolean);
+    };
+
+    for (const row of rows) {
+        const row_aliases =
+            new Set(
+                aliases_for(row)
+            );
+        const row_year =
+            anime_catalog_year(row);
+
+        const existing =
+            merged.find((item) => {
+                if (row.anilist_id &&
+                    item.anilist_id &&
+                    Number(row.anilist_id) ===
+                    Number(item.anilist_id)) {
+                    return true;
+                }
+
+                if (row.mal_id &&
+                    item.mal_id &&
+                    Number(row.mal_id) ===
+                    Number(item.mal_id)) {
+                    return true;
+                }
+
+                if (row.kitsu_id &&
+                    item.kitsu_id &&
+                    Number(row.kitsu_id) ===
+                    Number(item.kitsu_id)) {
+                    return true;
+                }
+
+                const item_year =
+                    anime_catalog_year(item);
+
+                if (row_year &&
+                    item_year &&
+                    row_year !== item_year) {
+                    return false;
+                }
+
+                return aliases_for(item)
+                    .some(
+                        (alias) =>
+                            row_aliases.has(
+                                alias
+                            )
+                    );
+            });
+
+        if (!existing) {
+            merged.push({
+                ...row,
+                sources:
+                    [...new Set(
+                        row.sources || []
+                    )],
+            });
+            continue;
+        }
+
+        for (const field of [
+            "anilist_id",
+            "mal_id",
+            "kitsu_id",
+            "title_romaji",
+            "title_native",
+            "media_type",
+            "status",
+            "total_episodes",
+            "average_episode_duration_seconds",
+            "mal_score",
+            "anilist_score",
+            "kitsu_score",
+            "poster_url",
+            "banner_url",
+            "description",
+            "site_url",
+            "start_date",
+            "finish_date",
+        ]) {
+            if ((existing[field] === null ||
+                 existing[field] === undefined ||
+                 existing[field] === "") &&
+                row[field] !== null &&
+                row[field] !== undefined &&
+                row[field] !== "") {
+                existing[field] =
+                    row[field];
+            }
+        }
+
+        existing.synonyms =
+            [...new Set([
+                ...(existing.synonyms || []),
+                ...(row.synonyms || []),
+            ])]
+                .filter(Boolean)
+                .slice(0, 40);
+
+        existing.genres =
+            [...new Set([
+                ...(existing.genres || []),
+                ...(row.genres || []),
+            ])]
+                .filter(Boolean);
+
+        existing.sources =
+            [...new Set([
+                ...(existing.sources || []),
+                ...(row.sources || []),
+            ])];
+    }
+
+    return merged;
+}
+
+exports.searchAnimeCatalog =
+    onCall(
+        {
+            secrets: [mal_client_id],
+        },
+        async (request) => {
+            if (!request.auth) {
+                throw new HttpsError(
+                    "unauthenticated",
+                    "You must be logged in."
+                );
+            }
+
+            const search =
+                String(
+                    request.data?.query || ""
+                ).trim();
+
+            if (search.length < 2) {
+                return {
+                    results: [],
+                };
+            }
+
+            if (search.length > 120) {
+                throw new HttpsError(
+                    "invalid-argument",
+                    "Search is too long."
+                );
+            }
+
+            const settled =
+                await Promise.allSettled([
+                    search_anilist_anime_catalog(
+                        search,
+                        12
+                    ),
+                    search_mal_anime_catalog(
+                        search,
+                        12
+                    ),
+                    search_kitsu_anime_catalog(
+                        search,
+                        12
+                    ),
+                ]);
+
+            const rows =
+                settled.flatMap(
+                    (entry) =>
+                        entry.status ===
+                            "fulfilled"
+                            ? entry.value
+                            : []
+                );
+
+            settled.forEach(
+                (entry, index) => {
+                    if (entry.status !==
+                        "rejected") {
+                        return;
+                    }
+
+                    logger.warn(
+                        "Anime catalog source search failed.",
+                        {
+                            source:
+                                [
+                                    "AniList",
+                                    "MyAnimeList",
+                                    "Kitsu",
+                                ][index],
+                            error:
+                                entry.reason?.message ||
+                                String(
+                                    entry.reason
+                                ),
+                        }
+                    );
+                }
+            );
+
+            if (!rows.length &&
+                settled.every(
+                    (entry) =>
+                        entry.status ===
+                        "rejected"
+                )) {
+                throw new HttpsError(
+                    "internal",
+                    "Anime search is temporarily unavailable."
+                );
+            }
+
+            return {
+                results:
+                    merge_anime_catalog_rows(
+                        rows
+                    ).slice(0, 24),
+            };
+        }
+    );
+
+exports.getAnimeCatalogDetails =
+    onCall(
+        {
+            secrets: [mal_client_id],
+        },
+        async (request) => {
+            if (!request.auth) {
+                throw new HttpsError(
+                    "unauthenticated",
+                    "You must be logged in."
+                );
+            }
+
+            const title =
+                String(
+                    request.data?.title || ""
+                ).trim();
+            const anilist_id =
+                Number(
+                    request.data?.anilist_id ||
+                    0
+                );
+            const mal_id =
+                Number(
+                    request.data?.mal_id ||
+                    0
+                );
+            const kitsu_id =
+                Number(
+                    request.data?.kitsu_id ||
+                    0
+                );
+
+            const sources = [];
+
+            if (title) {
+                const settled =
+                    await Promise.allSettled([
+                        search_anilist_anime_catalog(
+                            title,
+                            8
+                        ),
+                        search_mal_anime_catalog(
+                            title,
+                            8
+                        ),
+                        search_kitsu_anime_catalog(
+                            title,
+                            8
+                        ),
+                    ]);
+
+                for (const entry of
+                    settled) {
+                    if (entry.status ===
+                        "fulfilled") {
+                        sources.push(
+                            ...entry.value
+                        );
+                    }
+                }
+            }
+
+            let merged =
+                merge_anime_catalog_rows(
+                    sources
+                );
+
+            const wanted =
+                merged.find((item) =>
+                    (
+                        anilist_id &&
+                        Number(
+                            item.anilist_id
+                        ) === anilist_id
+                    ) ||
+                    (
+                        mal_id &&
+                        Number(
+                            item.mal_id
+                        ) === mal_id
+                    ) ||
+                    (
+                        kitsu_id &&
+                        Number(
+                            item.kitsu_id
+                        ) === kitsu_id
+                    )
+                ) ||
+                merged.find((item) =>
+                    title &&
+                    anime_catalog_normalize_title(
+                        item.title
+                    ) ===
+                    anime_catalog_normalize_title(
+                        title
+                    )
+                ) ||
+                merged[0];
+
+            if (!wanted) {
+                throw new HttpsError(
+                    "not-found",
+                    "Anime details were not found."
+                );
+            }
+
+            return wanted;
+        }
+    );
 
 exports.searchAniListAnime = onCall(async (request) => {
     if (!request.auth) {

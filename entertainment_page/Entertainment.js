@@ -64,7 +64,10 @@ function create_release_card(item) {
                 : "";
     const controls =
         release_rows_type === "anime"
-            ? ""
+            ? `
+        <button class="recommendation-watched" type="button"
+                data-release-action="watched" title="Add as watched"
+                aria-label="Add ${item.title} as watched">✓</button>`
             : release_rows_type === "manga"
                 ? `
         <button class="recommendation-watch-later" type="button"
@@ -325,7 +328,9 @@ let active_recommendation_detail = null;
 
 function recommendation_reason(item) {
     if (active_recommendation_type === "anime") {
-        return "Recommended from your MyAnimeList history";
+        return item.because_of?.length
+            ? `Because you liked ${item.because_of.join(" and ")}`
+            : "Recommended from your anime history";
     }
 
     if (active_recommendation_type === "manga") {
@@ -350,7 +355,10 @@ function create_recommendation_card(item) {
                 : "";
     const controls =
         active_recommendation_type === "anime"
-            ? ""
+            ? `
+        <button class="recommendation-watched" type="button"
+                data-rec-action="watched" title="Add as watched"
+                aria-label="Add ${item.title} as watched">✓</button>`
             : active_recommendation_type === "manga"
                 ? `
         <button class="recommendation-watch-later" type="button"
@@ -431,11 +439,27 @@ async function finish_recommendation_load(items) {
 
     recommendation_pool = items.filter((item) =>
         !library.some((entry) => {
-            if (active_recommendation_type === "anime" &&
-                item.mal_id &&
-                entry.mal_id) {
-                return Number(entry.mal_id) ===
-                    Number(item.mal_id);
+            if (active_recommendation_type === "anime") {
+                if (item.anilist_id &&
+                    entry.anilist_id &&
+                    Number(entry.anilist_id) ===
+                    Number(item.anilist_id)) {
+                    return true;
+                }
+
+                if (item.mal_id &&
+                    entry.mal_id &&
+                    Number(entry.mal_id) ===
+                    Number(item.mal_id)) {
+                    return true;
+                }
+
+                if (item.kitsu_id &&
+                    entry.kitsu_id &&
+                    Number(entry.kitsu_id) ===
+                    Number(item.kitsu_id)) {
+                    return true;
+                }
             }
 
             if (active_recommendation_type === "manga" &&
@@ -538,7 +562,7 @@ async function load_anime_recommendations(anime) {
     }
     try {
         const get_recommendations =
-            httpsCallable(functions, "getMALAnimeRecommendations");
+            httpsCallable(functions, "getAnimeRecommendations");
         const result = await get_recommendations({
             seeds: seeds.map((item) => ({
                 mal_id: item.mal_id,
@@ -729,8 +753,21 @@ async function open_recommendation_details(item) {
         active_recommendation_type === "manga"
             ? `${recommendation_year || "Year unavailable"}${item.anilist_score != null ?
                 ` · ⭐ ${Number(item.anilist_score)}% AniList` : ""}`
-            : `${item.year || "Year unavailable"}${item.tmdb_rating != null ?
-                ` · ⭐ ${Number(item.tmdb_rating).toFixed(1)} TMDB` : ""}`;
+            : active_recommendation_type === "anime"
+                ? [
+                    recommendation_year || "Year unavailable",
+                    item.anilist_score != null
+                        ? `⭐ ${Number(item.anilist_score)}% AniList`
+                        : null,
+                    item.mal_score != null
+                        ? `⭐ ${Number(item.mal_score).toFixed(2)} MAL`
+                        : null,
+                    item.kitsu_score != null
+                        ? `⭐ ${Number(item.kitsu_score).toFixed(1)}% Kitsu`
+                        : null
+                ].filter(Boolean).join(" · ")
+                : `${item.year || "Year unavailable"}${item.tmdb_rating != null ?
+                    ` · ⭐ ${Number(item.tmdb_rating).toFixed(1)} TMDB` : ""}`;
     recommendation_dialog_description.textContent =
         item.overview || "No description available.";
     recommendation_dialog_reason.textContent = recommendation_reason(item);
@@ -738,7 +775,9 @@ async function open_recommendation_details(item) {
         '<span>Loading full details…</span>';
     recommendation_dialog_actions.innerHTML =
         active_recommendation_type === "anime"
-            ? ""
+            ? `
+            <button type="button" class="recommendation-action primary"
+                    data-dialog-action="watched">✓ Add as watched</button>`
             : active_recommendation_type === "manga"
                 ? `
             <button type="button" class="recommendation-action primary"
@@ -803,8 +842,42 @@ async function open_recommendation_details(item) {
     }
 
     if (active_recommendation_type === "anime") {
+        recommendation_dialog_description.textContent =
+            item.description ||
+            item.overview ||
+            "No description available.";
+
+        const facts = [
+            item.media_type
+                ? `Type: ${String(item.media_type).replaceAll("_", " ")}`
+                : null,
+            item.total_episodes
+                ? `Episodes: ${item.total_episodes}`
+                : null,
+            item.average_episode_duration_seconds
+                ? `Episode runtime: ~${Math.round(
+                    Number(item.average_episode_duration_seconds) / 60
+                )} min`
+                : null,
+            item.start_date
+                ? `Aired: ${item.start_date}`
+                : null,
+            item.finish_date
+                ? `Ended: ${item.finish_date}`
+                : null,
+            item.status
+                ? `Status: ${String(item.status).replaceAll("_", " ")}`
+                : null,
+            item.genres?.length
+                ? `Genres: ${item.genres.join(", ")}`
+                : null,
+            item.sources?.length
+                ? `Data: ${item.sources.join(" · ")}`
+                : "Data: AniList public catalog"
+        ].filter(Boolean);
+
         recommendation_dialog_facts.innerHTML =
-            '<span>More anime details are provided through MyAnimeList.</span>';
+            facts.map((fact) => `<span>${fact}</span>`).join("");
         return;
     }
 
@@ -950,6 +1023,22 @@ async function refresh_seerr_status_slot(
 }
 
 async function run_recommendation_action(item, action, button) {
+    if (active_recommendation_type === "anime" &&
+        action === "watched") {
+        await add_global_anime_watched(
+            item,
+            button
+        );
+        ignored_recommendation_ids.add(
+            recommendation_id(item)
+        );
+        apply_recommendation_filter();
+        if (recommendation_dialog.open) {
+            recommendation_dialog.close();
+        }
+        return;
+    }
+
     if (active_recommendation_type === "manga" &&
         action === "manga_reading") {
         await add_global_manga_reading(
@@ -4249,40 +4338,55 @@ if (anime_add_button && anime_add_dialog && anime_add_close &&
             '<p class="recommendation-loading">Searching anime...</p>';
 
         try {
-            const search_anilist =
-                httpsCallable(functions, "searchAniListAnime");
-            const result = await search_anilist({query});
+            const search_catalog =
+                httpsCallable(functions, "searchAnimeCatalog");
+            const result = await search_catalog({query});
             anime_add_candidates = result.data.results || [];
 
             anime_add_results.innerHTML = anime_add_candidates.length
-                ? anime_add_candidates.map((item) => `
+                ? anime_add_candidates.map((item, index) => {
+                    const source_label =
+                        (item.sources || []).join(" · ");
+                    const score =
+                        item.anilist_score != null
+                            ? "⭐ " + Number(item.anilist_score) + "% AniList"
+                            : item.mal_score != null
+                                ? "⭐ " + Number(item.mal_score).toFixed(2) + " MAL"
+                                : item.kitsu_score != null
+                                    ? "⭐ " + Number(item.kitsu_score).toFixed(1) + "% Kitsu"
+                                    : "";
+                    const meta = [
+                        item.start_date
+                            ? item.start_date.slice(0, 4)
+                            : "",
+                        source_label,
+                        score
+                    ].filter(Boolean).join(" · ");
+
+                    return `
                     <button class="anime-add-result" type="button"
-                            data-anilist-add-id="${item.anilist_id}">
+                            data-anime-add-index="${index}">
                         ${item.poster_url ? `<img src="${item.poster_url}" alt="">` : ""}
-                        <span><strong>${item.title}</strong><small>${
-                            item.start_date ? item.start_date.slice(0, 4) : ""
-                        }${item.anilist_score != null
-                            ? ` · ⭐ ${Number(item.anilist_score)}%`
-                            : ""}</small></span>
+                        <span><strong>${item.title}</strong><small>${meta}</small></span>
                         <b>＋ Watched</b>
-                    </button>`).join("")
+                    </button>`;
+                }).join("")
                 : '<p class="recommendation-loading">No anime found.</p>';
         } catch (error) {
-            console.error("Unable to search anime:", error);
+            console.error("Unable to search anime catalog:", error);
             anime_add_results.innerHTML =
-                '<p class="recommendation-loading">Unable to search anime.</p>';
+                '<p class="recommendation-loading">Unable to search anime right now.</p>';
         }
     });
 
     anime_add_results.addEventListener("click", async (event) => {
-        const button = event.target.closest("[data-anilist-add-id]");
+        const button = event.target.closest("[data-anime-add-index]");
         if (!button) return;
 
-        const item = anime_add_candidates.find(
-            (entry) =>
-                entry.anilist_id ===
-                Number(button.dataset.anilistAddId)
-        );
+        const item =
+            anime_add_candidates[
+                Number(button.dataset.animeAddIndex)
+            ];
         if (!item) return;
 
         button.disabled = true;
@@ -4292,9 +4396,9 @@ if (anime_add_button && anime_add_dialog && anime_add_close &&
                 Number(item.total_episodes || 0);
 
             const row = {
-                mal_id: null,
-                anilist_id: item.anilist_id,
-                kitsu_id: null,
+                mal_id: item.mal_id || null,
+                anilist_id: item.anilist_id || null,
+                kitsu_id: item.kitsu_id || null,
                 title: item.title,
                 title_romaji: item.title_romaji,
                 title_native: item.title_native,
@@ -4311,9 +4415,9 @@ if (anime_add_button && anime_add_dialog && anime_add_close &&
                 average_episode_duration_ms:
                     Number(item.average_episode_duration_seconds || 0) ||
                     null,
-                mal_score: null,
-                anilist_score: item.anilist_score,
-                kitsu_score: null,
+                mal_score: item.mal_score ?? null,
+                anilist_score: item.anilist_score ?? null,
+                kitsu_score: item.kitsu_score ?? null,
                 description: item.description,
                 genres: item.genres || [],
                 site_url: item.site_url,
@@ -4835,13 +4939,7 @@ async function open_anime_editor(anime_id) {
                 ? ` · ⭐ ${Number(active_anime.kitsu_score).toFixed(1)}% Kitsu`
                 : "";
     anime_detail_meta.textContent = `${media_type}${source_score}`;
-    const can_write_to_mal =
-        Boolean(active_anime.mal_id) &&
-        mal_connect_button?.dataset.connected === "true";
-
-    anime_edit_save.textContent = can_write_to_mal
-        ? "Save to MyAnimeList"
-        : "Save in Stellaz";
+    anime_edit_save.textContent = "Save changes";
     anime_detail_description.textContent =
         active_anime.description || "Loading description…";
     anime_detail_facts.innerHTML = [
@@ -4858,57 +4956,243 @@ async function open_anime_editor(anime_id) {
     render_anime_episode_picker();
     anime_edit_dialog.showModal();
 
-    if (active_anime.mal_id &&
-        mal_connect_button?.dataset.connected === "true") {
-        try {
-            const get_details = httpsCallable(functions, "getMALAnimeDetails");
-            const result = await get_details({anime_id: active_anime.mal_id});
-            if (!active_anime || active_anime.id !== opened_anime_id) return;
+    try {
+        const get_details =
+            httpsCallable(
+                functions,
+                "getAnimeCatalogDetails"
+            );
+        const result =
+            await get_details({
+                title:
+                    active_anime.title,
+                anilist_id:
+                    active_anime.anilist_id ||
+                    null,
+                mal_id:
+                    active_anime.mal_id ||
+                    null,
+                kitsu_id:
+                    active_anime.kitsu_id ||
+                    null
+            });
 
-            const data = result.data;
-            anime_detail_description.textContent =
-                data.synopsis || active_anime.description ||
-                "No description available.";
-            const facts = [
-                data.media_type ? `Type: ${data.media_type}` : null,
-                data.num_episodes ? `Episodes: ${data.num_episodes}` : null,
-                data.average_episode_duration ?
-                    `Episode runtime: ~${Math.round(
-                        data.average_episode_duration / 60
-                    )} min` : null,
-                data.start_date ? `Aired: ${data.start_date}` : null,
-                data.end_date ? `Ended: ${data.end_date}` : null,
-                data.status ? `Status: ${data.status.replaceAll("_", " ")}` : null,
-                data.source ? `Source: ${data.source.replaceAll("_", " ")}` : null,
-                data.rating ? `Rating: ${data.rating.replaceAll("_", " ")}` : null,
-                data.genres?.length ? `Genres: ${data.genres.join(", ")}` : null,
-                data.studios?.length ? `Studios: ${data.studios.join(", ")}` : null,
-                data.mean ? `MAL score: ${Number(data.mean).toFixed(2)}` : null,
-                data.rank ? `Rank: #${data.rank}` : null,
-                data.popularity ? `Popularity: #${data.popularity}` : null
-            ].filter(Boolean);
-            anime_detail_facts.innerHTML =
-                facts.map((fact) => `<span>${fact}</span>`).join("");
-        } catch (error) {
-            console.error("Unable to load anime details:", error);
-            anime_detail_description.textContent =
-                active_anime.description ||
-                "Additional anime details could not be loaded.";
+        if (!active_anime ||
+            active_anime.id !==
+                opened_anime_id) {
+            return;
         }
-    } else {
-        const facts = [
-            active_anime.media_type ? `Type: ${active_anime.media_type.replaceAll("_", " ")}` : null,
-            active_anime.total_episodes ? `Episodes: ${active_anime.total_episodes}` : null,
-            active_anime.start_date ? `Aired: ${active_anime.start_date}` : null,
-            active_anime.finish_date ? `Ended: ${active_anime.finish_date}` : null,
-            active_anime.genres?.length ? `Genres: ${active_anime.genres.join(", ")}` : null,
-            active_anime.anilist_score != null ?
-                `AniList score: ${Number(active_anime.anilist_score)}%` : null
+
+        const data =
+            result.data || {};
+
+        const score_parts = [
+            data.anilist_score != null
+                ? "⭐ " +
+                    Number(
+                        data.anilist_score
+                    ) +
+                    "% AniList"
+                : null,
+            data.mal_score != null
+                ? "⭐ " +
+                    Number(
+                        data.mal_score
+                    ).toFixed(2) +
+                    " MAL"
+                : null,
+            data.kitsu_score != null
+                ? "⭐ " +
+                    Number(
+                        data.kitsu_score
+                    ).toFixed(1) +
+                    "% Kitsu"
+                : null
         ].filter(Boolean);
+
+        const detail_type =
+            data.media_type
+                ? String(
+                    data.media_type
+                )
+                    .replaceAll(
+                        "_",
+                        " "
+                    )
+                    .toUpperCase()
+                : media_type;
+
+        anime_detail_meta.textContent =
+            [
+                detail_type,
+                ...score_parts
+            ].join(" · ");
+
         anime_detail_description.textContent =
-            active_anime.description || "No description available.";
+            data.description ||
+            active_anime.description ||
+            "No description available.";
+
+        const facts = [
+            data.sources?.length
+                ? "Data: " +
+                    data.sources.join(
+                        " · "
+                    )
+                : null,
+            data.total_episodes
+                ? "Episodes: " +
+                    data.total_episodes
+                : null,
+            data.average_episode_duration_seconds
+                ? "Episode runtime: ~" +
+                    Math.round(
+                        Number(
+                            data.average_episode_duration_seconds
+                        ) / 60
+                    ) +
+                    " min"
+                : null,
+            data.start_date
+                ? "Aired: " +
+                    data.start_date
+                : null,
+            data.finish_date
+                ? "Ended: " +
+                    data.finish_date
+                : null,
+            data.status
+                ? "Status: " +
+                    String(
+                        data.status
+                    ).replaceAll(
+                        "_",
+                        " "
+                    )
+                : null,
+            data.genres?.length
+                ? "Genres: " +
+                    data.genres.join(", ")
+                : null
+        ].filter(Boolean);
+
         anime_detail_facts.innerHTML =
-            facts.map((fact) => `<span>${fact}</span>`).join("");
+            facts.map(
+                (fact) =>
+                    `<span>${fact}</span>`
+            ).join("");
+
+        const patch = {};
+        [
+            "mal_id",
+            "anilist_id",
+            "kitsu_id",
+            "mal_score",
+            "anilist_score",
+            "kitsu_score",
+            "total_episodes",
+            "media_type",
+            "start_date",
+            "finish_date",
+            "poster_url",
+            "description",
+            "site_url"
+        ].forEach((field) => {
+            if ((active_anime[field] === null ||
+                 active_anime[field] === undefined ||
+                 active_anime[field] === "") &&
+                data[field] !== null &&
+                data[field] !== undefined &&
+                data[field] !== "") {
+                patch[field] =
+                    data[field];
+            }
+        });
+
+        if ((!active_anime.genres ||
+             !active_anime.genres.length) &&
+            data.genres?.length) {
+            patch.genres =
+                data.genres;
+        }
+
+        if ((!active_anime.synonyms ||
+             !active_anime.synonyms.length) &&
+            data.synonyms?.length) {
+            patch.synonyms =
+                data.synonyms;
+        }
+
+        if (!active_anime
+            .average_episode_duration_ms &&
+            data.average_episode_duration_seconds) {
+            patch.average_episode_duration_ms =
+                Number(
+                    data.average_episode_duration_seconds
+                );
+        }
+
+        if (Object.keys(patch).length) {
+            const {error} =
+                await supabase
+                    .from("anime")
+                    .update(patch)
+                    .eq(
+                        "id",
+                        active_anime.id
+                    );
+
+            if (!error) {
+                Object.assign(
+                    active_anime,
+                    patch
+                );
+                if (patch.poster_url) {
+                    anime_edit_cover.src =
+                        patch.poster_url;
+                    anime_edit_cover.hidden =
+                        false;
+                }
+            }
+        }
+    } catch (error) {
+        console.warn(
+            "Unable to enrich anime details from public catalogs:",
+            error
+        );
+
+        const facts = [
+            active_anime.media_type
+                ? "Type: " +
+                    active_anime.media_type
+                        .replaceAll("_", " ")
+                : null,
+            active_anime.total_episodes
+                ? "Episodes: " +
+                    active_anime.total_episodes
+                : null,
+            active_anime.start_date
+                ? "Aired: " +
+                    active_anime.start_date
+                : null,
+            active_anime.finish_date
+                ? "Ended: " +
+                    active_anime.finish_date
+                : null,
+            active_anime.genres?.length
+                ? "Genres: " +
+                    active_anime.genres.join(", ")
+                : null
+        ].filter(Boolean);
+
+        anime_detail_description.textContent =
+            active_anime.description ||
+            "No description available.";
+        anime_detail_facts.innerHTML =
+            facts.map(
+                (fact) =>
+                    `<span>${fact}</span>`
+            ).join("");
     }
 }
 
@@ -5010,67 +5294,107 @@ anime_edit_form.addEventListener("submit", async (event) => {
     anime_edit_save.textContent = "Saving...";
 
     try {
-        const score = anime_edit_score.value === ""
-            ? null
-            : Number(anime_edit_score.value);
-
-        const can_write_to_mal =
-            Boolean(active_anime.mal_id) &&
-            mal_connect_button?.dataset.connected === "true";
-
-        if (can_write_to_mal) {
-            const update_mal = httpsCallable(
-                functions,
-                "updateMALAnimeStatus"
-            );
-            const result = await update_mal({
-                anime_id: active_anime.mal_id,
-                status: anime_edit_status.value,
-                episodes_watched: selected_anime_episode,
-                total_episodes: Number(active_anime.total_episodes || 0),
-                score
-            });
-            if (result.data?.status !== anime_edit_status.value) {
-                throw new Error(
-                    "MyAnimeList did not save the selected status."
+        const score =
+            anime_edit_score.value === ""
+                ? null
+                : Number(
+                    anime_edit_score.value
                 );
-            }
 
-            anime_edit_dialog.close();
-            await sync_mal_anime();
-            show_toast("Updated on MyAnimeList.");
-        } else {
-            let watched = selected_anime_episode;
-            const total = Number(active_anime.total_episodes || 0);
-            if (anime_edit_status.value === "completed" && total > 0) {
-                watched = total;
-            }
+        let watched =
+            selected_anime_episode;
+        const total =
+            Number(
+                active_anime.total_episodes ||
+                0
+            );
 
-            const {error} = await supabase
+        if (anime_edit_status.value ===
+                "completed" &&
+            total > 0) {
+            watched = total;
+        }
+
+        const {error} =
+            await supabase
                 .from("anime")
                 .update({
-                    status: anime_edit_status.value,
-                    episodes_watched: watched,
-                    my_rating: score,
-                    synced_at: new Date().toISOString()
+                    status:
+                        anime_edit_status.value,
+                    episodes_watched:
+                        watched,
+                    my_rating:
+                        score,
+                    synced_at:
+                        new Date().toISOString()
                 })
-                .eq("id", active_anime.id);
-            if (error) throw error;
+                .eq(
+                    "id",
+                    active_anime.id
+                );
 
-            anime_edit_dialog.close();
-            await load_anime_library();
-            show_toast("Anime progress saved in Stellaz.");
+        if (error) throw error;
+
+        const should_sync_mal =
+            Boolean(
+                active_anime.mal_id
+            ) &&
+            mal_connect_button
+                ?.dataset.connected ===
+                "true";
+
+        let mal_sync_failed = false;
+
+        if (should_sync_mal) {
+            try {
+                const update_mal =
+                    httpsCallable(
+                        functions,
+                        "updateMALAnimeStatus"
+                    );
+
+                await update_mal({
+                    anime_id:
+                        active_anime.mal_id,
+                    status:
+                        anime_edit_status.value,
+                    episodes_watched:
+                        watched,
+                    total_episodes:
+                        total,
+                    score
+                });
+            } catch (mal_error) {
+                mal_sync_failed = true;
+                console.warn(
+                    "Saved in Stellaz, but MAL sync failed:",
+                    mal_error
+                );
+            }
         }
+
+        anime_edit_dialog.close();
+        await load_anime_library();
+
+        show_toast(
+            mal_sync_failed
+                ? "Saved in Stellaz. MyAnimeList sync failed."
+                : should_sync_mal
+                    ? "Saved in Stellaz and synced to MyAnimeList."
+                    : "Anime progress saved in Stellaz."
+        );
     } catch (error) {
-        console.error("Unable to update anime:", error);
-        alert("Unable to save this anime. Please try again.");
+        console.error(
+            "Unable to update anime:",
+            error
+        );
+        alert(
+            "Unable to save this anime. Please try again."
+        );
     } finally {
         anime_edit_save.disabled = false;
         anime_edit_save.textContent =
-            active_anime?.mal_id &&
-            mal_connect_button?.dataset.connected === "true"
-                ? "Save to MyAnimeList"
-                : "Save in Stellaz";
+            "Save changes";
     }
 });
 
@@ -6951,7 +7275,7 @@ async function run_global_search(query) {
     const anime_search_function =
         httpsCallable(
             functions,
-            "searchAniListAnime"
+            "searchAnimeCatalog"
         );
     const manga_search_function =
         httpsCallable(
@@ -7090,10 +7414,12 @@ async function add_global_anime_watched(
             );
 
         const row = {
-            mal_id: null,
+            mal_id:
+                item.mal_id || null,
             anilist_id:
-                item.anilist_id,
-            kitsu_id: null,
+                item.anilist_id || null,
+            kitsu_id:
+                item.kitsu_id || null,
             title: item.title,
             title_romaji:
                 item.title_romaji,
@@ -7120,10 +7446,12 @@ async function add_global_anime_watched(
                     item.average_episode_duration_seconds ||
                     0
                 ) || null,
-            mal_score: null,
+            mal_score:
+                item.mal_score ?? null,
             anilist_score:
-                item.anilist_score,
-            kitsu_score: null,
+                item.anilist_score ?? null,
+            kitsu_score:
+                item.kitsu_score ?? null,
             description:
                 item.description,
             genres:
