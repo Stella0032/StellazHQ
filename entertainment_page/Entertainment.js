@@ -24,6 +24,105 @@ window.test_stellaz_ai = async (message) => {
 //#endregion
 
 
+// Supabase uses the Firebase ID token supplied by firebase_config.js.
+// A cold page load can briefly race Firebase token restoration/refresh,
+// which previously made the first PostgREST request fail with 401 even
+// though a normal reload immediately worked.
+function supabase_auth_error(error) {
+    const value = [
+        error?.code,
+        error?.message,
+        error?.details,
+        error?.hint
+    ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+    return value.includes("401") ||
+        value.includes("unauthorized") ||
+        value.includes("jwt") ||
+        value.includes("pgrst301") ||
+        value.includes("pgrst303");
+}
+
+function wait(milliseconds) {
+    return new Promise((resolve) =>
+        window.setTimeout(resolve, milliseconds)
+    );
+}
+
+async function supabase_read_with_auth_retry(query) {
+    let result = await query();
+
+    if (!result?.error ||
+        !auth.currentUser ||
+        !supabase_auth_error(result.error)) {
+        return result;
+    }
+
+    console.warn(
+        "Supabase authentication was not ready on the first request. Retrying."
+    );
+
+    await auth.currentUser.getIdToken(true);
+    await wait(180);
+
+    result = await query();
+
+    if (result?.error &&
+        supabase_auth_error(result.error)) {
+        await auth.currentUser.getIdToken(true);
+        await wait(420);
+        result = await query();
+    }
+
+    return result;
+}
+
+async function prepare_supabase_access(user) {
+    let token_result =
+        await user.getIdTokenResult(false);
+
+    if (token_result.claims.role !== "authenticated") {
+        const set_supabase_role =
+            httpsCallable(
+                functions,
+                "setSupabaseRole"
+            );
+        const result =
+            await set_supabase_role();
+
+        token_result =
+            await user.getIdTokenResult(true);
+
+        if (token_result.claims.role !== "authenticated") {
+            throw new Error(
+                "Supabase authentication claim was not available after refresh."
+            );
+        }
+
+        console.log(
+            "Supabase role added successfully!"
+        );
+        console.log(
+            result.data.message
+        );
+    } else {
+        // Ensure Firebase has a usable token before any Supabase query.
+        await user.getIdToken(false);
+        console.log(
+            "Supabase authentication already ready."
+        );
+    }
+
+    console.log(
+        "Firebase UID:",
+        user.uid
+    );
+}
+
+
 
 //? ---------------------------------
 //* ----- New & Upcoming Releases ----
@@ -1457,10 +1556,17 @@ async function enrich_missing_movie_metadata(movies) {
 
 async function load_movie_library({refresh_recommendations = true} = {}) {
     try {
-        const { data: movies, error } = await supabase
-            .from("movies")
-            .select("*")
-            .order("year", { ascending: false });
+        const {data: movies, error} =
+            await supabase_read_with_auth_retry(
+                () =>
+                    supabase
+                        .from("movies")
+                        .select("*")
+                        .order(
+                            "year",
+                            {ascending: false}
+                        )
+            );
 
         if (error) {
             throw error;
@@ -1746,12 +1852,24 @@ async function load_all_watched_tv_episodes() {
     const rows = [];
 
     for (let from = 0; ; from += page_size) {
-        const {data, error} = await supabase
-            .from("tv_episode_progress")
-            .select("id,tv_show_id,season_number,episode_number,watched")
-            .eq("watched", true)
-            .order("id", {ascending: true})
-            .range(from, from + page_size - 1);
+        const {data, error} =
+            await supabase_read_with_auth_retry(
+                () =>
+                    supabase
+                        .from("tv_episode_progress")
+                        .select(
+                            "id,tv_show_id,season_number,episode_number,watched"
+                        )
+                        .eq("watched", true)
+                        .order(
+                            "id",
+                            {ascending: true}
+                        )
+                        .range(
+                            from,
+                            from + page_size - 1
+                        )
+            );
 
         if (error) throw error;
 
@@ -1766,8 +1884,17 @@ async function load_all_watched_tv_episodes() {
 
 async function load_show_library() {
     try {
-        const {data: shows, error} = await supabase
-            .from("tv_shows").select("*").order("year", {ascending: false});
+        const {data: shows, error} =
+            await supabase_read_with_auth_retry(
+                () =>
+                    supabase
+                        .from("tv_shows")
+                        .select("*")
+                        .order(
+                            "year",
+                            {ascending: false}
+                        )
+            );
 
         if (error) throw error;
 
@@ -3931,10 +4058,14 @@ function render_manga_library() {
 
 async function load_manga_library() {
     try {
-        const {data, error} = await supabase
-            .from("manga_library")
-            .select("*")
-            .order("title");
+        const {data, error} =
+            await supabase_read_with_auth_retry(
+                () =>
+                    supabase
+                        .from("manga_library")
+                        .select("*")
+                        .order("title")
+            );
         if (error) throw error;
 
         manga_library = data || [];
@@ -4811,7 +4942,14 @@ function anime_episode_duration_seconds(item) {
 }
 
 async function load_anime_library() {
-    const {data, error} = await supabase.from("anime").select("*").order("title");
+    const {data, error} =
+        await supabase_read_with_auth_retry(
+            () =>
+                supabase
+                    .from("anime")
+                    .select("*")
+                    .order("title")
+        );
     if (error) throw error;
 
     anime_library = data || [];
@@ -6685,19 +6823,12 @@ onAuthStateChanged(auth, async (user) => {
     }
 
     try {
-        const set_supabase_role = httpsCallable(functions, "setSupabaseRole");
-        const result = await set_supabase_role();
-
-        // setSupabaseRole changes Firebase custom claims. Force-refresh the
-        // Firebase token before Supabase is allowed to make its first request.
-        // On a brand-new login the old token can otherwise briefly remain
-        // cached and Supabase sees the first library request as unauthorized.
-        await user.getIdToken(true);
-        await user.getIdToken(false);
-
-        console.log("Supabase role added successfully!");
-        console.log(result.data.message);
-        console.log("Firebase UID:", user.uid);
+        // Existing users already have the Supabase role claim. Avoid rewriting
+        // Firebase custom claims on every page load because that can create a
+        // short token-refresh race on a cold visit.
+        await prepare_supabase_access(
+            user
+        );
 
         await finish_plex_connection();
         await load_plex_connection_status();
