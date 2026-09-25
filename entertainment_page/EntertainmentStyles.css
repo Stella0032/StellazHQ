@@ -4221,35 +4221,104 @@ html[data-theme="flurple"] .global-search-dialog{
 }
 
 .explore-media-block {
-    margin-top: 0;
-    padding-top: 0;
-}
-
-.explore-media-block + .explore-media-block {
-    margin-top: 24px;
-    padding-top: 20px;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.explore-panel {
-    margin-top: 10px;
+    margin-top: 14px;
     padding: 18px 20px 20px;
     border-radius: 18px;
 }
 
-.explore-panel .recommendations-header {
-    align-items: center;
+.explore-media-block + .explore-media-block {
+    margin-top: 20px;
 }
 
-.explore-panel .recommendation-grid {
+.explore-media-header {
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.explore-media-header h2 {
+    margin: 0;
+    color: #f4f5fb;
+    font-size: 22px;
+}
+
+.explore-row {
+    padding-top: 14px;
+}
+
+.explore-row + .explore-row {
     margin-top: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
 }
 
-.explore-panel .recommendations-header h3,
+.explore-row-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.explore-row-header h3,
 .friend-activity-section h3 {
     margin: 0;
     color: #eef1fb;
-    font-size: 18px;
+    font-size: 17px;
+}
+
+.explore-row-actions,
+.explore-scroll-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.explore-scroll-controls button {
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 50%;
+    color: #eef1fb;
+    background: rgba(255, 255, 255, 0.055);
+    cursor: pointer;
+    font: inherit;
+    font-size: 21px;
+    line-height: 1;
+    transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+}
+
+.explore-scroll-controls button:hover {
+    transform: translateY(-1px);
+    border-color: rgba(123, 220, 255, 0.55);
+    background: rgba(123, 220, 255, 0.1);
+}
+
+.explore-scroll-track.recommendation-grid {
+    min-height: 0;
+    margin-top: 10px;
+    padding-bottom: 3px;
+    display: flex;
+    gap: 16px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-behavior: smooth;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+}
+
+.explore-scroll-track.recommendation-grid::-webkit-scrollbar {
+    display: none;
+}
+
+.explore-scroll-track > .recommendation-card {
+    flex: 0 0 calc((100% - 96px) / 7);
+    scroll-snap-align: start;
+}
+
+.explore-scroll-track > .recommendation-loading {
+    flex: 0 0 100%;
 }
 
 .friends-directory-panel {
@@ -4333,6 +4402,10 @@ html[data-theme="flurple"] .global-search-dialog{
 }
 
 @media (max-width: 1100px) {
+    .explore-scroll-track > .recommendation-card {
+        flex-basis: calc((100% - 64px) / 5);
+    }
+
     .friends-overview-grid {
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
@@ -4363,18 +4436,47 @@ html[data-theme="flurple"] .global-search-dialog{
         font-size: 29px;
     }
 
+    .explore-media-block {
+        padding: 14px;
+    }
+
     .explore-media-block + .explore-media-block {
-        margin-top: 20px;
-        padding-top: 16px;
+        margin-top: 16px;
     }
 
-    .explore-panel {
-        padding: 15px;
+    .explore-media-header h2 {
+        font-size: 19px;
     }
 
-    .explore-panel .recommendations-header h3,
+    .explore-row {
+        padding-top: 11px;
+    }
+
+    .explore-row + .explore-row {
+        margin-top: 11px;
+    }
+
+    .explore-row-header h3,
     .friend-activity-section h3 {
+        font-size: 14px;
+    }
+
+    .explore-scroll-controls {
+        gap: 5px;
+    }
+
+    .explore-scroll-controls button {
+        width: 26px;
+        height: 26px;
         font-size: 18px;
+    }
+
+    .explore-scroll-track.recommendation-grid {
+        gap: 6px;
+    }
+
+    .explore-scroll-track > .recommendation-card {
+        flex-basis: calc((100% - 30px) / 6);
     }
 
     .friends-overview-grid {
