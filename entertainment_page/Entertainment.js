@@ -341,7 +341,8 @@ upcoming_release_grid.addEventListener("click", handle_release_click);
 //? ---------------------------------
 //#region
 const recommendation_grid = document.getElementById("recommendation_grid");
-const recommendation_count = document.querySelector(".recommendation-count");
+const recommendation_count =
+    document.querySelector("#recommendations_panel .recommendation-count");
 const recommendation_title = document.getElementById("recommendation_title");
 const recommendation_genre_filter =
     document.getElementById("recommendation_genre_filter");
@@ -6588,13 +6589,39 @@ const friend_activity_panel =
     document.getElementById("friend_activity_panel");
 const friend_activity_count =
     document.getElementById("friend_activity_count");
-const friend_activity_grid =
-    document.getElementById("friend_activity_grid");
+const friend_activity_grids = {
+    movie:
+        document.getElementById(
+            "friend_activity_movie_grid"
+        ),
+    show:
+        document.getElementById(
+            "friend_activity_show_grid"
+        ),
+    anime:
+        document.getElementById(
+            "friend_activity_anime_grid"
+        ),
+    manga:
+        document.getElementById(
+            "friend_activity_manga_grid"
+        )
+};
+const friends_overview_grid =
+    document.getElementById(
+        "friends_overview_grid"
+    );
+const friends_overview_count =
+    document.getElementById(
+        "friends_overview_count"
+    );
+
 let friend_activity_data = {
     friend_count: 0,
     items: []
 };
-let active_entertainment_category = "Movies";
+let active_entertainment_category =
+    "Movies";
 
 function friend_activity_time_label(value) {
     const time = new Date(value).getTime();
@@ -6607,97 +6634,65 @@ function friend_activity_time_label(value) {
 
     if (seconds < 60) return "just now";
     if (seconds < 3600) {
-        const minutes = Math.floor(seconds / 60);
+        const minutes =
+            Math.floor(seconds / 60);
         return minutes + "m ago";
     }
     if (seconds < 86400) {
-        const hours = Math.floor(seconds / 3600);
+        const hours =
+            Math.floor(seconds / 3600);
         return hours + "h ago";
     }
 
-    const days = Math.floor(seconds / 86400);
+    const days =
+        Math.floor(seconds / 86400);
     if (days < 30) return days + "d ago";
 
-    return new Date(time).toLocaleDateString(
-        undefined,
-        {month: "short", day: "numeric"}
-    );
+    return new Date(time)
+        .toLocaleDateString(
+            undefined,
+            {
+                month: "short",
+                day: "numeric"
+            }
+        );
 }
 
-function render_friend_recent_activity(data = friend_activity_data) {
-    if (!friend_activity_panel ||
-        !friend_activity_grid ||
-        !friend_activity_count) {
-        return;
-    }
+function friend_activity_type_label(type) {
+    return ({
+        movie: "MOVIE",
+        show: "TV",
+        anime: "ANIME",
+        manga: "MANGA"
+    })[type] || String(type || "")
+        .toUpperCase();
+}
 
-    friend_activity_data = {
-        friend_count:
-            Number(data?.friend_count || 0),
-        items:
-            Array.isArray(data?.items)
-                ? data.items
-                : []
-    };
+function render_friend_activity_cards(
+    grid,
+    items
+) {
+    if (!grid) return;
 
-    const friend_count =
-        friend_activity_data.friend_count;
+    grid.replaceChildren();
 
-    if (friend_count <= 0 ||
-        active_entertainment_category ===
-            "Manga / Manhwa") {
-        friend_activity_panel.hidden = true;
-        return;
-    }
-
-    const category_media_type =
-        active_entertainment_category ===
-            "TV Shows" ?
-            "show" :
-            active_entertainment_category ===
-                "Anime" ?
-                "anime" :
-                "movie";
-
-    const category_items =
-        friend_activity_data.items
-            .filter(
-                (item) =>
-                    item.media_type ===
-                    category_media_type
-            );
-
-    friend_activity_panel.hidden = false;
     const limit =
-        window.matchMedia("(max-width: 700px)").matches
+        window.matchMedia(
+            "(max-width: 700px)"
+        ).matches
             ? 6
             : 7;
     const visible =
-        category_items.slice(0, limit);
-    friend_activity_count.textContent =
-        visible.length
-            ? visible.length + " RECENT"
-            : friend_count +
-                (friend_count === 1
-                    ? " FRIEND"
-                    : " FRIENDS");
-
-    friend_activity_grid.replaceChildren();
+        items.slice(0, limit);
 
     if (!visible.length) {
         const empty =
             document.createElement("p");
         empty.className =
             "recommendation-loading";
-        const category_label =
-            active_entertainment_category === "TV Shows"
-                ? "TV show"
-                : active_entertainment_category.toLowerCase();
         empty.textContent =
-            "No recent " +
-            category_label +
-            " activity to show yet.";
-        friend_activity_grid.appendChild(empty);
+            "No recent activity in this category yet.";
+        grid.appendChild(empty);
         return;
     }
 
@@ -6723,7 +6718,9 @@ function render_friend_recent_activity(data = friend_activity_data) {
                 (item.title || "Title") +
                 " poster";
             poster.loading = "lazy";
-            poster_wrap.appendChild(poster);
+            poster_wrap.appendChild(
+                poster
+            );
         } else {
             const placeholder =
                 document.createElement("div");
@@ -6743,12 +6740,12 @@ function render_friend_recent_activity(data = friend_activity_data) {
         type_badge.className =
             "friend-activity-type";
         type_badge.textContent =
-            item.media_type === "show"
-                ? "TV"
-                : item.media_type === "anime"
-                    ? "ANIME"
-                    : "MOVIE";
-        poster_wrap.appendChild(type_badge);
+            friend_activity_type_label(
+                item.media_type
+            );
+        poster_wrap.appendChild(
+            type_badge
+        );
 
         const title =
             document.createElement("h3");
@@ -6769,13 +6766,21 @@ function render_friend_recent_activity(data = friend_activity_data) {
         const detail =
             document.createElement("span");
         const parts = [
-            item.detail || "Watched",
+            item.detail ||
+                (
+                    item.media_type ===
+                    "manga"
+                        ? "Updated reading progress"
+                        : "Watched"
+                ),
             friend_activity_time_label(
                 item.activity_at
-            ),
+            )
         ].filter(Boolean);
+
         detail.textContent =
-            " · " + parts.join(" · ");
+            " · " +
+            parts.join(" · ");
 
         meta.append(
             friend_name,
@@ -6787,10 +6792,65 @@ function render_friend_recent_activity(data = friend_activity_data) {
             title,
             meta
         );
-        friend_activity_grid.appendChild(
-            card
-        );
+        grid.appendChild(card);
     });
+}
+
+function render_friend_recent_activity(
+    data = friend_activity_data
+) {
+    if (!friend_activity_panel ||
+        !friend_activity_count) {
+        return;
+    }
+
+    friend_activity_data = {
+        friend_count:
+            Number(
+                data?.friend_count || 0
+            ),
+        items:
+            Array.isArray(data?.items)
+                ? data.items
+                : []
+    };
+
+    const friend_count =
+        friend_activity_data
+            .friend_count;
+
+    if (friend_count <= 0) {
+        friend_activity_panel.hidden =
+            true;
+        return;
+    }
+
+    friend_activity_panel.hidden =
+        false;
+    friend_activity_count.textContent =
+        friend_count +
+        (
+            friend_count === 1
+                ? " FRIEND"
+                : " FRIENDS"
+        );
+
+    for (const type of [
+        "movie",
+        "show",
+        "anime",
+        "manga"
+    ]) {
+        render_friend_activity_cards(
+            friend_activity_grids[type],
+            friend_activity_data.items
+                .filter(
+                    (item) =>
+                        item.media_type ===
+                        type
+                )
+        );
+    }
 }
 
 async function load_friend_recent_activity() {
@@ -6804,6 +6864,7 @@ async function load_friend_recent_activity() {
             );
         const result =
             await get_activity();
+
         render_friend_recent_activity(
             result.data || {}
         );
@@ -6812,44 +6873,696 @@ async function load_friend_recent_activity() {
             "Unable to load recent friend activity:",
             error
         );
-        friend_activity_panel.hidden = true;
+        friend_activity_panel.hidden =
+            true;
     }
 }
 
+function render_entertainment_friends(
+    friends
+) {
+    if (!friends_overview_grid ||
+        !friends_overview_count) {
+        return;
+    }
+
+    friends_overview_grid
+        .replaceChildren();
+
+    friends_overview_count.textContent =
+        friends.length +
+        (
+            friends.length === 1
+                ? " FRIEND"
+                : " FRIENDS"
+        );
+
+    if (!friends.length) {
+        const empty =
+            document.createElement("p");
+        empty.className =
+            "recommendation-loading";
+        empty.textContent =
+            "No friends yet. You can add friends from your profile menu.";
+        friends_overview_grid
+            .appendChild(empty);
+        return;
+    }
+
+    friends.forEach((profile) => {
+        const card =
+            document.createElement("article");
+        card.className =
+            "entertainment-friend-card";
+
+        const avatar_wrap =
+            document.createElement("div");
+        avatar_wrap.className =
+            "entertainment-friend-avatar";
+
+        if (profile.profile_avatar) {
+            const image =
+                document.createElement("img");
+            image.src =
+                profile.profile_avatar;
+            image.alt = "";
+            avatar_wrap.appendChild(
+                image
+            );
+        } else {
+            avatar_wrap.textContent =
+                String(
+                    profile.username ||
+                    "?"
+                ).slice(0, 1)
+                    .toUpperCase();
+        }
+
+        const copy =
+            document.createElement("div");
+        const name =
+            document.createElement("strong");
+        name.textContent =
+            profile.username ||
+            "Stellaz user";
+
+        const status =
+            document.createElement("span");
+        status.textContent =
+            "Friend";
+
+        copy.append(
+            name,
+            status
+        );
+        card.append(
+            avatar_wrap,
+            copy
+        );
+        friends_overview_grid
+            .appendChild(card);
+    });
+}
+
+async function load_entertainment_friends() {
+    if (!friends_overview_grid) return;
+
+    try {
+        const get_overview =
+            httpsCallable(
+                functions,
+                "getFriendOverview"
+            );
+        const result =
+            await get_overview();
+        render_entertainment_friends(
+            result.data?.friends || []
+        );
+    } catch (error) {
+        console.error(
+            "Unable to load Entertainment friends:",
+            error
+        );
+        friends_overview_count.textContent =
+            "ERROR";
+        friends_overview_grid.innerHTML =
+            '<p class="recommendation-loading">Unable to load friends right now.</p>';
+    }
+}
+
+
+//? ----------------------------------
+//* ----- Explore Hub ---------------
+//? ----------------------------------
+//#region
+const explore_view =
+    document.getElementById(
+        "explore_view"
+    );
+
+const explore_state = {
+    movie: {
+        pool: [],
+        recommendations: [],
+        releases: [],
+        ignored: new Set()
+    },
+    show: {
+        pool: [],
+        recommendations: [],
+        releases: [],
+        ignored: new Set()
+    },
+    anime: {
+        pool: [],
+        recommendations: [],
+        releases: [],
+        ignored: new Set()
+    },
+    manga: {
+        pool: [],
+        recommendations: [],
+        releases: [],
+        ignored: new Set()
+    }
+};
+
+let explore_loaded = false;
+let explore_loading = null;
+let entertainment_data_ready =
+    false;
+
+function recommendation_id_for_type(
+    item,
+    type
+) {
+    if (type === "anime") {
+        return Number(
+            item.mal_id ||
+            item.anilist_id
+        );
+    }
+
+    if (type === "manga") {
+        return Number(
+            item.anilist_id
+        );
+    }
+
+    return Number(
+        item.tmdb_id
+    );
+}
+
+function explore_recommendation_grid(
+    type
+) {
+    return document.getElementById(
+        "explore_" +
+        type +
+        "_recommendation_grid"
+    );
+}
+
+function explore_new_grid(type) {
+    return document.getElementById(
+        "explore_" +
+        type +
+        "_new_grid"
+    );
+}
+
+function explore_upcoming_grid(type) {
+    return document.getElementById(
+        "explore_" +
+        type +
+        "_upcoming_grid"
+    );
+}
+
+async function load_explore_media(type) {
+    const rec_grid =
+        explore_recommendation_grid(
+            type
+        );
+    const new_grid =
+        explore_new_grid(type);
+    const upcoming_grid =
+        explore_upcoming_grid(type);
+    const count =
+        document.querySelector(
+            '[data-explore-recommendation-count="' +
+            type +
+            '"]'
+        );
+
+    if (!rec_grid ||
+        !new_grid ||
+        !upcoming_grid) {
+        return;
+    }
+
+    rec_grid.innerHTML =
+        '<p class="recommendation-loading">Finding recommendations...</p>';
+    new_grid.innerHTML =
+        '<p class="recommendation-loading">Loading new releases...</p>';
+    upcoming_grid.innerHTML =
+        '<p class="recommendation-loading">Loading upcoming releases...</p>';
+
+    if (type === "movie") {
+        await load_movie_recommendations(
+            movie_library
+        );
+    } else if (type === "show") {
+        await load_show_recommendations(
+            show_library
+        );
+    } else if (type === "anime") {
+        await load_anime_recommendations(
+            anime_library
+        );
+    } else {
+        await load_manga_recommendations(
+            manga_library
+        );
+    }
+
+    explore_state[type].pool =
+        [...recommendation_pool];
+    explore_state[type].recommendations =
+        [...visible_recommendations];
+    explore_state[type].ignored =
+        new Set(
+            ignored_recommendation_ids
+        );
+
+    rec_grid.innerHTML =
+        recommendation_grid.innerHTML;
+    if (count) {
+        count.textContent =
+            visible_recommendations.length +
+            " PICKS";
+    }
+
+    await load_release_rows(type);
+
+    explore_state[type].releases =
+        [...release_items];
+    new_grid.innerHTML =
+        new_release_grid.innerHTML;
+    upcoming_grid.innerHTML =
+        upcoming_release_grid.innerHTML;
+}
+
+async function load_explore_view(
+    force = false
+) {
+    if (!entertainment_data_ready) {
+        return;
+    }
+
+    if (explore_loaded &&
+        !force) {
+        return;
+    }
+
+    if (explore_loading) {
+        return explore_loading;
+    }
+
+    explore_loading =
+        (async () => {
+            for (const type of [
+                "movie",
+                "show",
+                "anime",
+                "manga"
+            ]) {
+                await load_explore_media(
+                    type
+                );
+            }
+
+            active_recommendation_type =
+                "movie";
+            release_rows_type =
+                "movie";
+            explore_loaded = true;
+        })();
+
+    try {
+        await explore_loading;
+    } finally {
+        explore_loading = null;
+    }
+}
+
+function activate_explore_recommendation_state(
+    type
+) {
+    active_recommendation_type =
+        type;
+    recommendation_pool =
+        explore_state[type].pool;
+    visible_recommendations =
+        explore_state[type]
+            .recommendations;
+    ignored_recommendation_ids =
+        explore_state[type].ignored;
+}
+
+explore_view?.addEventListener(
+    "click",
+    async (event) => {
+        const block =
+            event.target.closest(
+                "[data-explore-media]"
+            );
+        if (!block) return;
+
+        const type =
+            block.dataset.exploreMedia;
+        const state =
+            explore_state[type];
+        if (!state) return;
+
+        const release_card =
+            event.target.closest(
+                ".release-card"
+            );
+
+        if (release_card) {
+            const item =
+                state.releases.find(
+                    (entry) =>
+                        release_item_id(
+                            entry
+                        ) ===
+                        Number(
+                            release_card
+                                .dataset
+                                .releaseId
+                        )
+                );
+            if (!item) return;
+
+            release_rows_type =
+                type;
+
+            const action =
+                event.target.closest(
+                    "[data-release-action]"
+                );
+
+            if (action) {
+                await run_release_action(
+                    item,
+                    action.dataset
+                        .releaseAction,
+                    action
+                );
+                return;
+            }
+
+            if (event.target.closest(
+                "[data-release-next]"
+            )) {
+                release_card.remove();
+                return;
+            }
+
+            if (event.target.closest(
+                "[data-release-open]"
+            )) {
+                await open_release_details(
+                    item
+                );
+            }
+            return;
+        }
+
+        const card =
+            event.target.closest(
+                ".recommendation-card"
+            );
+        if (!card) return;
+
+        activate_explore_recommendation_state(
+            type
+        );
+
+        const item =
+            state.pool.find(
+                (entry) =>
+                    recommendation_id_for_type(
+                        entry,
+                        type
+                    ) ===
+                    Number(
+                        card.dataset
+                            .recommendationId
+                    )
+            );
+        if (!item) return;
+
+        const action =
+            event.target.closest(
+                "[data-rec-action]"
+            );
+
+        if (action) {
+            await run_recommendation_action(
+                item,
+                action.dataset
+                    .recAction,
+                action
+            );
+
+            if (action.dataset
+                .recAction !==
+                "request_seerr") {
+                card.remove();
+            }
+            return;
+        }
+
+        const refresh =
+            event.target.closest(
+                ".recommendation-refresh"
+            );
+
+        if (refresh) {
+            const current_id =
+                recommendation_id_for_type(
+                    item,
+                    type
+                );
+
+            state.ignored.add(
+                current_id
+            );
+
+            const visible_ids =
+                new Set(
+                    [...block.querySelectorAll(
+                        "[data-recommendation-id]"
+                    )]
+                        .map(
+                            (entry) =>
+                                Number(
+                                    entry.dataset
+                                        .recommendationId
+                                )
+                        )
+                );
+
+            const next =
+                state.pool.find(
+                    (entry) => {
+                        const id =
+                            recommendation_id_for_type(
+                                entry,
+                                type
+                            );
+                        return !state.ignored
+                            .has(id) &&
+                            !visible_ids
+                                .has(id);
+                    }
+                );
+
+            if (!next) {
+                card.remove();
+                return;
+            }
+
+            active_recommendation_type =
+                type;
+            const holder =
+                document.createElement(
+                    "div"
+                );
+            holder.innerHTML =
+                create_recommendation_card(
+                    next
+                );
+            card.replaceWith(
+                holder.firstElementChild
+            );
+            return;
+        }
+
+        if (event.target.closest(
+            "[data-rec-open]"
+        )) {
+            await open_recommendation_details(
+                item
+            );
+        }
+    }
+);
+//#endregion
+
+
+//? ----------------------------------
+//* ----- Entertainment Navigation --
+//? ----------------------------------
+//#region
+const entertainment_nav_links =
+    [...document.querySelectorAll(
+        "[data-entertainment-view]"
+    )];
+const entertainment_view_panels =
+    [...document.querySelectorAll(
+        "[data-entertainment-view-panel]"
+    )];
+let active_entertainment_view =
+    "explore";
+
+function show_entertainment_view(
+    view,
+    {
+        update_hash = true
+    } = {}
+) {
+    const allowed =
+        new Set([
+            "explore",
+            "friends",
+            "collection"
+        ]);
+    const next =
+        allowed.has(view)
+            ? view
+            : "explore";
+
+    active_entertainment_view =
+        next;
+
+    entertainment_view_panels
+        .forEach((panel) => {
+            panel.hidden =
+                panel.dataset
+                    .entertainmentViewPanel !==
+                next;
+        });
+
+    entertainment_nav_links
+        .forEach((link) => {
+            link.classList.toggle(
+                "active",
+                link.dataset
+                    .entertainmentView ===
+                    next
+            );
+        });
+
+    if (next !== "collection") {
+        document.documentElement
+            .classList.remove(
+                "anime-category-active"
+            );
+    } else {
+        show_entertainment_category(
+            active_entertainment_category
+        );
+    }
+
+    if (update_hash) {
+        history.replaceState(
+            null,
+            "",
+            "#" + next
+        );
+    }
+
+    if (next === "friends") {
+        load_entertainment_friends()
+            .catch(() => {});
+        load_friend_recent_activity()
+            .catch(() => {});
+    }
+
+    if (next === "explore") {
+        load_explore_view()
+            .catch((error) =>
+                console.error(
+                    "Unable to load Explore:",
+                    error
+                )
+            );
+    }
+}
+
+entertainment_nav_links
+    .forEach((link) => {
+        link.addEventListener(
+            "click",
+            (event) => {
+                event.preventDefault();
+                show_entertainment_view(
+                    link.dataset
+                        .entertainmentView
+                );
+            }
+        );
+    });
+//#endregion
+
+
 onAuthStateChanged(auth, async (user) => {
     if (!user) {
-        window.location.href = "../index.html";
+        window.location.href =
+            "../index.html";
         return;
     }
 
     try {
-        // Existing users already have the Supabase role claim. Avoid rewriting
-        // Firebase custom claims on every page load because that can create a
-        // short token-refresh race on a cold visit.
         await prepare_supabase_access(
             user
         );
 
         await finish_plex_connection();
         await load_plex_connection_status();
-        // Plex auto-import depends only on the Stellaz movie/show libraries.
-        // Start it as soon as those are ready. Anime/MAL/background failures
-        // must never prevent rated Plex titles from being imported.
+
         await Promise.all([
-            load_movie_library(),
+            load_movie_library({
+                refresh_recommendations:
+                    false
+            }),
             load_show_library()
         ]);
-        load_friend_recent_activity().catch((error) =>
-            console.error("Unable to load friend activity:", error)
-        );
-        auto_sync_plex_activity().catch((error) =>
-            console.error("Unable to auto-sync Plex ratings:", error)
-        );
-        sync_plex_episode_progress().catch((error) =>
-            console.error("Unable to auto-sync Plex episode progress:", error)
-        );
 
-        // Anime/MAL startup is independent from Plex.
+        load_friend_recent_activity()
+            .catch((error) =>
+                console.error(
+                    "Unable to load friend activity:",
+                    error
+                )
+            );
+        load_entertainment_friends()
+            .catch((error) =>
+                console.error(
+                    "Unable to load friends:",
+                    error
+                )
+            );
+
+        auto_sync_plex_activity()
+            .catch((error) =>
+                console.error(
+                    "Unable to auto-sync Plex ratings:",
+                    error
+                )
+            );
+        sync_plex_episode_progress()
+            .catch((error) =>
+                console.error(
+                    "Unable to auto-sync Plex episode progress:",
+                    error
+                )
+            );
+
         await Promise.allSettled([
             load_mal_connection_status(),
             load_anilist_connection_status(),
@@ -6858,13 +7571,21 @@ onAuthStateChanged(auth, async (user) => {
             load_anime_library(),
             load_manga_library()
         ]);
+
         await finish_mal_connection();
         await finish_anilist_connection();
         await finish_tmdb_connection();
         reopen_connected_services_if_requested();
 
+        entertainment_data_ready =
+            true;
+
+        const params =
+            new URLSearchParams(
+                window.location.search
+            );
         const requested_library =
-            new URLSearchParams(window.location.search).get("library");
+            params.get("library");
         const allowed_libraries = [
             "Movies",
             "TV Shows",
@@ -6872,99 +7593,161 @@ onAuthStateChanged(auth, async (user) => {
             "Manga / Manhwa"
         ];
 
-        if (allowed_libraries.includes(requested_library)) {
-            show_entertainment_category(requested_library);
-        } else {
-            // Movies are the default visible category on first load.
-            active_entertainment_category = "Movies";
-            render_friend_recent_activity();
-            load_movie_recommendations(movie_library);
-            load_release_rows("movie");
+        if (allowed_libraries.includes(
+            requested_library
+        )) {
+            show_entertainment_category(
+                requested_library
+            );
+            show_entertainment_view(
+                "collection"
+            );
+            return;
         }
+
+        const hash_view =
+            String(
+                window.location.hash || ""
+            ).replace("#", "");
+
+        show_entertainment_view(
+            [
+                "explore",
+                "friends",
+                "collection"
+            ].includes(hash_view)
+                ? hash_view
+                : "explore",
+            {update_hash: false}
+        );
     } catch (error) {
-        console.error("Unable to prepare Supabase access:", error);
-        movie_count.textContent = "Error";
+        console.error(
+            "Unable to prepare Supabase access:",
+            error
+        );
+        movie_count.textContent =
+            "Error";
     }
 });
 //#endregion
 
 
 //? ------------------------------
-//* ----- Library Navigation -----
+//* ----- Collection Navigation --
 //? ------------------------------
 //#region
-const library_cards = document.querySelectorAll("[data-library]");
-const toast = document.getElementById("toast");
-const movie_library_panel = document.getElementById("movie_library");
-const show_library_panel = document.getElementById("show_library");
-const anime_library_panel = document.getElementById("anime_library");
-const manga_library_panel = document.getElementById("manga_library");
-const recommendations_panel = document.getElementById("recommendations_panel");
-const new_release_panel = document.getElementById("new_release_panel");
-const upcoming_release_panel = document.getElementById("upcoming_release_panel");
-
-function show_entertainment_category(category) {
-    active_entertainment_category = category;
-    const showing_movies = category === "Movies";
-    const showing_shows = category === "TV Shows";
-    const showing_anime = category === "Anime";
-    const showing_manga = category === "Manga / Manhwa";
-
-    document.documentElement.classList.toggle(
-        "anime-category-active",
-        showing_anime
+const library_cards =
+    document.querySelectorAll(
+        "[data-library]"
+    );
+const toast =
+    document.getElementById(
+        "toast"
+    );
+const movie_library_panel =
+    document.getElementById(
+        "movie_library"
+    );
+const show_library_panel =
+    document.getElementById(
+        "show_library"
+    );
+const anime_library_panel =
+    document.getElementById(
+        "anime_library"
+    );
+const manga_library_panel =
+    document.getElementById(
+        "manga_library"
     );
 
-    movie_library_panel.classList.toggle("category-panel-hidden", !showing_movies);
-    show_library_panel.classList.toggle("category-panel-hidden", !showing_shows);
-    anime_library_panel.classList.toggle("category-panel-hidden", !showing_anime);
-    manga_library_panel.classList.toggle("category-panel-hidden", !showing_manga);
+function show_entertainment_category(
+    category
+) {
+    active_entertainment_category =
+        category;
 
-    [recommendations_panel, new_release_panel, upcoming_release_panel]
-        .forEach((panel) =>
-            panel.classList.remove("category-panel-hidden")
+    const showing_movies =
+        category === "Movies";
+    const showing_shows =
+        category === "TV Shows";
+    const showing_anime =
+        category === "Anime";
+    const showing_manga =
+        category ===
+        "Manga / Manhwa";
+
+    document.documentElement
+        .classList.toggle(
+            "anime-category-active",
+            showing_anime &&
+            active_entertainment_view ===
+                "collection"
         );
 
-    render_friend_recent_activity();
-
-    if (showing_movies) {
-        load_movie_recommendations(movie_library);
-        load_release_rows("movie");
-    } else if (showing_shows) {
-        load_show_recommendations(show_library);
-        load_release_rows("show");
-    } else if (showing_anime) {
-        load_anime_recommendations(anime_library);
-        load_release_rows("anime");
-    } else if (showing_manga) {
-        load_manga_recommendations(
-            manga_library
+    movie_library_panel
+        .classList.toggle(
+            "category-panel-hidden",
+            !showing_movies
         );
-        load_release_rows("manga");
-    }
+    show_library_panel
+        .classList.toggle(
+            "category-panel-hidden",
+            !showing_shows
+        );
+    anime_library_panel
+        .classList.toggle(
+            "category-panel-hidden",
+            !showing_anime
+        );
+    manga_library_panel
+        .classList.toggle(
+            "category-panel-hidden",
+            !showing_manga
+        );
 }
 
 library_cards.forEach((card) => {
-    card.addEventListener("click", (event) => {
-        if (card.dataset.library === "Movies" ||
-            card.dataset.library === "TV Shows" ||
-            card.dataset.library === "Anime" ||
-            card.dataset.library === "Manga / Manhwa") {
+    card.addEventListener(
+        "click",
+        (event) => {
+            const library =
+                card.dataset.library;
+
+            if ([
+                "Movies",
+                "TV Shows",
+                "Anime",
+                "Manga / Manhwa"
+            ].includes(library)) {
+                event.preventDefault();
+                show_entertainment_category(
+                    library
+                );
+                return;
+            }
+
             event.preventDefault();
-            show_entertainment_category(card.dataset.library);
-            return;
+            toast.textContent =
+                library +
+                " library is the next page to build.";
+            toast.classList.add(
+                "show"
+            );
+
+            clearTimeout(
+                window
+                    .entertainment_toast_timeout
+            );
+            window
+                .entertainment_toast_timeout =
+                setTimeout(() => {
+                    toast.classList.remove(
+                        "show"
+                    );
+                }, 1800);
         }
-
-        event.preventDefault();
-        toast.textContent =
-            `${card.dataset.library} library is the next page to build.`;
-        toast.classList.add("show");
-
-        clearTimeout(window.entertainment_toast_timeout);
-        window.entertainment_toast_timeout = setTimeout(() => {
-            toast.classList.remove("show");
-        }, 1800);
-    });
+    );
 });
 //#endregion
 
