@@ -4596,12 +4596,33 @@ html[data-theme="sunset"] .entertainment-nav {
 }
 
 .explore-scroll-track > .recommendation-card {
-    flex: 0 0 13.3%;
+    flex: 0 0 10.8%;
     scroll-snap-align: start;
 }
 
 .explore-scroll-track > .recommendation-loading {
     flex: 0 0 100%;
+}
+
+.explore-scroll-track .recommendation-card {
+    padding: 5px;
+    border-radius: 13px;
+}
+
+.explore-scroll-track .recommendation-title-button {
+    margin: 6px 0 2px;
+    font-size: 10px;
+    line-height: 1.15;
+}
+
+.explore-scroll-track .recommendation-card > p {
+    font-size: 8px;
+}
+
+.explore-scroll-track .recommendation-reason {
+    margin-top: 3px !important;
+    font-size: 8px;
+    line-height: 1.25;
 }
 
 .friends-directory-panel {
@@ -4686,7 +4707,7 @@ html[data-theme="sunset"] .entertainment-nav {
 
 @media (max-width: 1100px) {
     .explore-scroll-track > .recommendation-card {
-        flex-basis: 18.6%;
+        flex-basis: 15%;
     }
 
     .friends-overview-grid {
@@ -4771,7 +4792,22 @@ html[data-theme="sunset"] .entertainment-nav {
     }
 
     .explore-scroll-track > .recommendation-card {
-        flex-basis: 16%;
+        flex-basis: 13.5%;
+    }
+
+    .explore-scroll-track .recommendation-card {
+        padding: 2px;
+        border-radius: 8px;
+    }
+
+    .explore-scroll-track .recommendation-title-button {
+        margin-top: 4px;
+        font-size: 7px;
+    }
+
+    .explore-scroll-track .recommendation-card > p,
+    .explore-scroll-track .recommendation-reason {
+        font-size: 6px;
     }
 
     .friends-overview-grid {
