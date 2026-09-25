@@ -4638,6 +4638,10 @@ html[data-theme="sunset"] .entertainment-nav {
     border-radius: 12px;
 }
 
+.explore-scroll-track .recommendation-refresh {
+    z-index: 4;
+}
+
 .explore-scroll-track .explore-card-overlay {
     position: absolute;
     inset: 0;
@@ -4701,7 +4705,7 @@ html[data-theme="sunset"] .entertainment-nav {
 
 @media (hover: none) {
     .explore-scroll-track .explore-card-overlay {
-        padding: 34px 6px 30px;
+        padding: 18px 5px 8px;
         opacity: 1;
         transform: none;
     }
