@@ -1531,7 +1531,6 @@ const movie_count = document.getElementById("movie_count");
 const movie_watch_time = document.getElementById("movie_watch_time");
 const movie_library_count = document.getElementById("movie_library_count");
 const movie_grid = document.getElementById("movie_grid");
-const movie_library_toggle = document.getElementById("movie_library_toggle");
 const movie_search = document.getElementById("movie_search");
 const genre_filter = document.getElementById("genre_filter");
 const franchise_filter = document.getElementById("franchise_filter");
@@ -1540,19 +1539,6 @@ const movie_sort = document.getElementById("movie_sort");
 const movie_filter_clear = document.getElementById("movie_filter_clear");
 
 let movie_library = [];
-let movie_library_expanded = false;
-
-function get_collapsed_movie_count() {
-    if (window.innerWidth <= 700) {
-        return 12;
-    }
-
-    if (window.innerWidth <= 1100) {
-        return 10;
-    }
-
-    return 14;
-}
 
 function create_movie_card(movie, index) {
     const poster = movie.poster_url
@@ -1597,12 +1583,8 @@ function create_movie_card(movie, index) {
         `;
     }).join("");
 
-    const extra_class = index >= get_collapsed_movie_count()
-        ? " library-extra"
-        : "";
-
     return `
-        <article class="movie-card${extra_class}" data-library-item="movie" data-item-id="${movie.id}">
+        <article class="movie-card" data-library-item="movie" data-item-id="${movie.id}">
             <div class="movie-poster-wrap">
                 <button class="library-detail-open" type="button" data-library-detail-type="movie" data-library-detail-id="${movie.id}" aria-label="View details for ${movie.title}">${poster}</button>
                 ${movie.status === "watch_later" ? '<span class="watch-later-badge">WATCH LATER</span><button class="watch-later-complete" type="button" data-mark-watched-type="movie" data-mark-watched-id="' + movie.id + '" title="Mark as watched" aria-label="Mark ' + movie.title + ' as watched">✓</button>' : ""}
@@ -1751,15 +1733,9 @@ function get_filtered_movies() {
 function render_movie_library() {
     const movies = get_filtered_movies();
 
-    movie_grid.classList.toggle(
-        "expanded",
-        movie_library_expanded
-    );
-
     if (movies.length === 0) {
         movie_grid.innerHTML =
             '<p class="library-loading">No movies match these filters.</p>';
-        movie_library_toggle.hidden = true;
         movie_library_count.textContent = "0 MATCHES";
         return;
     }
@@ -1775,11 +1751,6 @@ function render_movie_library() {
         ? `${movies.length} OF ${movie_library.length} MOVIES`
         : `${movie_library.length} MOVIES`;
 
-    const has_hidden_movies = movies.length > get_collapsed_movie_count();
-    movie_library_toggle.hidden = !has_hidden_movies;
-    movie_library_toggle.textContent = movie_library_expanded
-        ? "Show less"
-        : "Show all movies";
 }
 
 
@@ -1922,24 +1893,6 @@ movie_filter_clear.addEventListener("click", () => {
     render_movie_library();
 });
 
-movie_library_toggle.addEventListener("click", () => {
-    movie_library_expanded = !movie_library_expanded;
-    movie_grid.classList.toggle(
-        "expanded",
-        movie_library_expanded
-    );
-
-    movie_library_toggle.textContent = movie_library_expanded
-        ? "Show less"
-        : "Show all movies";
-
-    if (!movie_library_expanded) {
-        document.getElementById("movie_library").scrollIntoView({
-            behavior: "smooth",
-            block: "start"
-        });
-    }
-});
 //#endregion
 
 
@@ -1951,7 +1904,6 @@ const show_count = document.getElementById("show_count");
 const show_watch_time = document.getElementById("show_watch_time");
 const show_library_count = document.getElementById("show_library_count");
 const show_grid = document.getElementById("show_grid");
-const show_library_toggle = document.getElementById("show_library_toggle");
 const show_search = document.getElementById("show_search");
 const show_genre_filter = document.getElementById("show_genre_filter");
 const show_status_filter = document.getElementById("show_status_filter");
@@ -1974,7 +1926,6 @@ let active_season_number = null;
 let active_season_episodes = [];
 
 let show_library = [];
-let show_library_expanded = false;
 
 function create_show_card(show, index) {
     const poster = show.poster_url
@@ -2003,12 +1954,8 @@ function create_show_card(show, index) {
                 ★<span>${rating}</span>
             </button>`;
     }).join("");
-    const extra_class = index >= get_collapsed_movie_count()
-        ? " library-extra"
-        : "";
-
     return `
-        <article class="movie-card${extra_class}" data-library-item="show" data-item-id="${show.id}">
+        <article class="movie-card" data-library-item="show" data-item-id="${show.id}">
             <div class="movie-poster-wrap">
                 <button class="library-detail-open" type="button" data-library-detail-type="show" data-library-detail-id="${show.id}" aria-label="View details for ${show.title}">${poster}</button>
                 ${show.status === "watch_later" ? '<span class="watch-later-badge">WATCH LATER</span><button class="watch-later-complete" type="button" data-mark-watched-type="show" data-mark-watched-id="' + show.id + '" title="Mark as watched" aria-label="Mark ' + show.title + ' as watched">✓</button>' : ""}
@@ -2062,15 +2009,9 @@ function get_filtered_shows() {
 
 function render_show_library() {
     const shows = get_filtered_shows();
-    show_grid.classList.toggle(
-        "expanded",
-        show_library_expanded
-    );
-
     if (shows.length === 0) {
         show_grid.innerHTML =
             '<p class="library-loading">No TV shows match these filters.</p>';
-        show_library_toggle.hidden = true;
         show_library_count.textContent = "0 MATCHES";
         return;
     }
@@ -2081,11 +2022,6 @@ function render_show_library() {
     show_library_count.textContent = filters_active
         ? `${shows.length} OF ${show_library.length} SHOWS`
         : `${show_library.length} SHOWS`;
-    show_library_toggle.hidden =
-        shows.length <= get_collapsed_movie_count();
-    show_library_toggle.textContent = show_library_expanded
-        ? "Show less"
-        : "Show all shows";
 }
 
 function populate_show_filters(shows) {
@@ -2668,16 +2604,6 @@ show_filter_clear.addEventListener("click", () => {
     render_show_library();
 });
 
-show_library_toggle.addEventListener("click", () => {
-    show_library_expanded = !show_library_expanded;
-    show_grid.classList.toggle(
-        "expanded",
-        show_library_expanded
-    );
-    show_library_toggle.textContent = show_library_expanded
-        ? "Show less"
-        : "Show all shows";
-});
 //#endregion
 
 
@@ -3906,7 +3832,6 @@ const manga_status_filter = document.getElementById("manga_status_filter");
 const manga_sort = document.getElementById("manga_sort");
 const manga_search = document.getElementById("manga_search");
 const manga_filter_clear = document.getElementById("manga_filter_clear");
-const manga_library_toggle = document.getElementById("manga_library_toggle");
 const manga_add_button = document.getElementById("manga_add_button");
 const anilist_connect_card = document.getElementById("anilist_connect_card");
 const anilist_connect_title = document.getElementById("anilist_connect_title");
@@ -4393,7 +4318,6 @@ function render_manga_library() {
             a.title.localeCompare(b.title));
     }
 
-    manga_grid.classList.remove("expanded");
     manga_grid.innerHTML = visible.length ? visible.map((item, index) => {
         const title = manga_escape(item.title);
         const poster = item.poster_url
@@ -4413,11 +4337,7 @@ function render_manga_library() {
         const personal_score = item.my_rating
             ? " · ★ " + Number(item.my_rating).toFixed(1) + "/10"
             : " · ★ —";
-        const extra_class = index >= get_collapsed_movie_count()
-            ? " library-extra"
-            : "";
-
-        return '<article class="movie-card manga-card' + extra_class + '">' +
+        return '<article class="movie-card manga-card">' +
             '<div class="movie-poster-wrap manga-open" data-manga-id="' +
             item.id + '" tabindex="0" role="button" title="Open ' + title + '">' +
             poster +
@@ -4430,9 +4350,6 @@ function render_manga_library() {
             '</article>';
     }).join("") : '<p class="library-loading">No matching manga or manhwa.</p>';
 
-    const has_hidden = visible.length > get_collapsed_movie_count();
-    manga_library_toggle.hidden = !has_hidden;
-    manga_library_toggle.textContent = "Show all manga";
 }
 
 async function load_manga_library() {
@@ -4460,7 +4377,6 @@ async function load_manga_library() {
         if (manga_library.length === 0) {
             manga_grid.innerHTML =
                 '<p class="library-loading">No manga or manhwa added yet. Use “Add manga / manhwa” to search AniList.</p>';
-            manga_library_toggle.hidden = true;
             return;
         }
 
@@ -4733,19 +4649,6 @@ manga_filter_clear.addEventListener("click", () => {
     render_manga_library();
 });
 
-manga_library_toggle.addEventListener("click", () => {
-    const expanded = manga_grid.classList.toggle("expanded");
-    manga_library_toggle.textContent = expanded
-        ? "Show less"
-        : "Show all manga";
-
-    if (!expanded) {
-        document.getElementById("manga_library").scrollIntoView({
-            behavior: "smooth",
-            block: "start"
-        });
-    }
-});
 //#endregion
 
 
@@ -4759,7 +4662,6 @@ const mal_connect_title = document.getElementById("mal_connect_title");
 const mal_connect_description = document.getElementById("mal_connect_description");
 const anime_grid = document.getElementById("anime_grid");
 const anime_sync_summary = document.getElementById("anime_sync_summary");
-const anime_library_toggle = document.getElementById("anime_library_toggle");
 const anime_count = document.getElementById("anime_count");
 const anime_watch_time = document.getElementById("anime_watch_time");
 const anime_filters = document.getElementById("anime_filters");
@@ -5183,7 +5085,6 @@ function render_anime_library() {
         visible_anime.sort((a, b) => a.title.localeCompare(b.title));
     }
 
-    anime_grid.classList.remove("expanded");
     anime_grid.innerHTML = visible_anime.map((item, index) => {
         const poster = item.poster_url
             ? '<img class="movie-poster" src="' + item.poster_url +
@@ -5202,11 +5103,7 @@ function render_anime_library() {
         const personal_score = item.my_rating
             ? " · ★ " + Number(item.my_rating).toFixed(1) + "/10"
             : " · ★ —";
-        const extra_class = index >= get_collapsed_movie_count()
-            ? " library-extra"
-            : "";
-
-        return '<article class="movie-card anime-card' + extra_class + '">' +
+        return '<article class="movie-card anime-card">' +
             '<div class="movie-poster-wrap anime-edit-poster" data-anime-id="' +
             item.id + '" tabindex="0" role="button" title="Open anime">' +
             poster + '</div>' +
@@ -5214,10 +5111,6 @@ function render_anime_library() {
             progress + " · " + external_score + personal_score + '</p></article>';
     }).join("");
 
-    const has_hidden_anime =
-        visible_anime.length > get_collapsed_movie_count();
-    anime_library_toggle.hidden = !has_hidden_anime;
-    anime_library_toggle.textContent = "Show all anime";
 }
 
 let anime_background_timer = null;
@@ -5933,20 +5826,6 @@ anime_filter_clear.addEventListener("click", () => {
 });
 
 
-anime_library_toggle.addEventListener("click", () => {
-    const expanded = anime_grid.classList.toggle("expanded");
-
-    anime_library_toggle.textContent = expanded
-        ? "Show less"
-        : "Show all anime";
-
-    if (!expanded) {
-        anime_library_panel.scrollIntoView({
-            behavior: "smooth",
-            block: "start"
-        });
-    }
-});
 
 async function sync_mal_anime({confirm_import = true} = {}) {
     const original_text = mal_sync_header_button.textContent;
