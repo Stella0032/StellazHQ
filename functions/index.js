@@ -911,7 +911,7 @@ exports.getAnimeRecommendations =
                             b.recommendation_strength -
                             a.recommendation_strength
                     )
-                    .slice(0, 18)
+                    .slice(0, 30)
                     .map((item) => ({
                         ...item,
                         because_of:
@@ -1473,7 +1473,7 @@ exports.getAniListMangaRecommendations =
                             b.recommendation_strength -
                             a.recommendation_strength
                     )
-                    .slice(0, 18)
+                    .slice(0, 30)
                     .map(
                         (item) => ({
                             ...item,
@@ -3303,7 +3303,7 @@ exports.getEntertainmentReleases = onCall(
 
             const query = [
                 "query {",
-                "  recent: Page(page: 1, perPage: 24) {",
+                "  recent: Page(page: 1, perPage: 30) {",
                 "    media(",
                 "      type: MANGA,",
                 "      isAdult: false,",
@@ -3317,7 +3317,7 @@ exports.getEntertainmentReleases = onCall(
                 manga_fields,
                 "    }",
                 "  }",
-                "  upcoming: Page(page: 1, perPage: 24) {",
+                "  upcoming: Page(page: 1, perPage: 30) {",
                 "    media(",
                 "      type: MANGA,",
                 "      isAdult: false,",
@@ -3451,14 +3451,14 @@ exports.getEntertainmentReleases = onCall(
                     data?.recent?.media || []
                 )
                     .map(map_manga)
-                    .slice(0, 7);
+                    .slice(0, 30);
 
             const upcoming =
                 unique_by_id(
                     data?.upcoming?.media || []
                 )
                     .map(map_manga)
-                    .slice(0, 7);
+                    .slice(0, 30);
 
             return {
                 newly_released,
@@ -3591,7 +3591,7 @@ exports.getEntertainmentReleases = onCall(
                             (item) =>
                                 item.poster_url
                         )
-                        .slice(0, 7),
+                        .slice(0, 30),
                 upcoming:
                     (data?.upcoming?.media || [])
                         .map(map_release)
@@ -3599,7 +3599,7 @@ exports.getEntertainmentReleases = onCall(
                             (item) =>
                                 item.poster_url
                         )
-                        .slice(0, 7),
+                        .slice(0, 30),
             };
         }
 
@@ -3610,17 +3610,43 @@ exports.getEntertainmentReleases = onCall(
             "upcoming" : "airing_today";
 
         const fetch_tmdb = async (endpoint) => {
-            const url = new URL(
-                `https://api.themoviedb.org/3/${media_type}/${endpoint}`
-            );
-            url.searchParams.set("language", "en-US");
-            url.searchParams.set("page", "1");
-            const response = await fetch(url, {headers});
-            if (!response.ok) return [];
-            const data = await response.json();
-            return (data.results || [])
-                .filter((item) => item.poster_path)
-                .slice(0, 7)
+            const fetch_page = async (page) => {
+                const url = new URL(
+                    `https://api.themoviedb.org/3/${media_type}/${endpoint}`
+                );
+                url.searchParams.set("language", "en-US");
+                url.searchParams.set("page", String(page));
+                const response = await fetch(url, {headers});
+                if (!response.ok) return [];
+                const data = await response.json();
+                return data.results || [];
+            };
+
+            const pages = await Promise.all([
+                fetch_page(1),
+                fetch_page(2),
+            ]);
+
+            const unique_results = [
+                ...new Map(
+                    pages
+                        .flat()
+                        .filter(
+                            (item) =>
+                                item?.id &&
+                                item.poster_path
+                        )
+                        .map(
+                            (item) => [
+                                Number(item.id),
+                                item,
+                            ]
+                        )
+                ).values(),
+            ];
+
+            return unique_results
+                .slice(0, 30)
                 .map((item) => ({
                     tmdb_id: item.id,
                     title: media_type === "tv" ? item.name : item.title,
@@ -3770,7 +3796,7 @@ exports.getMovieRecommendations = onCall(
 
                 return b.score - a.score;
             })
-            .slice(0, 18)
+            .slice(0, 30)
             .map((movie) => ({
                 ...movie,
                 because_of: [...new Set(movie.because_of)].slice(0, 2),
@@ -4161,7 +4187,7 @@ exports.getTVShowRecommendations = onCall(
                 if (b.matches !== a.matches) return b.matches - a.matches;
                 return b.score - a.score;
             })
-            .slice(0, 18)
+            .slice(0, 30)
             .map((show) => ({
                 ...show,
                 because_of: [...new Set(show.because_of)].slice(0, 2),
