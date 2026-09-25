@@ -4517,20 +4517,44 @@ html[data-theme="flurple"] .global-search-dialog{
     gap: 12px;
 }
 
+/* One tile: a small "Watch here" label over one row holding the Plex/
+   Request box(es) first, then the streaming-provider icons — all equal-
+   sized icon boxes side by side, not two separately-bordered stacks. */
 .watch-box-area {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+    padding: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.055);
 }
 
 .watch-box-area:empty {
     display: none;
 }
 
-.watch-box-row {
+.watch-tile-label {
+    margin: 0 0 6px;
+    font-size: 9px;
+    letter-spacing: 2px;
+}
+
+.watch-tile-row {
     display: flex;
-    gap: 8px;
-    transition: opacity 0.15s ease;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+/* Unwraps these two slots so their icon-box children join the single
+   flex row above directly, instead of each forming its own nested box.
+   (display:contents elements can't usefully animate their own opacity —
+   that's why the "smooth" transition below lives on the icons
+   themselves, not on these wrappers.) */
+[data-watch-box-row], [data-watch-providers-slot] {
+    display: contents;
+}
+
+@keyframes watch-box-fade-in {
+    from { opacity: 0; transform: scale(0.92); }
+    to { opacity: 1; transform: scale(1); }
 }
 
 /* One consistent box for every state — loading/idle/requested/
@@ -4538,8 +4562,12 @@ html[data-theme="flurple"] .global-search-dialog{
    the old mix of a round icon button and separate text pills.
    overflow:hidden is the actual safety net against clipping: whatever
    goes inside (an SVG, a spinner, a couple of digits) is clipped to this
-   shape rather than spilling outside it if it's ever wider than expected. */
+   shape rather than spilling outside it if it's ever wider than expected.
+   The fade-in animation re-triggers automatically every time a fresh box
+   is inserted (a new state, a new request) — smooths the transition
+   without any JS opacity/timing juggling. */
 .watch-box {
+    animation: watch-box-fade-in 0.2s ease;
     width: 38px;
     height: 38px;
     padding: 0;
@@ -4603,26 +4631,10 @@ button.watch-box:hover {
     50% { opacity: 1; }
 }
 
-/* One tile holding every streaming-provider icon, matching the same
-   border/background language as .watch-box — icons sit side by side
-   inside it and only wrap to a second row once there isn't room for
-   them all on one line. */
-.watch-provider-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    padding: 6px;
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    border-radius: 9px;
-    background: rgba(255, 255, 255, 0.055);
-    transition: opacity 0.15s ease;
-}
-
-.watch-provider-row:empty {
-    display: none;
-}
-
+/* Streaming-provider icons now join the same .watch-tile-row as the
+   Plex/Request box(es) above — no separate tile of their own anymore. */
 .watch-provider-icon {
+    animation: watch-box-fade-in 0.2s ease;
     width: 30px;
     height: 30px;
     padding: 0;
