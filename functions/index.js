@@ -2255,6 +2255,10 @@ exports.syncKitsuAnimeList = onCall(
                 site_url:
                     "https://kitsu.app/anime/" +
                     (attrs.slug || String(media.id)),
+                activity_at:
+                    list.updatedAt ||
+                    list.updated_at ||
+                    null,
                 synced_at: new Date().toISOString(),
             });
         }
@@ -6140,6 +6144,12 @@ exports.syncAniListAnimeList = onCall(async (request) => {
                     genres: Array.isArray(media.genres) ?
                         media.genres : [],
                     site_url: media.siteUrl || null,
+                    activity_at:
+                        Number(entry.updatedAt || 0) > 0 ?
+                            new Date(
+                                Number(entry.updatedAt) * 1000
+                            ).toISOString() :
+                            null,
                 });
             }
 
