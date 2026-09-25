@@ -1555,6 +1555,90 @@ recommendation_dialog.addEventListener("close", () => {
 //#endregion
 
 
+//? ------------------------------------
+//* ----- Collection Poster Reveal -----
+//? ------------------------------------
+//#region
+let collection_poster_observer = null;
+
+function get_collection_poster_observer() {
+    if (collection_poster_observer) {
+        return collection_poster_observer;
+    }
+
+    if (!("IntersectionObserver" in window)) {
+        return null;
+    }
+
+    collection_poster_observer =
+        new IntersectionObserver(
+            (entries) => {
+                entries.forEach((entry) => {
+                    if (!entry.isIntersecting) {
+                        return;
+                    }
+
+                    entry.target.classList.add(
+                        "is-visible"
+                    );
+                    collection_poster_observer
+                        .unobserve(
+                            entry.target
+                        );
+                });
+            },
+            {
+                threshold: 0.08,
+                rootMargin:
+                    "0px 0px -3% 0px"
+            }
+        );
+
+    return collection_poster_observer;
+}
+
+function observe_collection_posters(grid) {
+    if (!grid) return;
+
+    const posters =
+        grid.querySelectorAll(
+            ".movie-card .movie-poster-wrap"
+        );
+    const reduced_motion =
+        window.matchMedia(
+            "(prefers-reduced-motion: reduce)"
+        ).matches;
+    const observer =
+        get_collection_poster_observer();
+
+    posters.forEach((poster) => {
+        if (poster.dataset
+            .collectionRevealReady ===
+            "true") {
+            return;
+        }
+
+        poster.dataset
+            .collectionRevealReady =
+            "true";
+        poster.classList.add(
+            "collection-poster-reveal"
+        );
+
+        if (reduced_motion ||
+            !observer) {
+            poster.classList.add(
+                "is-visible"
+            );
+            return;
+        }
+
+        observer.observe(poster);
+    });
+}
+//#endregion
+
+
 //? ------------------------------
 //* ----- Supabase Library -------
 //? ------------------------------
@@ -1773,6 +1857,9 @@ function render_movie_library() {
     }
 
     movie_grid.innerHTML = movies.map(create_movie_card).join("");
+    observe_collection_posters(
+        movie_grid
+    );
 
     const filters_active = movie_search.value.trim() ||
         genre_filter.value ||
@@ -2049,6 +2136,10 @@ function render_show_library() {
     }
 
     show_grid.innerHTML = shows.map(create_show_card).join("");
+    observe_collection_posters(
+        show_grid
+    );
+
     const filters_active = show_search.value.trim() ||
         show_genre_filter.value || show_status_filter.value;
     show_library_count.textContent = filters_active
@@ -4435,6 +4526,9 @@ function render_manga_library() {
             '</article>';
     }).join("") : '<p class="library-loading">No matching manga or manhwa.</p>';
 
+    observe_collection_posters(
+        manga_grid
+    );
 }
 
 async function load_manga_library() {
@@ -5463,6 +5557,9 @@ function render_anime_library() {
             progress + " · " + external_score + personal_score + '</p></article>';
     }).join("");
 
+    observe_collection_posters(
+        anime_grid
+    );
 }
 
 let anime_background_timer = null;
@@ -7832,9 +7929,16 @@ async function load_explore_media(type) {
     upcoming_grid.innerHTML =
         upcoming_release_grid.innerHTML;
 
-    requestAnimationFrame(
-        refresh_explore_scroll_controls
-    );
+    requestAnimationFrame(() => {
+        [
+            rec_grid,
+            new_grid,
+            upcoming_grid
+        ].forEach(
+            setup_explore_loop
+        );
+        refresh_explore_scroll_controls();
+    });
 }
 
 async function load_explore_view(
@@ -7894,25 +7998,212 @@ function activate_explore_recommendation_state(
         explore_state[type].ignored;
 }
 
+function clone_explore_loop_card(card) {
+    const clone =
+        card.cloneNode(true);
+    clone.dataset.exploreClone =
+        "true";
+    clone.setAttribute(
+        "aria-hidden",
+        "true"
+    );
+
+    clone
+        .querySelectorAll(
+            "button, a, input, select, textarea, [tabindex]"
+        )
+        .forEach((control) => {
+            control.setAttribute(
+                "tabindex",
+                "-1"
+            );
+        });
+
+    return clone;
+}
+
+function setup_explore_loop(track) {
+    if (!track) return;
+
+    track
+        .querySelectorAll(
+            ":scope > [data-explore-clone]"
+        )
+        .forEach(
+            (clone) => clone.remove()
+        );
+
+    const cards =
+        [...track.children]
+            .filter(
+                (child) =>
+                    child.classList
+                        .contains(
+                            "recommendation-card"
+                        )
+            );
+
+    track.dataset.exploreLoopReady =
+        "false";
+    track.dataset.exploreLoopCount =
+        String(cards.length);
+    track.closest(
+        ".explore-row"
+    )?.removeAttribute(
+        "data-explore-moved"
+    );
+
+    if (cards.length < 2 ||
+        track.scrollWidth <=
+            track.clientWidth + 4) {
+        track.dataset.exploreLoop =
+            "false";
+        track.scrollLeft = 0;
+        update_explore_scroll_controls(
+            track.closest(
+                ".explore-row"
+            )
+        );
+        return;
+    }
+
+    const before =
+        cards.map(
+            clone_explore_loop_card
+        );
+    const after =
+        cards.map(
+            clone_explore_loop_card
+        );
+
+    before
+        .reverse()
+        .forEach((clone) => {
+            track.prepend(clone);
+        });
+    after.forEach((clone) => {
+        track.append(clone);
+    });
+
+    const original_count =
+        cards.length;
+    const original_start =
+        track.children[
+            original_count
+        ]?.offsetLeft || 0;
+    const next_copy_start =
+        track.children[
+            original_count * 2
+        ]?.offsetLeft || 0;
+    const loop_width =
+        next_copy_start -
+        original_start;
+
+    if (loop_width <= 0) {
+        track.dataset.exploreLoop =
+            "false";
+        return;
+    }
+
+    track.dataset.exploreLoop =
+        "true";
+    track.dataset.exploreLoopStart =
+        String(original_start);
+    track.dataset.exploreLoopWidth =
+        String(loop_width);
+    track.dataset.exploreLoopAdjusting =
+        "true";
+    track.style.scrollBehavior =
+        "auto";
+    track.scrollLeft =
+        original_start;
+
+    requestAnimationFrame(() => {
+        track.style.removeProperty(
+            "scroll-behavior"
+        );
+        track.dataset
+            .exploreLoopAdjusting =
+            "false";
+        track.dataset
+            .exploreLoopReady =
+            "true";
+        update_explore_scroll_controls(
+            track.closest(
+                ".explore-row"
+            )
+        );
+    });
+}
+
+function normalize_explore_loop_position(
+    track
+) {
+    if (!track ||
+        track.dataset.exploreLoop !==
+            "true" ||
+        track.dataset
+            .exploreLoopReady !==
+            "true" ||
+        track.dataset
+            .exploreLoopAdjusting ===
+            "true") {
+        return;
+    }
+
+    const start =
+        Number(
+            track.dataset
+                .exploreLoopStart
+        );
+    const width =
+        Number(
+            track.dataset
+                .exploreLoopWidth
+        );
+
+    if (!Number.isFinite(start) ||
+        !Number.isFinite(width) ||
+        width <= 0) {
+        return;
+    }
+
+    let next =
+        track.scrollLeft;
+
+    if (next < start) {
+        next += width;
+    } else if (
+        next >= start + width
+    ) {
+        next -= width;
+    } else {
+        return;
+    }
+
+    track.dataset
+        .exploreLoopAdjusting =
+        "true";
+    track.style.scrollBehavior =
+        "auto";
+    track.scrollLeft = next;
+
+    requestAnimationFrame(() => {
+        track.style.removeProperty(
+            "scroll-behavior"
+        );
+        track.dataset
+            .exploreLoopAdjusting =
+            "false";
+    });
+}
+
 function update_explore_scroll_controls(row) {
     const track =
         row?.querySelector(
             ".explore-scroll-track"
         );
     if (!track) return;
-
-    const max_scroll =
-        Math.max(
-            track.scrollWidth -
-                track.clientWidth,
-            0
-        );
-    const at_start =
-        track.scrollLeft <= 2;
-    const at_end =
-        max_scroll <= 2 ||
-        track.scrollLeft >=
-            max_scroll - 2;
 
     const left_button =
         row.querySelector(
@@ -7922,14 +8213,70 @@ function update_explore_scroll_controls(row) {
         row.querySelector(
             '[data-explore-scroll="right"]'
         );
+    const has_overflow =
+        track.scrollWidth >
+            track.clientWidth + 4;
+    const is_looping =
+        track.dataset.exploreLoop ===
+            "true";
+
+    if (!has_overflow) {
+        left_button?.classList.add(
+            "is-hidden"
+        );
+        right_button?.classList.add(
+            "is-hidden"
+        );
+        return;
+    }
+
+    right_button?.classList.remove(
+        "is-hidden"
+    );
 
     left_button?.classList.toggle(
         "is-hidden",
-        at_start
+        is_looping &&
+            row.dataset.exploreMoved !==
+                "true"
     );
-    right_button?.classList.toggle(
-        "is-hidden",
-        at_end
+
+    if (!is_looping) {
+        const at_start =
+            track.scrollLeft <= 2;
+        left_button?.classList.toggle(
+            "is-hidden",
+            at_start
+        );
+    }
+}
+
+function handle_explore_track_scroll(
+    track
+) {
+    if (!track) return;
+
+    if (track.dataset
+        .exploreLoopReady ===
+        "true" &&
+        track.dataset
+            .exploreLoopAdjusting !==
+            "true") {
+        track.closest(
+            ".explore-row"
+        )?.setAttribute(
+            "data-explore-moved",
+            "true"
+        );
+    }
+
+    normalize_explore_loop_position(
+        track
+    );
+    update_explore_scroll_controls(
+        track.closest(
+            ".explore-row"
+        )
     );
 }
 
@@ -7943,6 +8290,18 @@ function refresh_explore_scroll_controls() {
         );
 }
 
+function setup_explore_loops(
+    root = explore_view
+) {
+    root
+        ?.querySelectorAll(
+            ".explore-scroll-track"
+        )
+        .forEach(
+            setup_explore_loop
+        );
+}
+
 explore_view
     ?.querySelectorAll(
         ".explore-scroll-track"
@@ -7951,18 +8310,29 @@ explore_view
         track.addEventListener(
             "scroll",
             () =>
-                update_explore_scroll_controls(
-                    track.closest(
-                        ".explore-row"
-                    )
+                handle_explore_track_scroll(
+                    track
                 ),
             {passive: true}
         );
     });
 
+let explore_resize_timeout = null;
 window.addEventListener(
     "resize",
-    refresh_explore_scroll_controls
+    () => {
+        clearTimeout(
+            explore_resize_timeout
+        );
+        explore_resize_timeout =
+            setTimeout(
+                () => {
+                    setup_explore_loops();
+                    refresh_explore_scroll_controls();
+                },
+                120
+            );
+    }
 );
 
 explore_view?.addEventListener(
@@ -7984,6 +8354,9 @@ explore_view?.addEventListener(
                 );
 
             if (!track) return;
+
+            row.dataset.exploreMoved =
+                "true";
 
             const direction =
                 scroll_button.dataset
