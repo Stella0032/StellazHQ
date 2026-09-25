@@ -4465,9 +4465,12 @@ html[data-theme="sunset"] .entertainment-nav {
 
 .explore-media-block {
     margin-top: 14px;
-    padding: 18px 20px 20px;
-    overflow: visible;
-    border-radius: 18px;
+    margin-left: calc(50% - 50vw + 16px);
+    margin-right: calc(50% - 50vw);
+    padding: 18px 0 20px 20px;
+    overflow: hidden;
+    border-right: 0;
+    border-radius: 18px 0 0 18px;
 }
 
 .explore-media-block + .explore-media-block {
@@ -4562,7 +4565,7 @@ html[data-theme="sunset"] .entertainment-nav {
 }
 
 .explore-scroll-track.recommendation-grid {
-    width: calc(100% + 50vw - 50%);
+    width: 100%;
     min-height: 0;
     margin-top: 10px;
     padding-right: 34px;
@@ -4717,8 +4720,11 @@ html[data-theme="sunset"] .entertainment-nav {
     }
 
     .explore-media-block {
-        padding: 14px;
-        border-radius: 16px;
+        margin-left: calc(50% - 50vw + 8px);
+        margin-right: calc(50% - 50vw);
+        padding: 14px 0 14px 14px;
+        border-right: 0;
+        border-radius: 16px 0 0 16px;
     }
 
     .explore-media-block + .explore-media-block {
@@ -4758,7 +4764,7 @@ html[data-theme="sunset"] .entertainment-nav {
     }
 
     .explore-scroll-track.recommendation-grid {
-        width: calc(100% + 50vw - 50%);
+        width: 100%;
         margin-right: 0;
         padding-right: 22px;
         gap: 6px;
