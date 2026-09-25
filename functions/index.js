@@ -3997,6 +3997,63 @@ exports.getTVSeasonEpisodes = onCall(
     }
 );
 
+// Anime in this app is sourced from AniList/MAL/Kitsu, none of which
+// carry a TMDB id — but Seerr/Plex/watch-provider data is all keyed by
+// one, so an anime title needs a title-based TMDB search first, same
+// risk profile as getTVShowSeasons's own title search above. Guards
+// against matching an unrelated live-action show with the same title
+// by requiring the result to actually be tagged Animation (genre id 16,
+// same constant this codebase already keys off of for Seerr's own
+// anime detection) — returns no match at all rather than a wrong one.
+exports.resolveTmdbId = onCall(
+    {secrets: [tmdb_read_access_token]},
+    async (request) => {
+        if (!request.auth) {
+            throw new HttpsError("unauthenticated", "You must be logged in.");
+        }
+
+        const title = String(request.data?.title || "").trim();
+        const year = Number(request.data?.year) || null;
+
+        if (!title) {
+            throw new HttpsError("invalid-argument", "A title is required.");
+        }
+
+        try {
+            const search_url = new URL(
+                "https://api.themoviedb.org/3/search/tv"
+            );
+            search_url.searchParams.set("query", title);
+            search_url.searchParams.set("language", "en-US");
+            if (year) {
+                search_url.searchParams.set(
+                    "first_air_date_year", String(year)
+                );
+            }
+
+            const response = await fetch(search_url, {
+                headers: {
+                    Authorization: `Bearer ${tmdb_read_access_token.value()}`,
+                    accept: "application/json",
+                },
+            });
+
+            if (!response.ok) return {tmdb_id: null};
+
+            const data = await response.json();
+            const match = data.results?.[0];
+            const is_animation = (match?.genre_ids || []).includes(16);
+
+            return {tmdb_id: is_animation ? match.id : null};
+        } catch (error) {
+            logger.warn("Unable to resolve a TMDB id from title.", {
+                title, year, error: error?.message || String(error),
+            });
+            return {tmdb_id: null};
+        }
+    }
+);
+
 
 exports.getTVShowRecommendations = onCall(
     {secrets: [tmdb_read_access_token]},
