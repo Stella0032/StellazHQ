@@ -3096,16 +3096,183 @@ html.anime-category-active body::after {
     }
 }
 
-.anime-add-shell { max-width: 760px; }
-.anime-add-search-form { display: flex; gap: 10px; margin: 18px 0; }
-.anime-add-search-form .movie-search { flex: 1; }
-.anime-add-results { display: grid; gap: 10px; max-height: 55vh; overflow-y: auto; }
-.anime-add-result { width: 100%; display: grid; grid-template-columns: 54px 1fr auto; gap: 12px; align-items: center; padding: 9px; border: 1px solid var(--glass-border); border-radius: 12px; color: var(--text); background: rgba(255,255,255,.05); text-align: left; cursor: pointer; }
-.anime-add-result img { width: 54px; height: 76px; object-fit: cover; border-radius: 8px; }
-.anime-add-result span { display: grid; gap: 5px; }
-.anime-add-result small { color: var(--muted); }
-.anime-add-result b { color: var(--purple); white-space: nowrap; }
-.anime-add-result:disabled { opacity: .55; cursor: wait; }
+.anime-add-dialog,
+.manga-add-dialog {
+    width: min(780px, calc(100% - 32px));
+    max-height: calc(100dvh - 32px);
+    overflow: hidden;
+}
+
+.anime-add-shell,
+.manga-add-shell {
+    width: 100%;
+    max-width: none;
+    min-height: 0;
+    display: block;
+    box-sizing: border-box;
+    padding: 34px 34px 30px;
+}
+
+.anime-add-shell .recommendation-dialog-content,
+.manga-add-shell .recommendation-dialog-content {
+    width: 100%;
+    max-width: none;
+    align-self: auto;
+}
+
+.anime-add-shell .recommendation-dialog-content h2,
+.manga-add-shell .recommendation-dialog-content h2 {
+    margin: 6px 48px 10px 0;
+    font-size: clamp(30px, 4vw, 38px);
+    line-height: 1.08;
+}
+
+.anime-add-shell .recommendation-dialog-description,
+.manga-add-shell .recommendation-dialog-description {
+    max-width: 650px;
+    margin: 10px 0 22px;
+    color: #cbd0df;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.anime-add-shell .recommendation-dialog-close,
+.manga-add-shell .recommendation-dialog-close {
+    top: 18px;
+    right: 20px;
+}
+
+.anime-add-search-form {
+    width: 100%;
+    margin: 0 0 22px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+}
+
+.anime-add-search-form .movie-search {
+    width: 100%;
+    min-width: 0;
+}
+
+.anime-add-search-form .library-add-button {
+    min-width: 104px;
+}
+
+.anime-add-results {
+    width: 100%;
+    max-height: min(52vh, 520px);
+    padding-right: 4px;
+    display: grid;
+    gap: 10px;
+    overflow-y: auto;
+}
+
+.anime-add-result {
+    width: 100%;
+    min-width: 0;
+    display: grid;
+    grid-template-columns: 58px minmax(0, 1fr) auto;
+    gap: 14px;
+    align-items: center;
+    padding: 10px 12px;
+    border: 1px solid var(--glass-border);
+    border-radius: 13px;
+    color: var(--text);
+    background: rgba(255,255,255,.05);
+    text-align: left;
+    cursor: pointer;
+}
+
+.anime-add-result:hover {
+    border-color: rgba(194, 120, 255, 0.42);
+    background: rgba(194, 120, 255, 0.08);
+}
+
+.anime-add-result img {
+    width: 58px;
+    height: 82px;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.anime-add-result span {
+    min-width: 0;
+    display: grid;
+    gap: 5px;
+}
+
+.anime-add-result strong,
+.anime-add-result small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.anime-add-result strong {
+    white-space: nowrap;
+}
+
+.anime-add-result small {
+    color: var(--muted);
+    line-height: 1.4;
+}
+
+.anime-add-result b {
+    color: var(--purple);
+    white-space: nowrap;
+}
+
+.anime-add-result:disabled {
+    opacity: .55;
+    cursor: wait;
+}
+
+@media (max-width: 620px) {
+    .anime-add-dialog,
+    .manga-add-dialog {
+        width: min(100% - 20px, 780px);
+    }
+
+    .anime-add-shell,
+    .manga-add-shell {
+        padding: 28px 18px 20px;
+    }
+
+    .anime-add-shell .recommendation-dialog-content h2,
+    .manga-add-shell .recommendation-dialog-content h2 {
+        margin-right: 38px;
+        font-size: 28px;
+    }
+
+    .anime-add-shell .recommendation-dialog-close,
+    .manga-add-shell .recommendation-dialog-close {
+        top: 12px;
+        right: 12px;
+    }
+
+    .anime-add-search-form {
+        grid-template-columns: 1fr;
+    }
+
+    .anime-add-search-form .library-add-button {
+        width: 100%;
+    }
+
+    .anime-add-result {
+        grid-template-columns: 48px minmax(0, 1fr);
+        gap: 10px;
+    }
+
+    .anime-add-result img {
+        width: 48px;
+        height: 68px;
+    }
+
+    .anime-add-result b {
+        grid-column: 2;
+        justify-self: start;
+    }
+}
 
 
 /* Normal desktop Anime view: keep the page clean and move the rotating
@@ -3314,10 +3481,6 @@ html.anime-category-active .anime-library-panel .movie-filter-clear {
 
 .manga-open {
     cursor: pointer;
-}
-
-.manga-add-shell {
-    max-width: 780px;
 }
 
 .manga-detail-dialog {
