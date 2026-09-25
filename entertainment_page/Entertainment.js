@@ -237,14 +237,10 @@ async function load_release_rows(type) {
         const upcoming = result.data.upcoming || [];
         release_items = [...newly_released, ...upcoming];
 
-        const mobile_release_limit =
-            window.matchMedia("(max-width: 700px)").matches ? 6 : null;
-        const visible_new_releases = mobile_release_limit
-            ? newly_released.slice(0, mobile_release_limit)
-            : newly_released;
-        const visible_upcoming = mobile_release_limit
-            ? upcoming.slice(0, mobile_release_limit)
-            : upcoming;
+        const visible_new_releases =
+            newly_released;
+        const visible_upcoming =
+            upcoming;
 
         new_release_grid.innerHTML = visible_new_releases.length
             ? visible_new_releases.map(create_release_card).join("")
@@ -409,7 +405,7 @@ function apply_recommendation_filter() {
         (!genre_id || (item.genre_ids || []).includes(genre_id))
     );
     const recommendation_limit =
-        window.matchMedia("(max-width: 700px)").matches ? 6 : 7;
+        window.matchMedia("(max-width: 700px)").matches ? 12 : 18;
     visible_recommendations = filtered.slice(0, recommendation_limit);
     render_recommendations();
 }
@@ -7214,6 +7210,44 @@ function activate_explore_recommendation_state(
 explore_view?.addEventListener(
     "click",
     async (event) => {
+        const scroll_button =
+            event.target.closest(
+                "[data-explore-scroll]"
+            );
+
+        if (scroll_button) {
+            const row =
+                scroll_button.closest(
+                    ".explore-row"
+                );
+            const track =
+                row?.querySelector(
+                    ".explore-scroll-track"
+                );
+
+            if (!track) return;
+
+            const direction =
+                scroll_button.dataset
+                    .exploreScroll ===
+                "left"
+                    ? -1
+                    : 1;
+            const distance =
+                Math.max(
+                    track.clientWidth * 0.86,
+                    260
+                );
+
+            track.scrollBy({
+                left:
+                    direction *
+                    distance,
+                behavior: "smooth"
+            });
+            return;
+        }
+
         const block =
             event.target.closest(
                 "[data-explore-media]"
