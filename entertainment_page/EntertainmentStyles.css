@@ -2472,7 +2472,12 @@ html[data-theme="sunset"] .nav-links {
     }
 
     .recommendation-dialog-shell {
-        grid-template-columns: 95px 1fr;
+        /* Wider than the pre-Watch-box 95px — that column now also has
+           to fit the box row and the streaming-provider tile, not just
+           the poster image. Too narrow here squeezed everything down to
+           one or two icons per row instead of sitting properly side by
+           side. */
+        grid-template-columns: 130px 1fr;
         gap: 14px;
         padding: 18px;
     }
@@ -2484,6 +2489,11 @@ html[data-theme="sunset"] .nav-links {
     .recommendation-dialog-description {
         grid-column: 1 / -1;
         font-size: 13px;
+    }
+
+    .watch-provider-icon {
+        width: 26px;
+        height: 26px;
     }
 }
 /*#endregion*/
@@ -4520,11 +4530,15 @@ html[data-theme="flurple"] .global-search-dialog{
 .watch-box-row {
     display: flex;
     gap: 8px;
+    transition: opacity 0.15s ease;
 }
 
 /* One consistent box for every state — loading/idle/requested/
    downloading/available/season-count all share this exact shape, unlike
-   the old mix of a round icon button and separate text pills. */
+   the old mix of a round icon button and separate text pills.
+   overflow:hidden is the actual safety net against clipping: whatever
+   goes inside (an SVG, a spinner, a couple of digits) is clipped to this
+   shape rather than spilling outside it if it's ever wider than expected. */
 .watch-box {
     width: 38px;
     height: 38px;
@@ -4533,11 +4547,13 @@ html[data-theme="flurple"] .global-search-dialog{
     display: flex;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
     border: 1px solid rgba(255, 255, 255, 0.14);
     border-radius: 9px;
     background: rgba(255, 255, 255, 0.055);
     color: #dce3f4;
     font-family: inherit;
+    font-size: 11px;
     cursor: default;
 }
 
@@ -4599,6 +4615,7 @@ button.watch-box:hover {
     border: 1px solid rgba(255, 255, 255, 0.14);
     border-radius: 9px;
     background: rgba(255, 255, 255, 0.055);
+    transition: opacity 0.15s ease;
 }
 
 .watch-provider-row:empty {

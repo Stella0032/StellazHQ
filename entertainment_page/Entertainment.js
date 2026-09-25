@@ -1026,7 +1026,18 @@ async function open_recommendation_details(item) {
     }
 }
 
-async function request_media_on_seerr(item, media_type, button) {
+// `refresh` re-runs the same refresh_seerr_status_slot call that
+// originally rendered this box, re-fetching the real state from Seerr
+// rather than guessing what to show — used on both success (a fresh
+// request usually isn't "available" yet, but might now read "requested"
+// or show updated season counts) and failure (nothing actually changed,
+// so this just puts the idle/count box back). Leftover from before this
+// button was icon-only: it used to set button.textContent directly
+// ("Requesting…"/"✓ Requested"), which — now that the button is a small
+// fixed-size icon box — replaced the icon with a text run that overflowed
+// right out of the box. Swapping in the same spinner markup everything
+// else uses for "loading" keeps this visually consistent instead.
+async function request_media_on_seerr(item, media_type, button, refresh) {
     let choice = "";
     let seasons = null;
 
@@ -1059,9 +1070,8 @@ async function request_media_on_seerr(item, media_type, button) {
         if (choice === null) return;
     }
 
-    const original_text = button.textContent;
     button.disabled = true;
-    button.textContent = "Requesting...";
+    button.innerHTML = watch_box_spinner_markup();
     try {
         const request_media = httpsCallable(functions, "requestMediaOnSeerr");
         const result = await request_media({
@@ -1073,11 +1083,10 @@ async function request_media_on_seerr(item, media_type, button) {
         show_toast(result.data.already_requested
             ? `${item.title} was already requested on your Seerr server.`
             : `${item.title} requested on your Seerr server.`);
-        button.textContent = "✓ Requested";
+        refresh();
     } catch (error) {
         console.error("Unable to request media on Seerr:", error);
-        button.disabled = false;
-        button.textContent = original_text;
+        refresh();
         if (error?.message === "Connect your Plex account first." &&
             confirm("Connect your Plex account first. Open Connected Services now?")) {
             open_connected_services_dialog();
@@ -1326,12 +1335,15 @@ async function refresh_watch_providers_slot(
     }
     if (!still_open()) return;
 
+    // The slot IS the .watch-provider-row tile itself — innerHTML, not
+    // outerHTML, so the tile's own border/background survives being
+    // populated instead of getting replaced along with it.
     const slot = container.querySelector("[data-watch-providers-slot]");
     if (!slot) return;
 
     // Walking the catalog (not the raw provider list) is what guarantees
     // at most one button per platform and drops anything uncurated.
-    slot.outerHTML = watch_provider_catalog
+    const markup = watch_provider_catalog
         .map((entry) => ({
             entry,
             provider: providers.find(
@@ -1341,6 +1353,21 @@ async function refresh_watch_providers_slot(
         .filter(({provider}) => provider)
         .map(({entry, provider}) => watch_provider_button_markup(provider, entry))
         .join("");
+    set_html_smoothly(slot, markup);
+}
+
+// A plain innerHTML swap is an instant, jarring cut between icons —
+// fades the element out, swaps its content while invisible, then fades
+// it back in. .watch-box-row/.watch-provider-row both declare the
+// opacity transition this relies on.
+function set_html_smoothly(el, html) {
+    el.style.opacity = "0";
+    setTimeout(() => {
+        el.innerHTML = html;
+        requestAnimationFrame(() => {
+            el.style.opacity = "1";
+        });
+    }, 150);
 }
 
 // Shared by the recommendation/release dialog, the library detail
@@ -1372,8 +1399,9 @@ async function refresh_seerr_status_slot(
 
     const box_row = container.querySelector("[data-watch-box-row]");
     if (box_row) {
-        box_row.innerHTML =
-            watch_box_row_markup(state, media_type, request_click_attrs);
+        set_html_smoothly(
+            box_row, watch_box_row_markup(state, media_type, request_click_attrs)
+        );
     }
 }
 
@@ -1448,7 +1476,16 @@ async function run_recommendation_action(item, action, button) {
     }
 
     if (action === "request_seerr") {
-        await request_media_on_seerr(item, active_recommendation_type, button);
+        await request_media_on_seerr(item, active_recommendation_type, button, () =>
+            refresh_seerr_status_slot(
+                recommendation_dialog_watch,
+                item.tmdb_id,
+                active_recommendation_type,
+                (state) => `data-dialog-action="request_seerr"
+                         data-seerr-french="${state.is_french}"
+                         data-seerr-anime="${state.is_anime}"`,
+                () => active_recommendation_detail === item
+            ));
         return;
     }
 
@@ -2934,10 +2971,23 @@ recommendation_dialog.addEventListener("click", async (event) => {
         "[data-library-dialog-request]"
     );
     if (request_button) {
+        const request_item = active_library_detail.item;
+        const request_type = request_button.dataset.libraryDialogRequest;
         await request_media_on_seerr(
-            active_library_detail.item,
-            request_button.dataset.libraryDialogRequest,
-            request_button
+            request_item, request_type, request_button, () =>
+                refresh_seerr_status_slot(
+                    recommendation_dialog_watch,
+                    request_item.tmdb_id,
+                    request_type,
+                    (state) => request_item.status === "watch_later"
+                        ? `data-library-dialog-request="${request_type}"
+                           data-library-dialog-id="${request_item.id}"
+                           data-seerr-french="${state.is_french}"
+                           data-seerr-anime="${state.is_anime}"`
+                        : null,
+                    () => active_library_detail?.item.id === request_item.id &&
+                        active_library_detail?.type === request_type
+                )
         );
         return;
     }
@@ -5631,10 +5681,23 @@ anime_edit_close.addEventListener("click", () => anime_edit_dialog.close());
 anime_watch_section.addEventListener("click", async (event) => {
     const button = event.target.closest("[data-anime-watch-request]");
     if (!button || !active_anime || !active_anime_watch_tmdb_id) return;
+
+    const requested_anime_id = active_anime.id;
+    const requested_tmdb_id = active_anime_watch_tmdb_id;
     await request_media_on_seerr(
-        {tmdb_id: active_anime_watch_tmdb_id, title: active_anime.title},
+        {tmdb_id: requested_tmdb_id, title: active_anime.title},
         "show",
-        button
+        button,
+        () => refresh_seerr_status_slot(
+            anime_watch_section,
+            requested_tmdb_id,
+            "show",
+            (state) => `data-anime-watch-request
+                     data-seerr-french="${state.is_french}"
+                     data-seerr-anime="${state.is_anime}"`,
+            () => active_anime?.id === requested_anime_id &&
+                anime_edit_dialog.open
+        )
     );
 });
 
