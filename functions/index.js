@@ -9254,15 +9254,24 @@ async function seerr_fetch_media_info(base_url, cookie, media_type, tmdb_id) {
     // (its `Season` entity: {seasonNumber, status}) — this is what lets
     // Stellaz tell "2 of 5 seasons on Plex" apart from the show-level
     // status code, which only reflects the season Seerr last touched.
-    // `result.payload.seasons` (no `mediaInfo` prefix) is the plain TMDB
-    // season list already fetched as part of this same request, same
-    // `season_number > 0` filter getTVShowSeasons uses so the two totals
-    // agree with each other.
+    // `result.payload.seasons` (no `mediaInfo` prefix) is Seerr's own TV
+    // details response, NOT a raw TMDB passthrough — it runs TMDB's data
+    // through Seerr's own mapTvDetails(), which remaps every field to
+    // camelCase (`seasonNumber`, not TMDB's `season_number`). Confirmed
+    // directly against Seerr's server/models/Tv.ts source rather than
+    // assumed, since getting this wrong silently zeroes total_season_count
+    // for every show.
+    // Excludes season 0 (specials) — Seerr can track/grab specials same as
+    // any other season, and counting one as "available" here without also
+    // counting it toward the total below would make available >= total
+    // (and this slot hide) one real season too early.
     const seerr_seasons = media_type === "tv"
-        ? (media_info?.seasons || []) : [];
+        ? (media_info?.seasons || [])
+            .filter((season) => season.seasonNumber > 0)
+        : [];
     const total_season_count = media_type === "tv"
         ? (result.payload?.seasons || [])
-            .filter((season) => season.season_number > 0).length
+            .filter((season) => season.seasonNumber > 0).length
         : null;
     const available_season_count = media_type === "tv"
         ? seerr_seasons.filter((season) => Number(season.status) === 5).length
