@@ -2994,6 +2994,9 @@ async function move_show_to_anime(show) {
             media_type: "tv",
             status: show.status === "watched" ? "completed" : "plan_to_watch",
             episodes_watched: episodes_watched || 0,
+            ...(show.status === "watched"
+                ? {activity_at: new Date().toISOString()}
+                : {}),
             ...(poster_url ? {poster_url} : {}),
             ...(show.genres?.length ? {genres: show.genres} : {}),
             ...(show.my_rating != null ? {my_rating: Number(show.my_rating)} : {})
@@ -3281,8 +3284,17 @@ library_add_form.addEventListener("submit", async (event) => {
     library_add_submit.textContent = "Adding...";
 
     try {
+        const new_item = {
+            title,
+            year,
+            status,
+            ...(is_movie && status === "watched"
+                ? {watched_at: new Date().toISOString()}
+                : {})
+        };
+
         const {data: added_item, error} = await supabase.from(table)
-            .insert({title, year, status})
+            .insert(new_item)
             .select()
             .single();
 
@@ -3374,8 +3386,16 @@ async function mark_library_item_watched(type, id, button) {
     const table = type === "movie" ? "movies" : "tv_shows";
 
     try {
+        const watched_patch =
+            type === "movie"
+                ? {
+                    status: "watched",
+                    watched_at: new Date().toISOString()
+                }
+                : {status: "watched"};
+
         const {error} = await supabase.from(table)
-            .update({status: "watched"})
+            .update(watched_patch)
             .eq("id", id);
         if (error) throw error;
 
@@ -5381,6 +5401,7 @@ function anime_import_patch(existing, row) {
         "mal_id", "anilist_id", "kitsu_id",
         "mal_score", "anilist_score", "kitsu_score",
         "total_episodes", "start_date", "finish_date",
+        "mal_updated_at", "activity_at",
         "average_episode_duration_ms"
     ].forEach((field) => {
         if (row[field] !== null && row[field] !== undefined &&
@@ -5475,6 +5496,7 @@ function map_anilist_anime_import_row(item) {
         description: item.description,
         genres: item.genres || [],
         site_url: item.site_url,
+        activity_at: item.activity_at || null,
         synced_at: new Date().toISOString()
     };
 }
@@ -6214,6 +6236,8 @@ anime_edit_form.addEventListener("submit", async (event) => {
                     my_rating:
                         score,
                     synced_at:
+                        new Date().toISOString(),
+                    activity_at:
                         new Date().toISOString()
                 })
                 .eq(
@@ -6320,6 +6344,7 @@ async function sync_mal_anime({confirm_import = true} = {}) {
             start_date: item.start_date,
             finish_date: item.finish_date,
             mal_updated_at: item.mal_updated_at,
+            activity_at: item.mal_updated_at || null,
             average_episode_duration_ms:
                 item.average_episode_duration_ms,
             mal_score: item.mal_score,
@@ -6521,6 +6546,10 @@ async function merge_tmdb_movies(rows) {
 
             if (item.status === "watched") {
                 patch.status = "watched";
+                if (existing.status !== "watched") {
+                    patch.watched_at =
+                        new Date().toISOString();
+                }
             } else if (existing.status !== "watched") {
                 patch.status = "watch_later";
             }
@@ -6546,6 +6575,9 @@ async function merge_tmdb_movies(rows) {
             status: item.status === "watched"
                 ? "watched"
                 : "watch_later",
+            ...(item.status === "watched"
+                ? {watched_at: new Date().toISOString()}
+                : {}),
             ...(item.tmdb_id
                 ? {tmdb_id: Number(item.tmdb_id)}
                 : {}),
@@ -6949,6 +6981,7 @@ async function auto_sync_plex_activity() {
                 ...(item.genres?.length ? {genres: item.genres} : {}),
                 ...(item.runtime_minutes ? {runtime_minutes: item.runtime_minutes} : {}),
                 status: "watched",
+                watched_at: new Date().toISOString(),
                 my_rating: Number(item.rating)
             };
             const {error} = await supabase.from("movies").insert(row);
@@ -7188,6 +7221,9 @@ plex_import_confirm?.addEventListener("click", async () => {
             ...(item.genres?.length ? {genres: item.genres} : {}),
             ...(item.runtime_minutes ? {runtime_minutes: item.runtime_minutes} : {}),
             status: item.watched ? "watched" : "watch_later",
+            ...(item.watched
+                ? {watched_at: new Date().toISOString()}
+                : {}),
             ...(item.rating != null ? {my_rating: Number(item.rating)} : {})
         }));
         const show_rows = plex_import_preview.new_shows.map((item) => ({
@@ -7209,6 +7245,7 @@ plex_import_confirm?.addEventListener("click", async () => {
                 media_type: "tv",
                 status: total > 0 && watched >= total ? "completed" : "watching",
                 episodes_watched: watched,
+                activity_at: new Date().toISOString(),
                 ...(total ? {total_episodes: total} : {}),
                 poster_url: await get_plex_poster_data_url(item.plex_thumb),
                 ...(item.genres?.length ? {genres: item.genres} : {}),
@@ -9485,6 +9522,8 @@ function anime_catalog_watched_row(item) {
             item.genres || [],
         site_url:
             item.site_url,
+        activity_at:
+            new Date().toISOString(),
         synced_at:
             new Date().toISOString()
     };
