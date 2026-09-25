@@ -4517,7 +4517,7 @@ exports.getFriendRecentActivity =
                             friend,
                         };
                     })
-                    .slice(0, 18);
+                    .slice(0, 64);
 
             return {
                 friend_count:
