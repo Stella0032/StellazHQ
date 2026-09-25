@@ -4507,6 +4507,12 @@ html[data-theme="flurple"] .global-search-dialog{
     gap: 12px;
 }
 
+.watch-box-area {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
 .watch-box-area:empty {
     display: none;
 }
@@ -4581,24 +4587,36 @@ button.watch-box:hover {
     50% { opacity: 1; }
 }
 
+/* One tile holding every streaming-provider icon, matching the same
+   border/background language as .watch-box — icons sit side by side
+   inside it and only wrap to a second row once there isn't room for
+   them all on one line. */
 .watch-provider-row {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 6px;
+    padding: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.055);
+}
+
+.watch-provider-row:empty {
+    display: none;
 }
 
 .watch-provider-icon {
-    width: 34px;
-    height: 34px;
+    width: 30px;
+    height: 30px;
     padding: 0;
     border: none;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 8px;
+    border-radius: 6px;
     overflow: hidden;
     flex: 0 0 auto;
-    background: rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.08);
     cursor: pointer;
     transition: transform 0.18s ease;
 }

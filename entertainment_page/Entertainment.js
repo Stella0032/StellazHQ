@@ -1502,7 +1502,10 @@ recommendation_grid.addEventListener("click", async (event) => {
     }
 });
 
-recommendation_dialog_actions.addEventListener("click", async (event) => {
+// Delegated on the whole dialog, not just the actions list — the watch
+// box (Request/season-count button included) now lives under the
+// poster, a sibling of the actions container, not inside it.
+recommendation_dialog.addEventListener("click", async (event) => {
     const button = event.target.closest("[data-dialog-action]");
     if (!button || !active_recommendation_detail) return;
     await run_recommendation_action(
@@ -2872,7 +2875,10 @@ show_grid.addEventListener("click", (event) => {
     if (show) open_library_detail("show", show);
 });
 
-recommendation_dialog_actions.addEventListener("click", async (event) => {
+// Delegated on the whole dialog, not just the actions list — the watch
+// box (Request/season-count button included) now lives under the
+// poster, a sibling of the actions container, not inside it.
+recommendation_dialog.addEventListener("click", async (event) => {
     if (!active_library_detail) return;
 
     const rating_button = event.target.closest("[data-library-dialog-rating]");
