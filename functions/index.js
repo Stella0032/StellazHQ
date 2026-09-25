@@ -9313,6 +9313,7 @@ async function seerr_fetch_media_info(base_url, cookie, media_type, tmdb_id) {
         return {
             status_code: 1,
             watch_url: null,
+            mobile_watch_url: null,
             genres: [],
             original_language: null,
             available_season_count: null,
@@ -9377,6 +9378,11 @@ async function seerr_fetch_media_info(base_url, cookie, media_type, tmdb_id) {
     return {
         status_code: Number(media_info?.status || 1),
         watch_url: media_info?.mediaUrl || null,
+        // Seerr's own field name is iOSPlexUrl, but the `plex://` scheme
+        // it builds is the same one Plex's Android app registers too —
+        // not actually iOS-specific, just named for whichever client
+        // Seerr's own "open in app" banner first targeted.
+        mobile_watch_url: media_info?.iOSPlexUrl || null,
         genres: result.payload?.genres || [],
         original_language: result.payload?.originalLanguage || null,
         total_season_count,
@@ -9524,6 +9530,7 @@ exports.getSeerrMediaStatus = onCall(
                     connected: false,
                     status: "idle",
                     watch_url: null,
+                    mobile_watch_url: null,
                     progress_percent: null,
                     available_season_count: null,
                     total_season_count: null,
@@ -9560,6 +9567,7 @@ exports.getSeerrMediaStatus = onCall(
                     media_details.has_active_download
                 ),
                 watch_url: media_details.watch_url,
+                mobile_watch_url: media_details.mobile_watch_url,
                 progress_percent: media_details.progress_percent,
                 available_season_count: media_details.available_season_count,
                 total_season_count: media_details.total_season_count,
@@ -9591,6 +9599,7 @@ exports.getSeerrMediaStatus = onCall(
                 connected: true,
                 status: "idle",
                 watch_url: null,
+                mobile_watch_url: null,
                 progress_percent: null,
                 available_season_count: null,
                 total_season_count: null,
