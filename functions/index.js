@@ -3165,6 +3165,79 @@ exports.getMovieMetadata = onCall(
     }
 );
 
+// TMDB's watch-provider data is licensed from JustWatch and explicitly
+// does not include per-provider deep links (TMDB's own docs: "not going
+// to return full deep links, ... just enough information to display
+// what's available where") — only a logo and a name per provider, plus
+// one generic aggregator link per country that isn't provider-specific.
+// Region hardcoded to CA for now; there's no per-user region setting.
+exports.getWatchProviders = onCall(
+    {secrets: [tmdb_read_access_token]},
+    async (request) => {
+        if (!request.auth) {
+            throw new HttpsError("unauthenticated", "You must be logged in.");
+        }
+
+        const media_type =
+            request.data?.media_type === "tv" ? "tv" : "movie";
+        const tmdb_id = Number(request.data?.tmdb_id);
+
+        if (!tmdb_id) {
+            throw new HttpsError(
+                "invalid-argument",
+                "A TMDB ID is required to look up watch providers."
+            );
+        }
+
+        // Never blocks the details dialog from opening — same reasoning
+        // as getSeerrMediaStatus's own fallback: a failed lookup here
+        // just means no streaming logos render, not a broken dialog.
+        try {
+            const response = await fetch(
+                `https://api.themoviedb.org/3/${media_type}/${tmdb_id}` +
+                "/watch/providers",
+                {
+                    headers: {
+                        Authorization:
+                            `Bearer ${tmdb_read_access_token.value()}`,
+                        accept: "application/json",
+                    },
+                }
+            );
+
+            if (!response.ok) return {providers: []};
+
+            const data = await response.json();
+            const flatrate = data.results?.CA?.flatrate || [];
+
+            return {
+                providers: flatrate
+                    // TMDB/JustWatch can list "Plex" as its own
+                    // ad-supported catalog entry — a different thing
+                    // entirely from Stellaz's Watch on Plex button, which
+                    // reflects Rémy's own server. Excluded to avoid a
+                    // confusing duplicate icon.
+                    .filter((provider) => provider.provider_name !== "Plex")
+                    .map((provider) => ({
+                        name: provider.provider_name,
+                        logo_url: provider.logo_path
+                            ? "https://image.tmdb.org/t/p/w92" +
+                                provider.logo_path
+                            : null,
+                    }))
+                    .filter((provider) => provider.logo_url),
+            };
+        } catch (error) {
+            logger.warn("Unable to fetch watch providers.", {
+                tmdb_id,
+                media_type,
+                error: error?.message || String(error),
+            });
+            return {providers: []};
+        }
+    }
+);
+
 
 exports.getEntertainmentReleases = onCall(
     {secrets: [tmdb_read_access_token]},

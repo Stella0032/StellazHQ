@@ -883,15 +883,21 @@ async function open_recommendation_details(item) {
             <button type="button" class="recommendation-action primary"
                     data-dialog-action="manga_reading">＋ Start reading</button>`
                 : `
+            ${item.tmdb_id ? `
+                <div class="watch-section">
+                    <p class="eyebrow watch-section-label">WATCH</p>
+                    <div class="watch-section-row">
+                        <span data-seerr-watch-slot></span>
+                        <span data-watch-providers-slot></span>
+                        <span class="recommendation-action muted" data-seerr-slot>
+                            Checking Seerr…
+                        </span>
+                    </div>
+                </div>` : ""}
             <button type="button" class="recommendation-action primary"
                     data-dialog-action="watched">✓ I've seen it</button>
             <button type="button" class="recommendation-action"
                     data-dialog-action="watch_later">＋ Watch later</button>
-            ${item.tmdb_id ? `
-                <span data-seerr-watch-slot></span>
-                <span class="recommendation-action muted" data-seerr-slot>
-                    Checking Seerr…
-                </span>` : ""}
             <button type="button" class="recommendation-action muted"
                     data-dialog-action="not_interested">Not interested</button>`;
     recommendation_dialog.showModal();
@@ -938,6 +944,13 @@ async function open_recommendation_details(item) {
                      data-dialog-action="request_seerr"
                      data-seerr-french="${state.is_french}"
                      data-seerr-anime="${state.is_anime}">${label}</button>`,
+            () => active_recommendation_detail === item
+        );
+        refresh_watch_providers_slot(
+            recommendation_dialog_actions,
+            item.tmdb_id,
+            active_recommendation_type,
+            item.title,
             () => active_recommendation_detail === item
         );
     }
@@ -1100,6 +1113,84 @@ function seerr_watch_slot_markup(state) {
                href="${state.watch_url}" target="_blank" rel="noopener"
                aria-label="Watch on Plex" title="Watch on Plex">
                <img src="../images/plex.svg" alt="" class="seerr-plex-icon"></a>`;
+}
+
+// Per-provider search-link templates. TMDB/JustWatch only give a logo
+// and a name, never a deep link to the title's own page on that service
+// (confirmed against TMDB's own API docs) — this is the best available
+// substitute, a link to that service's own search results for the title,
+// not a guaranteed exact match.
+//
+// Confidence varies by entry: Netflix's and Amazon's search URLs are
+// long-stable, widely-used public patterns. Disney+ and Crave don't have
+// a confirmed query-param search URL — untested, may not work as-is.
+// Anything not matched here (a provider TMDB lists that isn't in this
+// table) still renders as a bare logo, just not clickable, rather than
+// risk a wrong link.
+const watch_provider_search_urls = [
+    {
+        match: /netflix/i,
+        url: (title) =>
+            `https://www.netflix.com/search?q=${encodeURIComponent(title)}`
+    },
+    {
+        match: /prime video/i,
+        url: (title) =>
+            `https://www.amazon.ca/s?k=${encodeURIComponent(title)}` +
+            "&i=instant-video"
+    },
+    {
+        match: /disney/i,
+        url: (title) =>
+            `https://www.disneyplus.com/search/${encodeURIComponent(title)}`
+    },
+    {
+        match: /crave/i,
+        url: (title) =>
+            `https://www.crave.ca/en/search?q=${encodeURIComponent(title)}`
+    },
+];
+
+function watch_provider_button_markup(provider, title) {
+    const logo = `<img src="${provider.logo_url}" alt="" ` +
+        'class="watch-provider-logo">';
+    const match = watch_provider_search_urls.find(
+        (entry) => entry.match.test(provider.name)
+    );
+
+    if (!match) {
+        return `<span class="watch-provider-icon" title="${provider.name}">` +
+            `${logo}</span>`;
+    }
+
+    return `<a class="watch-provider-icon" href="${match.url(title)}"
+               target="_blank" rel="noopener"
+               title="Search ${provider.name} for this title"
+               aria-label="Search ${provider.name} for ${title}">
+               ${logo}</a>`;
+}
+
+async function refresh_watch_providers_slot(
+    container, tmdb_id, media_type, title, still_open
+) {
+    let providers = [];
+    try {
+        const get_providers = httpsCallable(functions, "getWatchProviders");
+        const result = await get_providers({
+            tmdb_id: Number(tmdb_id),
+            media_type: media_type === "show" ? "tv" : "movie"
+        });
+        providers = result.data?.providers || [];
+    } catch (error) {
+        console.error("Unable to load watch providers:", error);
+    }
+    if (!still_open()) return;
+
+    const slot = container.querySelector("[data-watch-providers-slot]");
+    if (!slot) return;
+    slot.outerHTML = providers.map(
+        (provider) => watch_provider_button_markup(provider, title)
+    ).join("");
 }
 
 function seerr_progress_bar_markup(percent) {
@@ -2519,10 +2610,16 @@ async function open_library_detail(type, item) {
                 ✓ Mark watched
             </button>` : ""}
         ${item.tmdb_id ? `
-            <span data-seerr-watch-slot></span>
-            <span class="recommendation-action muted" data-seerr-slot>
-                Checking Seerr…
-            </span>` : ""}
+            <div class="watch-section">
+                <p class="eyebrow watch-section-label">WATCH</p>
+                <div class="watch-section-row">
+                    <span data-seerr-watch-slot></span>
+                    <span data-watch-providers-slot></span>
+                    <span class="recommendation-action muted" data-seerr-slot>
+                        Checking Seerr…
+                    </span>
+                </div>
+            </div>` : ""}
         ${type === "show" ? `
             <button class="recommendation-action" type="button"
                     data-library-dialog-seasons="${item.id}">
@@ -2554,6 +2651,14 @@ async function open_library_detail(type, item) {
                         data-seerr-anime="${state.is_anime}">
                     ${label}
                 </button>` : "",
+            () => active_library_detail?.item.id === item.id &&
+                active_library_detail?.type === type
+        );
+        refresh_watch_providers_slot(
+            recommendation_dialog_actions,
+            item.tmdb_id,
+            type,
+            item.title,
             () => active_library_detail?.item.id === item.id &&
                 active_library_detail?.type === type
         );
