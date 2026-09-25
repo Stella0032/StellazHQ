@@ -946,7 +946,6 @@ async function open_recommendation_details(item) {
             recommendation_dialog_actions,
             item.tmdb_id,
             active_recommendation_type,
-            item.title,
             () => active_recommendation_detail === item
         );
     }
@@ -1105,76 +1104,107 @@ async function request_media_on_seerr(item, media_type, button) {
 // Request/Requested/Downloading text so the two can sit side by side.
 //
 // A <button> rather than a plain <a href> so a phone can try opening the
-// Plex app first (see the delegated click handler below) — mobile_watch_url
-// carries the plex:// deep link when Seerr has one, watch_url is always
-// the plain web fallback, used as-is on desktop or if there's no deep link.
+// Plex app first (see open_app_or_web / the delegated handler below) —
+// mobile_watch_url carries the plex:// deep link when Seerr has one,
+// watch_url is always the plain web fallback, used as-is on desktop or
+// if there's no deep link.
 function seerr_watch_slot_markup(state) {
     if (!state.watch_url) return "";
     return `<button type="button" class="recommendation-action seerr-watch-button"
-               data-seerr-watch-slot data-watch-plex-open
-               data-plex-url="${state.watch_url}"
-               data-plex-mobile-url="${state.mobile_watch_url || ""}"
+               data-seerr-watch-slot data-app-open
+               data-app-web-url="${state.watch_url}"
+               data-app-mobile-url="${state.mobile_watch_url || ""}"
                aria-label="Watch on Plex" title="Watch on Plex">
                <img src="../images/plex.svg" alt="" class="seerr-plex-icon"></button>`;
 }
 
-// Per-provider search-link templates. TMDB/JustWatch only give a logo
-// and a name, never a deep link to the title's own page on that service
-// (confirmed against TMDB's own API docs) — this is the best available
-// substitute, a link to that service's own search results for the title,
-// not a guaranteed exact match.
+// Curated to just the mainstream subscription platforms actually wanted
+// here — TMDB/JustWatch's raw `flatrate` list also includes "with Ads"
+// tiers and channel add-ons (e.g. "Starz Amazon Channel"), which would
+// otherwise show up as extra, confusing icons next to the real ones.
+// Matching against this fixed list, in this order, taking at most one
+// hit per entry, is what gives "one Netflix icon" instead of two or
+// three near-duplicates — and drops anything not on the list entirely.
 //
-// Confidence varies by entry: Netflix's and Amazon's search URLs are
-// long-stable, widely-used public patterns. Disney+ and Crave don't have
-// a confirmed query-param search URL — untested, may not work as-is.
-// Anything not matched here (a provider TMDB lists that isn't in this
-// table) still renders as a bare logo, just not clickable, rather than
-// risk a wrong link.
-const watch_provider_search_urls = [
+// `app_url` tries that platform's own app on a phone first, same
+// mechanism as the Plex button (open_app_or_web below) — confidence
+// on the scheme varies a lot by platform and is noted per entry.
+// `logo` is a locally-hosted asset when one's been supplied; falls back
+// to TMDB's own logo for anything without one (currently Disney+).
+const watch_provider_catalog = [
     {
         match: /netflix/i,
-        url: (title) =>
-            `https://www.netflix.com/search?q=${encodeURIComponent(title)}`
+        name: "Netflix",
+        logo: "../images/netflix-logo-icon.svg",
+        // nflx:// is Netflix's real, long-documented scheme — though
+        // Netflix's own current guidance favors Universal Links to a
+        // specific title, which isn't usable here since TMDB doesn't
+        // give us Netflix's own internal id for this title, only that
+        // Netflix has it. This just opens the app, not the title itself.
+        app_url: "nflx://www.netflix.com",
+        web_url: "https://www.netflix.com"
     },
     {
         match: /prime video/i,
-        url: (title) =>
-            `https://www.amazon.ca/s?k=${encodeURIComponent(title)}` +
-            "&i=instant-video"
+        name: "Prime Video",
+        logo: "../images/amazon-prime.svg",
+        // No app_url: multiple developers have publicly documented
+        // trying many schemes for the Prime Video app and failing —
+        // going straight to the website rather than guess with zero
+        // basis for a guess.
+        app_url: null,
+        web_url: "https://www.primevideo.com"
     },
     {
         match: /disney/i,
-        url: (title) =>
-            `https://www.disneyplus.com/search/${encodeURIComponent(title)}`
+        name: "Disney+",
+        logo: null,
+        // Unverified — commonly cited across community deep-link
+        // references, no primary-source confirmation found.
+        app_url: "disneyplus://",
+        web_url: "https://www.disneyplus.com"
     },
     {
-        match: /crave/i,
-        url: (title) =>
-            `https://www.crave.ca/en/search?q=${encodeURIComponent(title)}`
+        match: /^crave/i,
+        name: "Crave",
+        logo: "../images/crave.png",
+        // No public documentation found at all for a Crave app scheme.
+        app_url: null,
+        web_url: "https://www.crave.ca"
+    },
+    {
+        match: /paramount/i,
+        name: "Paramount+",
+        logo: "../images/paramount-plus.svg",
+        // Unverified guess following the same sluggified-name
+        // convention as Disney+'s.
+        app_url: "paramountplus://",
+        web_url: "https://www.paramountplus.com"
+    },
+    {
+        match: /crunchyroll/i,
+        name: "Crunchyroll",
+        logo: "../images/crunchyroll.svg",
+        // Unverified guess, same convention.
+        app_url: "crunchyroll://",
+        web_url: "https://www.crunchyroll.com"
     },
 ];
 
-function watch_provider_button_markup(provider, title) {
-    const logo = `<img src="${provider.logo_url}" alt="" ` +
-        'class="watch-provider-logo">';
-    const match = watch_provider_search_urls.find(
-        (entry) => entry.match.test(provider.name)
-    );
+function watch_provider_button_markup(provider, catalog_entry) {
+    const logo_src = catalog_entry.logo || provider.logo_url;
+    const logo = `<img src="${logo_src}" alt="" class="watch-provider-logo">`;
 
-    if (!match) {
-        return `<span class="watch-provider-icon" title="${provider.name}">` +
-            `${logo}</span>`;
-    }
-
-    return `<a class="watch-provider-icon" href="${match.url(title)}"
-               target="_blank" rel="noopener"
-               title="Search ${provider.name} for this title"
-               aria-label="Search ${provider.name} for ${title}">
-               ${logo}</a>`;
+    return `<button type="button" class="watch-provider-icon" data-app-open
+               data-app-web-url="${catalog_entry.web_url}"
+               data-app-mobile-url="${catalog_entry.app_url || ""}"
+               title="${catalog_entry.name}"
+               aria-label="Open ${catalog_entry.name}">
+               ${logo}</button>`;
 }
 
 async function refresh_watch_providers_slot(
-    container, tmdb_id, media_type, title, still_open
+    container, tmdb_id, media_type, still_open
 ) {
     let providers = [];
     try {
@@ -1191,9 +1221,19 @@ async function refresh_watch_providers_slot(
 
     const slot = container.querySelector("[data-watch-providers-slot]");
     if (!slot) return;
-    slot.outerHTML = providers.map(
-        (provider) => watch_provider_button_markup(provider, title)
-    ).join("");
+
+    // Walking the catalog (not the raw provider list) is what guarantees
+    // at most one button per platform and drops anything uncurated.
+    slot.outerHTML = watch_provider_catalog
+        .map((entry) => ({
+            entry,
+            provider: providers.find(
+                (provider) => entry.match.test(provider.name)
+            )
+        }))
+        .filter(({provider}) => provider)
+        .map(({entry, provider}) => watch_provider_button_markup(provider, entry))
+        .join("");
 }
 
 function seerr_progress_bar_markup(percent) {
@@ -1286,23 +1326,19 @@ function is_mobile_device() {
     return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
 
-// Try the Plex app first on a phone, since Plex's mobile apps register
-// the plex:// scheme themselves — navigating the current tab there hands
+// Try an app's own scheme first on a phone — Plex, Netflix, and several
+// other platforms register one — navigating the current tab there hands
 // off to the app if it's installed (the page backgrounds, firing `blur`,
 // which cancels the fallback below). If nothing intercepts it within a
-// short window — no app installed, or desktop, where there's no deep
-// link to try at all — falls back to the plain web link, same as this
-// button always did before. This is a standard, if imperfect, pattern:
+// short window — no app installed, an unregistered/wrong scheme, or
+// desktop, where there's no app to try at all — falls back to opening
+// the plain web link instead. This is a standard, if imperfect, pattern:
 // something else legitimately stealing focus in that same window (a
 // notification, a manual tab switch) would also cancel the fallback,
-// same trade-off every site using this trick accepts.
-recommendation_dialog_actions.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-watch-plex-open]");
-    if (!button) return;
-
-    const web_url = button.dataset.plexUrl;
-    const mobile_url = button.dataset.plexMobileUrl;
-
+// same trade-off every site using this trick accepts. Also means a
+// wrong scheme guess degrades safely to "just opens the website" rather
+// than actually breaking anything.
+function open_app_or_web(mobile_url, web_url) {
     if (!is_mobile_device() || !mobile_url) {
         window.open(web_url, "_blank", "noopener");
         return;
@@ -1315,6 +1351,16 @@ recommendation_dialog_actions.addEventListener("click", (event) => {
         "blur", () => clearTimeout(fallback_timer), {once: true}
     );
     window.location.href = mobile_url;
+}
+
+// Delegated on <body> rather than any one dialog's action container —
+// every "open the app, else the website" button anywhere in the app
+// (Plex, and every streaming-provider icon) shares this same handler and
+// only needs its own data attributes read off the clicked button.
+document.body.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-app-open]");
+    if (!button) return;
+    open_app_or_web(button.dataset.appMobileUrl, button.dataset.appWebUrl);
 });
 
 async function run_recommendation_action(item, action, button) {
@@ -2697,7 +2743,6 @@ async function open_library_detail(type, item) {
             recommendation_dialog_actions,
             item.tmdb_id,
             type,
-            item.title,
             () => active_library_detail?.item.id === item.id &&
                 active_library_detail?.type === type
         );
@@ -4684,6 +4729,8 @@ const anime_edit_title = document.getElementById("anime_edit_title");
 const anime_detail_meta = document.getElementById("anime_detail_meta");
 const anime_detail_description = document.getElementById("anime_detail_description");
 const anime_detail_facts = document.getElementById("anime_detail_facts");
+const anime_watch_section = document.getElementById("anime_watch_section");
+let active_anime_watch_tmdb_id = null;
 const anime_edit_form = document.getElementById("anime_edit_form");
 const anime_edit_status = document.getElementById("anime_edit_status");
 const anime_episode_picker = document.getElementById("anime_episode_picker");
@@ -5290,6 +5337,8 @@ async function open_anime_editor(anime_id) {
     if (!active_anime) return;
 
     const opened_anime_id = active_anime.id;
+    active_anime_watch_tmdb_id = null;
+    anime_watch_section.hidden = true;
     selected_anime_episode = Number(active_anime.episodes_watched || 0);
     anime_edit_title.textContent = active_anime.title;
     anime_edit_status.value = active_anime.status;
@@ -5332,6 +5381,49 @@ async function open_anime_editor(anime_id) {
 
     render_anime_episode_picker();
     anime_edit_dialog.showModal();
+
+    // Anime here is sourced from AniList/MAL/Kitsu, none of which carry
+    // a TMDB id, but Seerr/Plex/watch-provider data is all keyed by one
+    // — resolveTmdbId does a best-effort title search (backend rejects
+    // the match if it isn't actually tagged Animation, to avoid an
+    // unrelated live-action show with the same title). Hidden until a
+    // match is found rather than shown empty while resolving, and
+    // dropped entirely if nothing matches.
+    (async () => {
+        const anime_year = active_anime.start_date
+            ? Number(String(active_anime.start_date).slice(0, 4)) || null
+            : null;
+        let tmdb_id = null;
+        try {
+            const resolve = httpsCallable(functions, "resolveTmdbId");
+            const result = await resolve({
+                title: active_anime.title, year: anime_year
+            });
+            tmdb_id = result.data?.tmdb_id || null;
+        } catch (error) {
+            console.error("Unable to resolve a TMDB id for anime:", error);
+        }
+        if (!tmdb_id || active_anime?.id !== opened_anime_id) return;
+
+        active_anime_watch_tmdb_id = tmdb_id;
+        anime_watch_section.hidden = false;
+        const still_open = () =>
+            active_anime?.id === opened_anime_id && anime_edit_dialog.open;
+
+        refresh_seerr_status_slot(
+            anime_watch_section,
+            tmdb_id,
+            "show",
+            (state, label) => `<button type="button" class="recommendation-action" data-seerr-slot
+                     data-anime-watch-request
+                     data-seerr-french="${state.is_french}"
+                     data-seerr-anime="${state.is_anime}">${label}</button>`,
+            still_open
+        );
+        refresh_watch_providers_slot(
+            anime_watch_section, tmdb_id, "show", still_open
+        );
+    })();
 
     try {
         const get_details =
@@ -5591,6 +5683,16 @@ anime_grid.addEventListener("keydown", (event) => {
 });
 
 anime_edit_close.addEventListener("click", () => anime_edit_dialog.close());
+
+anime_watch_section.addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-anime-watch-request]");
+    if (!button || !active_anime || !active_anime_watch_tmdb_id) return;
+    await request_media_on_seerr(
+        {tmdb_id: active_anime_watch_tmdb_id, title: active_anime.title},
+        "show",
+        button
+    );
+});
 
 anime_edit_delete?.addEventListener("click", async () => {
     if (!active_anime) return;
