@@ -404,8 +404,7 @@ function apply_recommendation_filter() {
         !ignored_recommendation_ids.has(recommendation_id(item)) &&
         (!genre_id || (item.genre_ids || []).includes(genre_id))
     );
-    const recommendation_limit =
-        window.matchMedia("(max-width: 700px)").matches ? 12 : 18;
+    const recommendation_limit = 30;
     visible_recommendations = filtered.slice(0, recommendation_limit);
     render_recommendations();
 }
