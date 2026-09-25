@@ -4580,6 +4580,20 @@ html[data-theme="sunset"] .entertainment-nav {
     scrollbar-width: none;
     overscroll-behavior-x: contain;
     cursor: grab;
+    -webkit-mask-image:
+        linear-gradient(
+            to right,
+            #000 0,
+            #000 calc(100% - 88px),
+            transparent 100%
+        );
+    mask-image:
+        linear-gradient(
+            to right,
+            #000 0,
+            #000 calc(100% - 88px),
+            transparent 100%
+        );
 }
 
 .explore-scroll-track.recommendation-grid:active {
@@ -4789,6 +4803,20 @@ html[data-theme="sunset"] .entertainment-nav {
         margin-right: 0;
         padding-right: 22px;
         gap: 6px;
+        -webkit-mask-image:
+            linear-gradient(
+                to right,
+                #000 0,
+                #000 calc(100% - 48px),
+                transparent 100%
+            );
+        mask-image:
+            linear-gradient(
+                to right,
+                #000 0,
+                #000 calc(100% - 48px),
+                transparent 100%
+            );
     }
 
     .explore-scroll-track > .recommendation-card {
