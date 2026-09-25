@@ -601,8 +601,7 @@ a.recommendation-action {
         minmax(110px, 0.65fr)
         minmax(135px, 0.8fr)
         minmax(185px, 1.15fr)
-        86px
-        minmax(130px, auto);
+        86px;
     gap: 10px;
 }
 
@@ -708,30 +707,6 @@ a.recommendation-action {
     font-size: 10px;
 }
 
-.movie-card.library-extra {
-    display: none;
-}
-
-.movie-grid.expanded .movie-card.library-extra {
-    display: block;
-}
-
-.movie-library-toggle {
-    width: auto;
-    min-width: 130px;
-    margin: 0;
-    display: block;
-    white-space: nowrap;
-}
-
-.movie-library-toggle:hover {
-    transform: none;
-}
-
-.movie-library-toggle[hidden] {
-    display: none;
-}
-
 .library-loading {
     grid-column: 1 / -1;
     color: var(--muted);
@@ -766,20 +741,18 @@ a.recommendation-action {
         grid-column: 1 / -1;
     }
 
+    #show_filter_clear {
+        grid-column: 1 / -1;
+        width: 100%;
+        min-width: 0;
+    }
+
     #movie_search {
         grid-column: 1 / -1;
     }
 
     #movie_filter_clear {
-        grid-column: 1;
-    }
-
-    #movie_library_toggle {
-        grid-column: 2;
-    }
-
-    #movie_filter_clear,
-    #movie_library_toggle {
+        grid-column: 1 / -1;
         width: 100%;
         min-width: 0;
     }
@@ -2523,8 +2496,7 @@ html[data-theme="sunset"] .nav-links {
         minmax(110px, 0.7fr)
         minmax(145px, 0.9fr)
         minmax(190px, 1.2fr)
-        86px
-        minmax(130px, auto);
+        86px;
 }
 
 .watch-later-complete {
@@ -2978,7 +2950,6 @@ html.anime-category-active .recommendations-panel,
 html.anime-category-active .movie-filter,
 html.anime-category-active .movie-search,
 html.anime-category-active .movie-filter-clear,
-html.anime-category-active .movie-library-toggle,
 html.anime-category-active .library-add-button {
     background-color: rgba(10, 12, 28, .38);
     backdrop-filter: blur(14px) saturate(125%);
@@ -3237,8 +3208,7 @@ html.anime-category-active body::after {
         minmax(170px, 1fr)
         minmax(170px, 1fr)
         minmax(210px, 1.2fr)
-        86px
-        minmax(130px, auto);
+        86px;
 }
 
 /* The Anime library should use the same panel surface as Movies and TV Shows. */
@@ -3283,15 +3253,7 @@ html.anime-category-active .anime-library-panel .movie-filter-clear {
     }
 
     #anime_filter_clear {
-        grid-column: 1;
-    }
-
-    #anime_library_toggle {
-        grid-column: 2;
-    }
-
-    #anime_filter_clear,
-    #anime_library_toggle {
+        grid-column: 1 / -1;
         width: 100%;
         min-width: 0;
     }
@@ -3312,8 +3274,7 @@ html.anime-category-active .anime-library-panel .movie-filter-clear {
         minmax(145px, 0.9fr)
         minmax(170px, 1fr)
         minmax(210px, 1.25fr)
-        86px
-        minmax(140px, auto);
+        86px;
 }
 
 .manga-library-panel .movie-search:focus,
@@ -3431,15 +3392,7 @@ html.anime-category-active .anime-library-panel .movie-filter-clear {
     }
 
     #manga_filter_clear {
-        grid-column: 1;
-    }
-
-    #manga_library_toggle {
-        grid-column: 2;
-    }
-
-    #manga_filter_clear,
-    #manga_library_toggle {
+        grid-column: 1 / -1;
         width: 100%;
         min-width: 0;
     }

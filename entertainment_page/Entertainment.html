@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Entertainment | Stellaz HQ</title>
     <link rel="icon" type="image/png" href="../images/stellaz_favicon.png">
-    <link rel="stylesheet" href="EntertainmentStyles.css?v=56">
+    <link rel="stylesheet" href="EntertainmentStyles.css?v=57">
     <link rel="stylesheet" href="../firebase/profile_widget.css?v=11">
 </head>
 <body>
@@ -359,9 +359,6 @@
                 </select>
                 <input class="movie-search" id="movie_search" type="search" placeholder="Search movies..." aria-label="Search movies">
                 <button class="movie-filter-clear" id="movie_filter_clear" type="button">Clear</button>
-                <button class="movie-filter-clear movie-library-toggle" id="movie_library_toggle" type="button" hidden>
-                    Show all movies
-                </button>
             </div>
 
 
@@ -399,7 +396,6 @@
     </select>
     <input class="movie-search" id="anime_search" type="search" placeholder="Search anime..." aria-label="Search anime">
     <button class="movie-filter-clear" id="anime_filter_clear" type="button">Clear</button>
-    <button class="movie-filter-clear movie-library-toggle" id="anime_library_toggle" type="button" hidden>Show all anime</button>
 </div>
 
 <div class="movie-grid anime-grid" id="anime_grid"></div>
@@ -444,8 +440,6 @@
                 <input class="movie-search" id="manga_search" type="search"
                        placeholder="Search manga / manhwa..." aria-label="Search manga and manhwa">
                 <button class="movie-filter-clear" id="manga_filter_clear" type="button">Clear</button>
-                <button class="movie-filter-clear movie-library-toggle" id="manga_library_toggle"
-                        type="button" hidden>Show all manga</button>
             </div>
 
             <div class="movie-grid manga-grid" id="manga_grid">
@@ -479,7 +473,7 @@
                     <option value="tmdb-desc">Best rated by TMDB</option>
                 </select>
                 <input class="movie-search" id="show_search" type="search" placeholder="Search shows..." aria-label="Search TV shows">
-                <button class="movie-filter-clear" id="show_filter_clear" type="button">Clear</button><button class="movie-filter-clear movie-library-toggle" id="show_library_toggle" type="button" hidden>Show all shows</button>
+                <button class="movie-filter-clear" id="show_filter_clear" type="button">Clear</button>
             </div>
 
             <div class="movie-grid" id="show_grid">
@@ -959,7 +953,7 @@
     </dialog>
 
     <div class="toast" id="toast" role="status"></div>
-    <script type="module" src="Entertainment.js?v=102"></script>
+    <script type="module" src="Entertainment.js?v=103"></script>
     <script type="module" src="../firebase/profile_widget.js?v=10"></script>
 </body>
 </html>
