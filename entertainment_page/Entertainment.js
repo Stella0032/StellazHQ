@@ -1107,12 +1107,19 @@ async function request_media_on_seerr(item, media_type, button) {
 // Watch and Request are independent now — Watch is just the Plex mark,
 // shown only once something is actually there, never mixed in with the
 // Request/Requested/Downloading text so the two can sit side by side.
+//
+// A <button> rather than a plain <a href> so a phone can try opening the
+// Plex app first (see the delegated click handler below) — mobile_watch_url
+// carries the plex:// deep link when Seerr has one, watch_url is always
+// the plain web fallback, used as-is on desktop or if there's no deep link.
 function seerr_watch_slot_markup(state) {
     if (!state.watch_url) return "";
-    return `<a class="recommendation-action seerr-watch-button" data-seerr-watch-slot
-               href="${state.watch_url}" target="_blank" rel="noopener"
+    return `<button type="button" class="recommendation-action seerr-watch-button"
+               data-seerr-watch-slot data-watch-plex-open
+               data-plex-url="${state.watch_url}"
+               data-plex-mobile-url="${state.mobile_watch_url || ""}"
                aria-label="Watch on Plex" title="Watch on Plex">
-               <img src="../images/plex.svg" alt="" class="seerr-plex-icon"></a>`;
+               <img src="../images/plex.svg" alt="" class="seerr-plex-icon"></button>`;
 }
 
 // Per-provider search-link templates. TMDB/JustWatch only give a logo
@@ -1252,7 +1259,8 @@ async function refresh_seerr_status_slot(
     container, tmdb_id, media_type, idle_markup_fn, still_open
 ) {
     let state = {
-        status: "idle", watch_url: null, is_french: false, is_anime: false,
+        status: "idle", watch_url: null, mobile_watch_url: null,
+        is_french: false, is_anime: false,
         progress_percent: null, available_season_count: null,
         total_season_count: null
     };
@@ -1277,6 +1285,41 @@ async function refresh_seerr_status_slot(
             seerr_request_slot_markup(state, media_type, idle_markup_fn);
     }
 }
+
+function is_mobile_device() {
+    return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+
+// Try the Plex app first on a phone, since Plex's mobile apps register
+// the plex:// scheme themselves — navigating the current tab there hands
+// off to the app if it's installed (the page backgrounds, firing `blur`,
+// which cancels the fallback below). If nothing intercepts it within a
+// short window — no app installed, or desktop, where there's no deep
+// link to try at all — falls back to the plain web link, same as this
+// button always did before. This is a standard, if imperfect, pattern:
+// something else legitimately stealing focus in that same window (a
+// notification, a manual tab switch) would also cancel the fallback,
+// same trade-off every site using this trick accepts.
+recommendation_dialog_actions.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-watch-plex-open]");
+    if (!button) return;
+
+    const web_url = button.dataset.plexUrl;
+    const mobile_url = button.dataset.plexMobileUrl;
+
+    if (!is_mobile_device() || !mobile_url) {
+        window.open(web_url, "_blank", "noopener");
+        return;
+    }
+
+    const fallback_timer = setTimeout(() => {
+        window.open(web_url, "_blank", "noopener");
+    }, 1500);
+    window.addEventListener(
+        "blur", () => clearTimeout(fallback_timer), {once: true}
+    );
+    window.location.href = mobile_url;
+});
 
 async function run_recommendation_action(item, action, button) {
     if (active_recommendation_type === "anime" &&
