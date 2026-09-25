@@ -4023,14 +4023,20 @@ exports.getTVSeasonEpisodes = onCall(
     }
 );
 
-// Anime in this app is sourced from AniList/MAL/Kitsu, none of which
-// carry a TMDB id — but Seerr/Plex/watch-provider data is all keyed by
-// one, so an anime title needs a title-based TMDB search first, same
-// risk profile as getTVShowSeasons's own title search above. Guards
-// against matching an unrelated live-action show with the same title
-// by requiring the result to actually be tagged Animation (genre id 16,
-// same constant this codebase already keys off of for Seerr's own
-// anime detection) — returns no match at all rather than a wrong one.
+// Some library items have no TMDB id of their own — anime is always
+// this way (AniList/MAL/Kitsu-sourced), and Plex-imported movies/shows
+// can be too, if they were never matched to TMDB at import time. Seerr/
+// Plex/watch-provider data is all keyed by a TMDB id though, so this
+// resolves one via a title-based search when nothing's stored — same
+// risk profile as getTVShowSeasons's own title search elsewhere in this
+// file. `require_animation_genre` guards the anime case specifically
+// against matching an unrelated live-action show sharing the same
+// title, by requiring the result to actually be tagged Animation (genre
+// id 16, same constant Seerr's own anime detection already keys off) —
+// returns no match at all rather than a wrong one. Movies/shows that
+// already have their own stored tmdb_id never call this, so the lower-
+// confidence, no-genre-check path here only ever covers titles Stellaz
+// otherwise has zero way to check Seerr for at all.
 exports.resolveTmdbId = onCall(
     {secrets: [tmdb_read_access_token]},
     async (request) => {
@@ -4040,6 +4046,10 @@ exports.resolveTmdbId = onCall(
 
         const title = String(request.data?.title || "").trim();
         const year = Number(request.data?.year) || null;
+        const media_type =
+            request.data?.media_type === "movie" ? "movie" : "tv";
+        const require_animation_genre =
+            request.data?.require_animation_genre !== false;
 
         if (!title) {
             throw new HttpsError("invalid-argument", "A title is required.");
@@ -4047,13 +4057,14 @@ exports.resolveTmdbId = onCall(
 
         try {
             const search_url = new URL(
-                "https://api.themoviedb.org/3/search/tv"
+                `https://api.themoviedb.org/3/search/${media_type}`
             );
             search_url.searchParams.set("query", title);
             search_url.searchParams.set("language", "en-US");
             if (year) {
                 search_url.searchParams.set(
-                    "first_air_date_year", String(year)
+                    media_type === "movie" ? "year" : "first_air_date_year",
+                    String(year)
                 );
             }
 
@@ -4068,12 +4079,18 @@ exports.resolveTmdbId = onCall(
 
             const data = await response.json();
             const match = data.results?.[0];
-            const is_animation = (match?.genre_ids || []).includes(16);
+            if (!match) return {tmdb_id: null};
 
-            return {tmdb_id: is_animation ? match.id : null};
+            if (require_animation_genre &&
+                !(match.genre_ids || []).includes(16)) {
+                return {tmdb_id: null};
+            }
+
+            return {tmdb_id: match.id};
         } catch (error) {
             logger.warn("Unable to resolve a TMDB id from title.", {
-                title, year, error: error?.message || String(error),
+                title, year, media_type,
+                error: error?.message || String(error),
             });
             return {tmdb_id: null};
         }

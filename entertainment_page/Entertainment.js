@@ -1223,15 +1223,22 @@ function watch_box_row_markup(state, media_type, request_click_attrs) {
 
 // Sets the whole "under the poster" area to a loading placeholder —
 // called synchronously when a dialog opens, before either async refresh
-// below resolves.
+// below resolves. One tile, one row: Plex/Request box(es) first, then
+// streaming-provider icons, all as equal icon boxes side by side —
+// data-watch-box-row and data-watch-providers-slot are both `display:
+// contents` (see CSS), so their contents join the same flex row instead
+// of forming two separately-bordered stacks.
 function watch_area_loading_markup() {
-    return `<div class="watch-box-row" data-watch-box-row>
-                ${watch_box_markup(
-                    watch_box_spinner_markup(),
-                    {extra_class: "watch-box-loading", title: "Checking Seerr…"}
-                )}
-            </div>
-            <div class="watch-provider-row" data-watch-providers-slot></div>`;
+    return `<p class="eyebrow watch-tile-label">Watch here</p>
+            <div class="watch-tile-row">
+                <span data-watch-box-row>
+                    ${watch_box_markup(
+                        watch_box_spinner_markup(),
+                        {extra_class: "watch-box-loading", title: "Checking Seerr…"}
+                    )}
+                </span>
+                <span data-watch-providers-slot></span>
+            </div>`;
 }
 
 // Curated to just the mainstream subscription platforms actually wanted
@@ -1353,21 +1360,7 @@ async function refresh_watch_providers_slot(
         .filter(({provider}) => provider)
         .map(({entry, provider}) => watch_provider_button_markup(provider, entry))
         .join("");
-    set_html_smoothly(slot, markup);
-}
-
-// A plain innerHTML swap is an instant, jarring cut between icons —
-// fades the element out, swaps its content while invisible, then fades
-// it back in. .watch-box-row/.watch-provider-row both declare the
-// opacity transition this relies on.
-function set_html_smoothly(el, html) {
-    el.style.opacity = "0";
-    setTimeout(() => {
-        el.innerHTML = html;
-        requestAnimationFrame(() => {
-            el.style.opacity = "1";
-        });
-    }, 150);
+    slot.innerHTML = markup;
 }
 
 // Shared by the recommendation/release dialog, the library detail
@@ -1399,9 +1392,8 @@ async function refresh_seerr_status_slot(
 
     const box_row = container.querySelector("[data-watch-box-row]");
     if (box_row) {
-        set_html_smoothly(
-            box_row, watch_box_row_markup(state, media_type, request_click_attrs)
-        );
+        box_row.innerHTML =
+            watch_box_row_markup(state, media_type, request_click_attrs);
     }
 }
 
@@ -2728,15 +2720,55 @@ async function open_library_detail(type, item) {
             </button>` : ""}
     `;
 
-    recommendation_dialog_watch.innerHTML =
-        item.tmdb_id ? watch_area_loading_markup() : "";
+    recommendation_dialog_watch.innerHTML = watch_area_loading_markup();
 
     recommendation_dialog.showModal();
 
-    if (item.tmdb_id) {
+    // A tmdb_id isn't always stored — Plex-imported items that were
+    // never matched to TMDB at import time don't have one, even though
+    // they're perfectly checkable on Seerr once we know one. Resolves it
+    // via title search when missing, same fallback anime titles use
+    // (resolveTmdbId), just without that path's Animation-genre
+    // requirement — not appropriate for general movies/shows. Setting it
+    // on `item` (the actual library-array object, not a copy) means the
+    // Request click handler and any later reopen of this same item just
+    // see it as if it always had one; deliberately not persisted to
+    // Supabase, since without the anime path's safety check a wrong
+    // title match is more likely here.
+    (async () => {
+        let watch_tmdb_id = item.tmdb_id || null;
+        if (!watch_tmdb_id) {
+            try {
+                const resolve = httpsCallable(functions, "resolveTmdbId");
+                const result = await resolve({
+                    title: item.title,
+                    year: item.year,
+                    media_type: type === "movie" ? "movie" : "tv",
+                    require_animation_genre: false
+                });
+                watch_tmdb_id = result.data?.tmdb_id || null;
+                if (watch_tmdb_id) item.tmdb_id = watch_tmdb_id;
+            } catch (error) {
+                console.error(
+                    "Unable to resolve a TMDB id for this library item:",
+                    error
+                );
+            }
+        }
+
+        const still_open = () =>
+            active_library_detail?.item.id === item.id &&
+            active_library_detail?.type === type;
+
+        if (!watch_tmdb_id) {
+            if (still_open()) recommendation_dialog_watch.innerHTML = "";
+            return;
+        }
+        if (!still_open()) return;
+
         refresh_seerr_status_slot(
             recommendation_dialog_watch,
-            item.tmdb_id,
+            watch_tmdb_id,
             type,
             // Only offer to request something not yet on Plex if it's
             // sitting in Watch Later — an already-watched item you added
@@ -2747,17 +2779,12 @@ async function open_library_detail(type, item) {
                    data-seerr-french="${state.is_french}"
                    data-seerr-anime="${state.is_anime}"`
                 : null,
-            () => active_library_detail?.item.id === item.id &&
-                active_library_detail?.type === type
+            still_open
         );
         refresh_watch_providers_slot(
-            recommendation_dialog_watch,
-            item.tmdb_id,
-            type,
-            () => active_library_detail?.item.id === item.id &&
-                active_library_detail?.type === type
+            recommendation_dialog_watch, watch_tmdb_id, type, still_open
         );
-    }
+    })();
 
     if (!item.tmdb_id && !saved_plex_metadata) {
         saved_plex_metadata = await ensure_plex_metadata_for_item(type, item);
