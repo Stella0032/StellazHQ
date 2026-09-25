@@ -4623,20 +4623,97 @@ html[data-theme="sunset"] .entertainment-nav {
     border-radius: 13px;
 }
 
-.explore-scroll-track .recommendation-title-button {
-    margin: 6px 0 2px;
-    font-size: 10px;
-    line-height: 1.15;
+.explore-card-overlay {
+    display: none;
 }
 
+.explore-scroll-track .recommendation-card >
+    .recommendation-title-button,
 .explore-scroll-track .recommendation-card > p {
-    font-size: 8px;
+    display: none;
 }
 
-.explore-scroll-track .recommendation-reason {
-    margin-top: 3px !important;
+.explore-scroll-track .recommendation-poster-wrap {
+    overflow: hidden;
+    border-radius: 12px;
+}
+
+.explore-scroll-track .explore-card-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    padding: 48px 9px 43px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 3px;
+    border-radius: inherit;
+    color: #fff;
+    background:
+        linear-gradient(
+            to top,
+            rgba(5, 7, 18, .97) 0%,
+            rgba(5, 7, 18, .84) 34%,
+            rgba(5, 7, 18, .38) 63%,
+            transparent 84%
+        );
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(7px);
+    transition:
+        opacity 160ms ease,
+        transform 180ms ease;
+}
+
+.explore-scroll-track .recommendation-poster-wrap:hover
+    .explore-card-overlay,
+.explore-scroll-track .recommendation-poster-wrap:focus-within
+    .explore-card-overlay {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.explore-scroll-track .explore-card-overlay strong {
+    overflow: hidden;
+    font-size: 10px;
+    font-weight: 800;
+    line-height: 1.18;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.explore-scroll-track .explore-card-overlay span {
+    color: #e1e5ef;
     font-size: 8px;
+    font-weight: 650;
     line-height: 1.25;
+}
+
+.explore-scroll-track .explore-card-overlay small {
+    display: -webkit-box;
+    overflow: hidden;
+    color: #c7ccda;
+    font-size: 7.5px;
+    line-height: 1.28;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+@media (hover: none) {
+    .explore-scroll-track .explore-card-overlay {
+        padding: 34px 6px 30px;
+        opacity: 1;
+        transform: none;
+    }
+
+    .explore-scroll-track .explore-card-overlay strong {
+        font-size: 7px;
+    }
+
+    .explore-scroll-track .explore-card-overlay span,
+    .explore-scroll-track .explore-card-overlay small {
+        font-size: 6px;
+    }
 }
 
 .friends-directory-panel {
@@ -4826,16 +4903,6 @@ html[data-theme="sunset"] .entertainment-nav {
     .explore-scroll-track .recommendation-card {
         padding: 2px;
         border-radius: 8px;
-    }
-
-    .explore-scroll-track .recommendation-title-button {
-        margin-top: 4px;
-        font-size: 7px;
-    }
-
-    .explore-scroll-track .recommendation-card > p,
-    .explore-scroll-track .recommendation-reason {
-        font-size: 6px;
     }
 
     .friends-overview-grid {
