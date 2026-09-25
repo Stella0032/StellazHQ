@@ -3944,6 +3944,8 @@ const manga_remove_button = document.getElementById("manga_remove_button");
 
 let manga_library = [];
 let manga_add_candidates = [];
+let manga_add_search_timeout = null;
+let manga_add_search_request = 0;
 let active_manga = null;
 
 function manga_escape(value) {
@@ -4616,7 +4618,100 @@ manga_remove_button.addEventListener("click", async () => {
     }
 });
 
+async function search_manga_add_catalog(query) {
+    const normalized_query = String(query || "").trim();
+    if (normalized_query.length < 2) return;
+
+    const request_number =
+        ++manga_add_search_request;
+
+    manga_add_results.innerHTML =
+        '<p class="recommendation-loading">Searching AniList...</p>';
+
+    try {
+        const search_anilist =
+            httpsCallable(
+                functions,
+                "searchAniListManga"
+            );
+        const result =
+            await search_anilist({
+                query: normalized_query
+            });
+
+        if (request_number !==
+            manga_add_search_request) {
+            return;
+        }
+
+        manga_add_candidates =
+            result.data.results || [];
+
+        manga_add_results.innerHTML =
+            manga_add_candidates.length
+                ? manga_add_candidates
+                    .map((item) => {
+                        const meta = [
+                            item.media_kind,
+                            item.total_chapters
+                                ? item.total_chapters +
+                                    " chapters"
+                                : "chapter count unknown",
+                            item.anilist_score
+                                ? "★ " +
+                                    item.anilist_score +
+                                    "%"
+                                : null
+                        ]
+                            .filter(Boolean)
+                            .join(" · ");
+
+                        return (
+                            '<button class="anime-add-result" type="button" ' +
+                            'data-anilist-add-id="' +
+                            item.anilist_id +
+                            '">' +
+                            (item.poster_url
+                                ? '<img src="' +
+                                    manga_escape(
+                                        item.poster_url
+                                    ) +
+                                    '" alt="">'
+                                : "") +
+                            '<span><strong>' +
+                            manga_escape(
+                                item.title
+                            ) +
+                            '</strong><small>' +
+                            manga_escape(
+                                meta
+                            ) +
+                            '</small></span>' +
+                            '<b>＋ Add</b></button>'
+                        );
+                    })
+                    .join("")
+                : '<p class="recommendation-loading">No manga or manhwa found.</p>';
+    } catch (error) {
+        if (request_number !==
+            manga_add_search_request) {
+            return;
+        }
+
+        console.error(
+            "Unable to search AniList:",
+            error
+        );
+        manga_add_results.innerHTML =
+            '<p class="recommendation-loading">Unable to search AniList.</p>';
+    }
+}
+
 manga_add_button.addEventListener("click", () => {
+    clearTimeout(
+        manga_add_search_timeout
+    );
+    manga_add_search_request += 1;
     manga_add_search.value = "";
     manga_add_results.innerHTML = "";
     manga_add_candidates = [];
@@ -4624,49 +4719,80 @@ manga_add_button.addEventListener("click", () => {
     manga_add_search.focus();
 });
 
-manga_add_close.addEventListener("click", () => manga_add_dialog.close());
+manga_add_close.addEventListener(
+    "click",
+    () => manga_add_dialog.close()
+);
 
-manga_add_search_form.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const query = manga_add_search.value.trim();
-    if (query.length < 2) return;
+manga_add_search_form.addEventListener(
+    "submit",
+    async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
 
-    manga_add_results.innerHTML =
-        '<p class="recommendation-loading">Searching AniList...</p>';
+        clearTimeout(
+            manga_add_search_timeout
+        );
 
-    try {
-        const search_anilist = httpsCallable(functions, "searchAniListManga");
-        const result = await search_anilist({query});
-        manga_add_candidates = result.data.results || [];
+        const query =
+            manga_add_search.value.trim();
+        if (query.length < 2) return;
 
-        manga_add_results.innerHTML = manga_add_candidates.length
-            ? manga_add_candidates.map((item) => {
-                const meta = [
-                    item.media_kind,
-                    item.total_chapters
-                        ? item.total_chapters + " chapters"
-                        : "chapter count unknown",
-                    item.anilist_score
-                        ? "★ " + item.anilist_score + "%"
-                        : null
-                ].filter(Boolean).join(" · ");
-
-                return '<button class="anime-add-result" type="button" ' +
-                    'data-anilist-add-id="' + item.anilist_id + '">' +
-                    (item.poster_url
-                        ? '<img src="' + manga_escape(item.poster_url) + '" alt="">'
-                        : "") +
-                    '<span><strong>' + manga_escape(item.title) + '</strong>' +
-                    '<small>' + manga_escape(meta) + '</small></span>' +
-                    '<b>＋ Add</b></button>';
-            }).join("")
-            : '<p class="recommendation-loading">No manga or manhwa found.</p>';
-    } catch (error) {
-        console.error("Unable to search AniList:", error);
-        manga_add_results.innerHTML =
-            '<p class="recommendation-loading">Unable to search AniList.</p>';
+        await search_manga_add_catalog(
+            query
+        );
     }
-});
+);
+
+manga_add_search.addEventListener(
+    "keydown",
+    (event) => {
+        if (event.key !== "Enter") return;
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        clearTimeout(
+            manga_add_search_timeout
+        );
+
+        const query =
+            manga_add_search.value.trim();
+        if (query.length < 2) return;
+
+        search_manga_add_catalog(
+            query
+        );
+    }
+);
+
+manga_add_search.addEventListener(
+    "input",
+    () => {
+        clearTimeout(
+            manga_add_search_timeout
+        );
+
+        const query =
+            manga_add_search.value.trim();
+
+        if (query.length < 3) {
+            manga_add_search_request += 1;
+            manga_add_candidates = [];
+            manga_add_results.innerHTML = "";
+            return;
+        }
+
+        manga_add_search_timeout =
+            setTimeout(
+                () =>
+                    search_manga_add_catalog(
+                        query
+                    ),
+                300
+            );
+    }
+);
 
 manga_add_results.addEventListener("click", async (event) => {
     const button =
@@ -4781,10 +4907,130 @@ const anime_add_search_form = document.getElementById("anime_add_search_form");
 const anime_add_search = document.getElementById("anime_add_search");
 const anime_add_results = document.getElementById("anime_add_results");
 let anime_add_candidates = [];
+let anime_add_search_timeout = null;
+let anime_add_search_request = 0;
 
 if (anime_add_button && anime_add_dialog && anime_add_close &&
     anime_add_search_form && anime_add_search && anime_add_results) {
+    async function search_anime_add_catalog(query) {
+        const normalized_query =
+            String(query || "").trim();
+        if (normalized_query.length < 2) return;
+
+        const request_number =
+            ++anime_add_search_request;
+
+        anime_add_results.innerHTML =
+            '<p class="recommendation-loading">Searching anime...</p>';
+
+        try {
+            const search_catalog =
+                httpsCallable(
+                    functions,
+                    "searchAnimeCatalog"
+                );
+            const result =
+                await search_catalog({
+                    query:
+                        normalized_query
+                });
+
+            if (request_number !==
+                anime_add_search_request) {
+                return;
+            }
+
+            anime_add_candidates =
+                result.data.results || [];
+
+            anime_add_results.innerHTML =
+                anime_add_candidates.length
+                    ? anime_add_candidates
+                        .map(
+                            (item, index) => {
+                                const source_label =
+                                    (
+                                        item.sources ||
+                                        []
+                                    ).join(
+                                        " · "
+                                    );
+                                const score =
+                                    item.anilist_score !=
+                                    null
+                                        ? "⭐ " +
+                                            Number(
+                                                item.anilist_score
+                                            ) +
+                                            "% AniList"
+                                        : item.mal_score !=
+                                            null
+                                            ? "⭐ " +
+                                                Number(
+                                                    item.mal_score
+                                                ).toFixed(
+                                                    2
+                                                ) +
+                                                " MAL"
+                                            : item.kitsu_score !=
+                                                null
+                                                ? "⭐ " +
+                                                    Number(
+                                                        item.kitsu_score
+                                                    ).toFixed(
+                                                        1
+                                                    ) +
+                                                    "% Kitsu"
+                                                : "";
+                                const meta = [
+                                    item.start_date
+                                        ? item.start_date
+                                            .slice(
+                                                0,
+                                                4
+                                            )
+                                        : "",
+                                    source_label,
+                                    score
+                                ]
+                                    .filter(
+                                        Boolean
+                                    )
+                                    .join(
+                                        " · "
+                                    );
+
+                                return `
+                    <button class="anime-add-result" type="button"
+                            data-anime-add-index="${index}">
+                        ${item.poster_url ? `<img src="${item.poster_url}" alt="">` : ""}
+                        <span><strong>${item.title}</strong><small>${meta}</small></span>
+                        <b>＋ Watched</b>
+                    </button>`;
+                            }
+                        )
+                        .join("")
+                    : '<p class="recommendation-loading">No anime found.</p>';
+        } catch (error) {
+            if (request_number !==
+                anime_add_search_request) {
+                return;
+            }
+
+            console.error(
+                "Unable to search anime catalog:",
+                error
+            );
+            anime_add_results.innerHTML =
+                '<p class="recommendation-loading">Unable to search anime right now.</p>';
+        }
+    }
+
     anime_add_button.addEventListener("click", () => {
+        clearTimeout(
+            anime_add_search_timeout
+        );
+        anime_add_search_request += 1;
         anime_add_search.value = "";
         anime_add_results.innerHTML = "";
         anime_add_candidates = [];
@@ -4792,57 +5038,80 @@ if (anime_add_button && anime_add_dialog && anime_add_close &&
         anime_add_search.focus();
     });
 
-    anime_add_close.addEventListener("click", () => anime_add_dialog.close());
+    anime_add_close.addEventListener(
+        "click",
+        () => anime_add_dialog.close()
+    );
 
-    anime_add_search_form.addEventListener("submit", async (event) => {
-        event.preventDefault();
-        const query = anime_add_search.value.trim();
-        if (query.length < 2) return;
+    anime_add_search_form.addEventListener(
+        "submit",
+        async (event) => {
+            event.preventDefault();
+            event.stopPropagation();
 
-        anime_add_results.innerHTML =
-            '<p class="recommendation-loading">Searching anime...</p>';
+            clearTimeout(
+                anime_add_search_timeout
+            );
 
-        try {
-            const search_catalog =
-                httpsCallable(functions, "searchAnimeCatalog");
-            const result = await search_catalog({query});
-            anime_add_candidates = result.data.results || [];
+            const query =
+                anime_add_search.value.trim();
+            if (query.length < 2) return;
 
-            anime_add_results.innerHTML = anime_add_candidates.length
-                ? anime_add_candidates.map((item, index) => {
-                    const source_label =
-                        (item.sources || []).join(" · ");
-                    const score =
-                        item.anilist_score != null
-                            ? "⭐ " + Number(item.anilist_score) + "% AniList"
-                            : item.mal_score != null
-                                ? "⭐ " + Number(item.mal_score).toFixed(2) + " MAL"
-                                : item.kitsu_score != null
-                                    ? "⭐ " + Number(item.kitsu_score).toFixed(1) + "% Kitsu"
-                                    : "";
-                    const meta = [
-                        item.start_date
-                            ? item.start_date.slice(0, 4)
-                            : "",
-                        source_label,
-                        score
-                    ].filter(Boolean).join(" · ");
-
-                    return `
-                    <button class="anime-add-result" type="button"
-                            data-anime-add-index="${index}">
-                        ${item.poster_url ? `<img src="${item.poster_url}" alt="">` : ""}
-                        <span><strong>${item.title}</strong><small>${meta}</small></span>
-                        <b>＋ Watched</b>
-                    </button>`;
-                }).join("")
-                : '<p class="recommendation-loading">No anime found.</p>';
-        } catch (error) {
-            console.error("Unable to search anime catalog:", error);
-            anime_add_results.innerHTML =
-                '<p class="recommendation-loading">Unable to search anime right now.</p>';
+            await search_anime_add_catalog(
+                query
+            );
         }
-    });
+    );
+
+    anime_add_search.addEventListener(
+        "keydown",
+        (event) => {
+            if (event.key !== "Enter") return;
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            clearTimeout(
+                anime_add_search_timeout
+            );
+
+            const query =
+                anime_add_search.value.trim();
+            if (query.length < 2) return;
+
+            search_anime_add_catalog(
+                query
+            );
+        }
+    );
+
+    anime_add_search.addEventListener(
+        "input",
+        () => {
+            clearTimeout(
+                anime_add_search_timeout
+            );
+
+            const query =
+                anime_add_search.value.trim();
+
+            if (query.length < 3) {
+                anime_add_search_request += 1;
+                anime_add_candidates = [];
+                anime_add_results.innerHTML = "";
+                return;
+            }
+
+            anime_add_search_timeout =
+                setTimeout(
+                    () =>
+                        search_anime_add_catalog(
+                            query
+                        ),
+                    300
+                );
+        }
+    );
 
     anime_add_results.addEventListener("click", async (event) => {
         const button =
@@ -9136,19 +9405,34 @@ global_search_results?.addEventListener(
 // Close modal dialogs by clicking the backdrop, while preserving clicks
 // anywhere inside the dialog itself.
 function enable_dialog_backdrop_close(dialog) {
-    if (!dialog || dialog.dataset.backdropCloseReady === "true") return;
-    dialog.dataset.backdropCloseReady = "true";
+    if (!dialog ||
+        dialog.dataset.backdropCloseReady ===
+            "true") {
+        return;
+    }
+    dialog.dataset.backdropCloseReady =
+        "true";
 
     dialog.addEventListener("click", (event) => {
         if (!dialog.open) return;
-        const bounds = dialog.getBoundingClientRect();
+
+        // Backdrop clicks target the dialog itself. Keyboard-activated
+        // buttons can emit a synthetic click at 0,0; ignoring bubbled
+        // child clicks prevents Enter from being mistaken for a click
+        // outside the modal.
+        if (event.target !== dialog) return;
+
+        const bounds =
+            dialog.getBoundingClientRect();
         const clicked_outside =
             event.clientX < bounds.left ||
             event.clientX > bounds.right ||
             event.clientY < bounds.top ||
             event.clientY > bounds.bottom;
 
-        if (clicked_outside) dialog.close();
+        if (clicked_outside) {
+            dialog.close();
+        }
     });
 }
 
