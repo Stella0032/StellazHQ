@@ -4257,6 +4257,7 @@ html[data-theme="flurple"] .global-search-dialog{
     align-items: center;
     justify-content: space-between;
     gap: 16px;
+    padding-right: 56px;
 }
 
 .explore-row-header h3,
@@ -4274,54 +4275,47 @@ html[data-theme="flurple"] .global-search-dialog{
 
 .explore-scroll-controls {
     position: absolute;
-    top: calc(50% + 12px);
-    left: -8px;
-    right: -20px;
-    z-index: 5;
+    top: 8px;
+    right: 0;
+    z-index: 6;
+    display: flex;
+    align-items: center;
+    gap: 2px;
     pointer-events: none;
 }
 
 .explore-scroll-controls button {
-    position: absolute;
-    top: 50%;
-    width: 30px;
-    height: 72px;
+    width: 24px;
+    height: 28px;
     padding: 0;
     display: grid;
     place-items: center;
     border: 0;
     border-radius: 0;
-    color: rgba(238, 241, 251, 0.62);
+    color: rgba(238, 241, 251, 0.7);
     background: transparent;
     cursor: pointer;
     font: inherit;
-    font-size: 28px;
+    font-size: 25px;
     font-weight: 300;
     line-height: 1;
-    opacity: 0.52;
+    opacity: 0.72;
     pointer-events: auto;
-    transform: translateY(-50%);
-    transition: opacity 0.18s ease, color 0.18s ease;
-}
-
-.explore-scroll-controls button[data-explore-scroll="left"] {
-    left: 0;
-    background: linear-gradient(90deg, rgba(13, 15, 35, 0.92), rgba(13, 15, 35, 0));
-}
-
-.explore-scroll-controls button[data-explore-scroll="right"] {
-    right: 0;
-    background: linear-gradient(270deg, rgba(13, 15, 35, 0.92), rgba(13, 15, 35, 0));
+    transition: opacity 0.18s ease, color 0.18s ease, transform 0.18s ease;
 }
 
 .explore-scroll-controls button:hover {
     color: #ffffff;
-    opacity: 0.9;
+    opacity: 1;
+    transform: translateX(1px);
+}
+
+.explore-scroll-controls button[data-explore-scroll="left"]:hover {
+    transform: translateX(-1px);
 }
 
 .explore-scroll-controls button.is-hidden {
-    opacity: 0;
-    pointer-events: none;
+    display: none;
 }
 
 .explore-scroll-track.recommendation-grid {
@@ -4494,14 +4488,18 @@ html[data-theme="flurple"] .global-search-dialog{
         font-size: 14px;
     }
 
+    .explore-row-header {
+        padding-right: 50px;
+    }
+
     .explore-scroll-controls {
-        left: -5px;
-        right: -14px;
+        top: 6px;
+        right: 0;
     }
 
     .explore-scroll-controls button {
-        width: 24px;
-        height: 54px;
+        width: 22px;
+        height: 26px;
         font-size: 22px;
     }
 
