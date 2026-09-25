@@ -194,6 +194,10 @@ function create_release_card(item) {
                          alt="${item.title} poster"
                          loading="lazy">
                 </button>
+                <div class="explore-card-overlay">
+                    <strong>${item.title}</strong>
+                    <span>${date}${rating}</span>
+                </div>
                 ${controls}
                 <button class="recommendation-refresh" type="button"
                         data-release-next title="Show me something else"
@@ -486,6 +490,11 @@ function create_recommendation_card(item) {
                     <img class="recommendation-poster" src="${item.poster_url}"
                          alt="${item.title} poster" loading="lazy">
                 </button>
+                <div class="explore-card-overlay">
+                    <strong>${item.title}</strong>
+                    <span>${display_year}${rating}</span>
+                    <small>${recommendation_reason(item)}</small>
+                </div>
                 ${controls}
                 <button class="recommendation-refresh" type="button"
                         title="Show me something else"
