@@ -4223,6 +4223,7 @@ html[data-theme="flurple"] .global-search-dialog{
 .explore-media-block {
     margin-top: 14px;
     padding: 18px 20px 20px;
+    overflow: hidden;
     border-radius: 18px;
 }
 
@@ -4242,6 +4243,7 @@ html[data-theme="flurple"] .global-search-dialog{
 }
 
 .explore-row {
+    position: relative;
     padding-top: 14px;
 }
 
@@ -4264,42 +4266,73 @@ html[data-theme="flurple"] .global-search-dialog{
     font-size: 17px;
 }
 
-.explore-row-actions,
-.explore-scroll-controls {
+.explore-row-actions {
     display: flex;
     align-items: center;
     gap: 8px;
 }
 
+.explore-scroll-controls {
+    position: absolute;
+    top: calc(50% + 12px);
+    left: -8px;
+    right: -20px;
+    z-index: 5;
+    pointer-events: none;
+}
+
 .explore-scroll-controls button {
+    position: absolute;
+    top: 50%;
     width: 30px;
-    height: 30px;
+    height: 72px;
     padding: 0;
     display: grid;
     place-items: center;
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    border-radius: 50%;
-    color: #eef1fb;
-    background: rgba(255, 255, 255, 0.055);
+    border: 0;
+    border-radius: 0;
+    color: rgba(238, 241, 251, 0.62);
+    background: transparent;
     cursor: pointer;
     font: inherit;
-    font-size: 21px;
+    font-size: 28px;
+    font-weight: 300;
     line-height: 1;
-    transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+    opacity: 0.52;
+    pointer-events: auto;
+    transform: translateY(-50%);
+    transition: opacity 0.18s ease, color 0.18s ease;
+}
+
+.explore-scroll-controls button[data-explore-scroll="left"] {
+    left: 0;
+    background: linear-gradient(90deg, rgba(13, 15, 35, 0.92), rgba(13, 15, 35, 0));
+}
+
+.explore-scroll-controls button[data-explore-scroll="right"] {
+    right: 0;
+    background: linear-gradient(270deg, rgba(13, 15, 35, 0.92), rgba(13, 15, 35, 0));
 }
 
 .explore-scroll-controls button:hover {
-    transform: translateY(-1px);
-    border-color: rgba(123, 220, 255, 0.55);
-    background: rgba(123, 220, 255, 0.1);
+    color: #ffffff;
+    opacity: 0.9;
+}
+
+.explore-scroll-controls button.is-hidden {
+    opacity: 0;
+    pointer-events: none;
 }
 
 .explore-scroll-track.recommendation-grid {
+    width: calc(100% + 20px);
     min-height: 0;
     margin-top: 10px;
+    margin-right: -20px;
+    padding-right: 20px;
     padding-bottom: 3px;
     display: flex;
-    gap: 16px;
+    gap: 10px;
     overflow-x: auto;
     overflow-y: hidden;
     scroll-behavior: smooth;
@@ -4313,7 +4346,7 @@ html[data-theme="flurple"] .global-search-dialog{
 }
 
 .explore-scroll-track > .recommendation-card {
-    flex: 0 0 calc((100% - 96px) / 7);
+    flex: 0 0 13.3%;
     scroll-snap-align: start;
 }
 
@@ -4403,7 +4436,7 @@ html[data-theme="flurple"] .global-search-dialog{
 
 @media (max-width: 1100px) {
     .explore-scroll-track > .recommendation-card {
-        flex-basis: calc((100% - 64px) / 5);
+        flex-basis: 18.6%;
     }
 
     .friends-overview-grid {
@@ -4462,21 +4495,25 @@ html[data-theme="flurple"] .global-search-dialog{
     }
 
     .explore-scroll-controls {
-        gap: 5px;
+        left: -5px;
+        right: -14px;
     }
 
     .explore-scroll-controls button {
-        width: 26px;
-        height: 26px;
-        font-size: 18px;
+        width: 24px;
+        height: 54px;
+        font-size: 22px;
     }
 
     .explore-scroll-track.recommendation-grid {
+        width: calc(100% + 14px);
+        margin-right: -14px;
+        padding-right: 14px;
         gap: 6px;
     }
 
     .explore-scroll-track > .recommendation-card {
-        flex-basis: calc((100% - 30px) / 6);
+        flex-basis: 16%;
     }
 
     .friends-overview-grid {
