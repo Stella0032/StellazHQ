@@ -888,6 +888,7 @@ async function open_recommendation_details(item) {
             <button type="button" class="recommendation-action"
                     data-dialog-action="watch_later">＋ Watch later</button>
             ${item.tmdb_id ? `
+                <span data-seerr-watch-slot></span>
                 <span class="recommendation-action muted" data-seerr-slot>
                     Checking Seerr…
                 </span>` : ""}
@@ -933,10 +934,10 @@ async function open_recommendation_details(item) {
             recommendation_dialog_actions,
             item.tmdb_id,
             active_recommendation_type,
-            (state) => `<button type="button" class="recommendation-action" data-seerr-slot
+            (state, label) => `<button type="button" class="recommendation-action" data-seerr-slot
                      data-dialog-action="request_seerr"
                      data-seerr-french="${state.is_french}"
-                     data-seerr-anime="${state.is_anime}">📥 Request</button>`,
+                     data-seerr-anime="${state.is_anime}">${label}</button>`,
             () => active_recommendation_detail === item
         );
     }
@@ -1026,6 +1027,17 @@ async function open_recommendation_details(item) {
 
 async function request_media_on_seerr(item, media_type, button) {
     let choice = "";
+    let seasons = null;
+
+    // TV always goes through the season picker first — both for a fresh
+    // Request click and for re-opening from an "X/Y downloaded" button to
+    // request more. Seasons already available/requested are Seerr's own
+    // problem to no-op on server-side; nothing here needs to know which
+    // ones those are.
+    if (media_type === "show") {
+        seasons = await ask_seerr_seasons(item);
+        if (!seasons || seasons.length === 0) return;
+    }
 
     if (media_type !== "show" && button.dataset.seerrFrench === "true") {
         choice = await ask_seerr_choice(
@@ -1054,7 +1066,8 @@ async function request_media_on_seerr(item, media_type, button) {
         const result = await request_media({
             tmdb_id: Number(item.tmdb_id),
             media_type: media_type === "show" ? "tv" : "movie",
-            choice
+            choice,
+            ...(seasons ? {seasons} : {})
         });
         show_toast(result.data.already_requested
             ? `${item.title} was already requested on your Seerr server.`
@@ -1078,35 +1091,80 @@ async function request_media_on_seerr(item, media_type, button) {
     }
 }
 
+// Watch and Request are independent now — Watch is just the Plex mark,
+// shown only once something is actually there, never mixed in with the
+// Request/Requested/Downloading text so the two can sit side by side.
+function seerr_watch_slot_markup(state) {
+    if (!state.watch_url) return "";
+    return `<a class="recommendation-action seerr-watch-button" data-seerr-watch-slot
+               href="${state.watch_url}" target="_blank" rel="noopener"
+               aria-label="Watch on Plex" title="Watch on Plex">
+               <img src="../images/plex.svg" alt="" class="seerr-plex-icon"></a>`;
+}
+
+function seerr_progress_bar_markup(percent) {
+    if (percent == null) return "";
+    return `<div class="seerr-progress" role="progressbar"
+                 aria-valuenow="${percent}" aria-valuemin="0" aria-valuemax="100">
+              <div class="seerr-progress-fill" style="width:${percent}%"></div>
+            </div>`;
+}
+
 // Shared by the recommendation/release dialog and the library detail
-// dialog: both show a Seerr-backed action slot next to the same title
-// details, they just differ in what "idle" (nothing requested/available
-// yet) should offer — recommendations always offer Request, a Watch
-// Later library item does too, but e.g. an already-watched item doesn't.
-// idle_markup_fn receives the fetched state so the idle Request button
-// can carry is_french/is_anime through as data attributes for
-// request_media_on_seerr to read when it's actually clicked.
-function seerr_status_slot_markup(state, idle_markup_fn) {
-    if (state.watch_url) {
-        return `<a class="recommendation-action primary" data-seerr-slot
-                   href="${state.watch_url}" target="_blank"
-                   rel="noopener">▶ Watch on Plex</a>`;
+// dialog: both show a Seerr-backed Request/status slot next to the same
+// title details, they just differ in what "idle" (nothing requested yet)
+// should offer — recommendations always offer Request, a Watch Later
+// library item does too, but e.g. an already-watched item doesn't.
+// request_markup_fn receives the fetched state and the label to show, so
+// the idle Request button (and the "X/Y downloaded" button re-using the
+// same click target) can carry is_french/is_anime through as data
+// attributes for request_media_on_seerr to read when it's clicked.
+//
+// A TV show once fully available (every season on Plex) hides this slot
+// entirely — the Watch button already covers it, nothing left to request.
+// Checked ahead of (and separately from) the movie-shaped status checks
+// below: Seerr sets watch_url — and so `state.status === "available"` —
+// as soon as the FIRST episode lands on Plex, well before every season
+// does, so a plain "is it available" check would hide this too early for
+// a partially-downloaded show. Season completeness is the only signal
+// that actually means "nothing left to request" for TV.
+function seerr_request_slot_markup(state, media_type, request_markup_fn) {
+    if (media_type === "show" && state.total_season_count) {
+        if (state.available_season_count >= state.total_season_count) {
+            return "";
+        }
+        if (state.status === "idle") {
+            return request_markup_fn(state, "📥 Request");
+        }
+        return request_markup_fn(
+            state,
+            `${state.available_season_count}/${state.total_season_count} downloaded`
+        ) + seerr_progress_bar_markup(state.progress_percent);
     }
-    if (state.status === "processing") {
-        return '<span class="recommendation-action muted" ' +
-            'data-seerr-slot>⏳ Downloading on Seerr</span>';
+
+    if (state.status === "available") return "";
+
+    if (state.status === "downloading") {
+        return '<span class="recommendation-action muted" data-seerr-slot>' +
+            '⬇ Downloading</span>' +
+            seerr_progress_bar_markup(state.progress_percent);
     }
     if (state.status === "requested") {
         return '<span class="recommendation-action muted" ' +
-            'data-seerr-slot>✓ Requested on Seerr</span>';
+            'data-seerr-slot>✓ Requested</span>';
     }
-    return idle_markup_fn(state);
+
+    return request_markup_fn(state, "📥 Request");
 }
 
 async function refresh_seerr_status_slot(
     container, tmdb_id, media_type, idle_markup_fn, still_open
 ) {
-    let state = {status: "idle", watch_url: null, is_french: false, is_anime: false};
+    let state = {
+        status: "idle", watch_url: null, is_french: false, is_anime: false,
+        progress_percent: null, available_season_count: null,
+        total_season_count: null
+    };
     try {
         const get_status = httpsCallable(functions, "getSeerrMediaStatus");
         const result = await get_status({
@@ -1118,8 +1176,15 @@ async function refresh_seerr_status_slot(
         console.error("Unable to check Seerr media status:", error);
     }
     if (!still_open()) return;
-    const slot = container.querySelector("[data-seerr-slot]");
-    if (slot) slot.outerHTML = seerr_status_slot_markup(state, idle_markup_fn);
+
+    const watch_slot = container.querySelector("[data-seerr-watch-slot]");
+    if (watch_slot) watch_slot.outerHTML = seerr_watch_slot_markup(state);
+
+    const request_slot = container.querySelector("[data-seerr-slot]");
+    if (request_slot) {
+        request_slot.outerHTML =
+            seerr_request_slot_markup(state, media_type, idle_markup_fn);
+    }
 }
 
 async function run_recommendation_action(item, action, button) {
@@ -2454,6 +2519,7 @@ async function open_library_detail(type, item) {
                 ✓ Mark watched
             </button>` : ""}
         ${item.tmdb_id ? `
+            <span data-seerr-watch-slot></span>
             <span class="recommendation-action muted" data-seerr-slot>
                 Checking Seerr…
             </span>` : ""}
@@ -2480,13 +2546,13 @@ async function open_library_detail(type, item) {
             // Only offer to request something not yet on Plex if it's
             // sitting in Watch Later — an already-watched item you added
             // manually isn't necessarily something to re-request.
-            (state) => item.status === "watch_later" ? `
+            (state, label) => item.status === "watch_later" ? `
                 <button class="recommendation-action" type="button" data-seerr-slot
                         data-library-dialog-request="${type}"
                         data-library-dialog-id="${item.id}"
                         data-seerr-french="${state.is_french}"
                         data-seerr-anime="${state.is_anime}">
-                    📥 Request
+                    ${label}
                 </button>` : "",
             () => active_library_detail?.item.id === item.id &&
                 active_library_detail?.type === type
@@ -3290,6 +3356,84 @@ seerr_choice_option_b.addEventListener("click", () =>
 
 seerr_choice_dialog.addEventListener("close", () => {
     if (seerr_choice_resolve) settle_seerr_choice(null);
+});
+
+// Season picker for TV Seerr requests — reuses getTVShowSeasons (same
+// TMDB-backed call open_show_seasons already uses for the personal
+// watch-tracking grid) purely for the season list; Seerr's own request
+// handler is what actually skips seasons that are available or already
+// requested, so this dialog doesn't need to know which ones those are.
+// Resolves with an array of selected season numbers, or null if
+// cancelled/dismissed — same convention as ask_seerr_choice.
+const seerr_season_dialog = document.getElementById("seerr_season_dialog");
+const seerr_season_list = document.getElementById("seerr_season_list");
+const seerr_season_confirm = document.getElementById("seerr_season_confirm");
+const seerr_season_cancel = document.getElementById("seerr_season_cancel");
+const seerr_season_max = 2;
+
+let seerr_season_resolve = null;
+
+function settle_seerr_seasons(value) {
+    const resolve = seerr_season_resolve;
+    seerr_season_resolve = null;
+
+    if (seerr_season_dialog.open) seerr_season_dialog.close();
+
+    if (resolve) resolve(value);
+}
+
+function update_seerr_season_checkbox_limits() {
+    const checked_count =
+        seerr_season_list.querySelectorAll("input:checked").length;
+    seerr_season_list.querySelectorAll('input[type="checkbox"]')
+        .forEach((box) => {
+            box.disabled = !box.checked && checked_count >= seerr_season_max;
+        });
+    seerr_season_confirm.disabled = checked_count === 0;
+}
+
+async function ask_seerr_seasons(item) {
+    seerr_season_list.innerHTML =
+        '<p class="library-loading">Loading seasons...</p>';
+    seerr_season_confirm.disabled = true;
+    seerr_season_dialog.showModal();
+
+    try {
+        const get_seasons = httpsCallable(functions, "getTVShowSeasons");
+        const result = await get_seasons({title: item.title, year: item.year});
+        seerr_season_list.innerHTML = result.data.seasons.length
+            ? result.data.seasons.map((season) => `
+                <label class="seerr-season-option">
+                    <input type="checkbox" value="${season.season_number}">
+                    ${season.name} · ${season.episode_count} episodes
+                </label>`).join("")
+            : '<p class="library-loading">No seasons found.</p>';
+    } catch (error) {
+        console.error("Unable to load seasons for request:", error);
+        seerr_season_list.innerHTML =
+            '<p class="season-error">Unable to load seasons. Check the browser console for details.</p>';
+    }
+
+    return new Promise((resolve) => {
+        seerr_season_resolve = resolve;
+    });
+}
+
+seerr_season_list.addEventListener("change", (event) => {
+    if (!event.target.matches('input[type="checkbox"]')) return;
+    update_seerr_season_checkbox_limits();
+});
+
+seerr_season_confirm.addEventListener("click", () => {
+    const seasons = [...seerr_season_list.querySelectorAll("input:checked")]
+        .map((box) => Number(box.value));
+    settle_seerr_seasons(seasons);
+});
+
+seerr_season_cancel.addEventListener("click", () => settle_seerr_seasons(null));
+
+seerr_season_dialog.addEventListener("close", () => {
+    if (seerr_season_resolve) settle_seerr_seasons(null);
 });
 
 service_import_confirm_dialog.addEventListener("cancel", (event) => {

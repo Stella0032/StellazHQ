@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Entertainment | Stellaz HQ</title>
     <link rel="icon" type="image/png" href="../images/stellaz_favicon.png">
-    <link rel="stylesheet" href="EntertainmentStyles.css?v=49">
+    <link rel="stylesheet" href="EntertainmentStyles.css?v=50">
     <link rel="stylesheet" href="../firebase/profile_widget.css?v=11">
 </head>
 <body>
@@ -880,6 +880,19 @@
         </div>
     </dialog>
 
+    <dialog class="service-import-confirm-dialog" id="seerr_season_dialog">
+        <div class="service-import-confirm-shell">
+            <p class="eyebrow">SEERR REQUEST</p>
+            <h2>Select seasons to request</h2>
+            <p>Pick up to 2 at a time — you can come back for more once these are downloaded.</p>
+            <div class="seerr-season-list" id="seerr_season_list"></div>
+            <div class="service-import-confirm-actions">
+                <button class="connected-service-import" id="seerr_season_cancel" type="button">Cancel</button>
+                <button class="library-add-button" id="seerr_season_confirm" type="button" disabled>Request selected</button>
+            </div>
+        </div>
+    </dialog>
+
     <dialog class="plex-import-dialog" id="plex_import_dialog">
         <button class="dialog-close" id="plex_import_close" type="button" aria-label="Close">×</button>
         <p class="eyebrow">PLEX IMPORT</p>
@@ -891,7 +904,7 @@
     </dialog>
 
     <div class="toast" id="toast" role="status"></div>
-    <script type="module" src="Entertainment.js?v=95"></script>
+    <script type="module" src="Entertainment.js?v=96"></script>
     <script type="module" src="../firebase/profile_widget.js?v=10"></script>
 </body>
 </html>
