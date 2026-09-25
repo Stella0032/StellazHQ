@@ -7542,6 +7542,10 @@ async function load_explore_media(type) {
         new_release_grid.innerHTML;
     upcoming_grid.innerHTML =
         upcoming_release_grid.innerHTML;
+
+    requestAnimationFrame(
+        refresh_explore_scroll_controls
+    );
 }
 
 async function load_explore_view(
@@ -7600,6 +7604,77 @@ function activate_explore_recommendation_state(
     ignored_recommendation_ids =
         explore_state[type].ignored;
 }
+
+function update_explore_scroll_controls(row) {
+    const track =
+        row?.querySelector(
+            ".explore-scroll-track"
+        );
+    if (!track) return;
+
+    const max_scroll =
+        Math.max(
+            track.scrollWidth -
+                track.clientWidth,
+            0
+        );
+    const at_start =
+        track.scrollLeft <= 2;
+    const at_end =
+        max_scroll <= 2 ||
+        track.scrollLeft >=
+            max_scroll - 2;
+
+    const left_button =
+        row.querySelector(
+            '[data-explore-scroll="left"]'
+        );
+    const right_button =
+        row.querySelector(
+            '[data-explore-scroll="right"]'
+        );
+
+    left_button?.classList.toggle(
+        "is-hidden",
+        at_start
+    );
+    right_button?.classList.toggle(
+        "is-hidden",
+        at_end
+    );
+}
+
+function refresh_explore_scroll_controls() {
+    explore_view
+        ?.querySelectorAll(
+            ".explore-row"
+        )
+        .forEach(
+            update_explore_scroll_controls
+        );
+}
+
+explore_view
+    ?.querySelectorAll(
+        ".explore-scroll-track"
+    )
+    .forEach((track) => {
+        track.addEventListener(
+            "scroll",
+            () =>
+                update_explore_scroll_controls(
+                    track.closest(
+                        ".explore-row"
+                    )
+                ),
+            {passive: true}
+        );
+    });
+
+window.addEventListener(
+    "resize",
+    refresh_explore_scroll_controls
+);
 
 explore_view?.addEventListener(
     "click",
