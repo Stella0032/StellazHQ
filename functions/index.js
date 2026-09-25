@@ -9242,15 +9242,66 @@ async function seerr_fetch_media_info(base_url, cookie, media_type, tmdb_id) {
             watch_url: null,
             genres: [],
             original_language: null,
+            available_season_count: null,
+            total_season_count: null,
+            progress_percent: null,
         };
     }
 
     const media_info = result.payload?.mediaInfo || null;
+
+    // TV only. `mediaInfo.seasons` is Seerr's own per-season MediaStatus
+    // (its `Season` entity: {seasonNumber, status}) — this is what lets
+    // Stellaz tell "2 of 5 seasons on Plex" apart from the show-level
+    // status code, which only reflects the season Seerr last touched.
+    // `result.payload.seasons` (no `mediaInfo` prefix) is the plain TMDB
+    // season list already fetched as part of this same request, same
+    // `season_number > 0` filter getTVShowSeasons uses so the two totals
+    // agree with each other.
+    const seerr_seasons = media_type === "tv"
+        ? (media_info?.seasons || []) : [];
+    const total_season_count = media_type === "tv"
+        ? (result.payload?.seasons || [])
+            .filter((season) => season.season_number > 0).length
+        : null;
+    const available_season_count = media_type === "tv"
+        ? seerr_seasons.filter((season) => Number(season.status) === 5).length
+        : null;
+    const any_season_in_progress = seerr_seasons.some(
+        (season) => Number(season.status) === 2 || Number(season.status) === 3
+    );
+
+    // `mediaInfo.downloadStatus` is Seerr's live Radarr/Sonarr queue
+    // snapshot (its `DownloadingItem[]`) — present only while something
+    // is actually being fetched, as opposed to merely approved/pending.
+    // size/sizeLeft are bytes; summed across entries in case more than
+    // one file is downloading at once (e.g. a season pack).
+    const download_status = media_info?.downloadStatus || [];
+    let progress_percent = null;
+    if (download_status.length > 0) {
+        const total_size = download_status.reduce(
+            (sum, item) => sum + (Number(item.size) || 0), 0
+        );
+        const total_left = download_status.reduce(
+            (sum, item) => sum + (Number(item.sizeLeft) || 0), 0
+        );
+        if (total_size > 0) {
+            progress_percent = Math.round(
+                (1 - total_left / total_size) * 100
+            );
+        }
+    }
+
     return {
         status_code: Number(media_info?.status || 1),
         watch_url: media_info?.mediaUrl || null,
         genres: result.payload?.genres || [],
         original_language: result.payload?.originalLanguage || null,
+        total_season_count,
+        available_season_count,
+        any_season_in_progress,
+        has_active_download: download_status.length > 0,
+        progress_percent,
     };
 }
 
@@ -9259,10 +9310,19 @@ async function seerr_fetch_media_info(base_url, cookie, media_type, tmdb_id) {
 // the handful of states Stellaz's UI actually distinguishes. `watch_url`
 // wins outright when present — Seerr only sets it once the title exists
 // in the Plex library, regardless of the exact status code.
-function seerr_status_label(status_code, watch_url) {
+//
+// PROCESSING alone does NOT mean "downloading" — Seerr sets it as soon
+// as a request is approved and handed to Radarr/Sonarr, which can sit
+// there for a while before an actual download starts (still searching,
+// queued, etc.). Only `has_active_download` (a real Radarr/Sonarr queue
+// entry) earns the "downloading" label; otherwise an approved-but-idle
+// request just reads as "requested", matching what actually happened.
+function seerr_status_label(
+    status_code, watch_url, has_touched, has_active_download
+) {
     if (watch_url) return "available";
-    if (status_code === 3) return "processing";
-    if (status_code === 2) return "requested";
+    if (has_active_download) return "downloading";
+    if (has_touched) return "requested";
     return "idle";
 }
 
@@ -9382,6 +9442,9 @@ exports.getSeerrMediaStatus = onCall(
                     connected: false,
                     status: "idle",
                     watch_url: null,
+                    progress_percent: null,
+                    available_season_count: null,
+                    total_season_count: null,
                     is_french: false,
                     is_anime: false,
                 };
@@ -9394,12 +9457,30 @@ exports.getSeerrMediaStatus = onCall(
                 tmdb_id
             );
 
+            // "Touched" for a movie is the old PENDING/PROCESSING check;
+            // for a TV show it's true once anything about it has moved —
+            // a season is available, or one is pending/processing. This
+            // is what separates a never-requested show (plain "Request")
+            // from a partially-requested one ("X/Y downloaded"), even
+            // when nothing has actually finished downloading yet.
+            const has_touched = media_type === "tv"
+                ? (media_details.available_season_count > 0 ||
+                    media_details.any_season_in_progress)
+                : (media_details.status_code === 2 ||
+                    media_details.status_code === 3);
+
             return {
                 connected: true,
                 status: seerr_status_label(
-                    media_details.status_code, media_details.watch_url
+                    media_details.status_code,
+                    media_details.watch_url,
+                    has_touched,
+                    media_details.has_active_download
                 ),
                 watch_url: media_details.watch_url,
+                progress_percent: media_details.progress_percent,
+                available_season_count: media_details.available_season_count,
+                total_season_count: media_details.total_season_count,
                 // Only meaningful for the frontend to act on when the
                 // status above is "idle" (nothing requested/available
                 // yet) — surfaced either way for simplicity.
@@ -9428,6 +9509,9 @@ exports.getSeerrMediaStatus = onCall(
                 connected: true,
                 status: "idle",
                 watch_url: null,
+                progress_percent: null,
+                available_season_count: null,
+                total_season_count: null,
                 is_french: false,
                 is_anime: false,
             };
@@ -9507,10 +9591,31 @@ exports.requestMediaOnSeerr = onCall(
                 mediaType: media_type,
                 mediaId: tmdb_id,
             };
-            // Seerr accepts the literal string "all" here to request
-            // every season of a show in one call.
+            // Seerr accepts either the literal string "all" or an array
+            // of season numbers here. The frontend's season picker caps
+            // selection at 2 for UX reasons, but that's not trusted alone
+            // — enforce the same cap server-side. Seerr's own request
+            // handler already ignores seasons that are available or
+            // already requested, so no need to cross-check that here too.
             if (media_type === "tv") {
-                request_body.seasons = "all";
+                const requested_seasons = Array.isArray(request.data?.seasons)
+                    ? [...new Set(
+                        request.data.seasons
+                            .map(Number)
+                            .filter((n) => Number.isInteger(n) && n > 0)
+                    )]
+                    : null;
+
+                if (requested_seasons && requested_seasons.length > 2) {
+                    throw new HttpsError(
+                        "invalid-argument",
+                        "Select at most 2 seasons at a time."
+                    );
+                }
+
+                request_body.seasons = requested_seasons?.length
+                    ? requested_seasons
+                    : "all";
             }
 
             // choice is the frontend's answer to the French-audio prompt
