@@ -460,12 +460,34 @@ a.recommendation-action {
 /*? ----------------------------- */
 /*#region*/
 @media (max-width: 1100px) {
-    .nav-links {
+    .nav-links:not(.entertainment-nav) {
         display: none;
     }
 
     .topbar {
-        grid-template-columns: 1fr auto;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        gap: 14px;
+        padding-left: 18px;
+        padding-right: 18px;
+    }
+
+    .entertainment-nav {
+        display: flex;
+        gap: 10px;
+    }
+
+    .entertainment-nav a {
+        font-size: 11px;
+    }
+
+    .navbar-global-search {
+        min-width: 0;
+        width: auto;
+        flex-basis: 240px;
+    }
+
+    .navbar-global-search button {
+        display: none;
     }
 
     .library-grid {
@@ -480,9 +502,59 @@ a.recommendation-action {
 @media (max-width: 700px) {
     .topbar {
         width: calc(100% - 16px);
-        height: 62px;
+        height: auto;
+        min-height: 62px;
         margin-top: 8px;
-        padding: 0 18px;
+        padding: 9px 14px 10px;
+        grid-template-columns: 1fr auto;
+        grid-template-rows: 44px auto;
+        gap: 4px 10px;
+    }
+
+    .brand-lockup {
+        grid-column: 1;
+        grid-row: 1;
+    }
+
+    .profile-area {
+        grid-column: 2;
+        grid-row: 1;
+    }
+
+    .entertainment-nav {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        width: 100%;
+        gap: 10px;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+
+    .entertainment-nav::-webkit-scrollbar {
+        display: none;
+    }
+
+    .entertainment-nav a {
+        padding: 10px 0 12px;
+        font-size: 10px;
+    }
+
+    .entertainment-nav a.active::after {
+        bottom: 5px;
+    }
+
+    .navbar-global-search {
+        min-width: 205px;
+        padding: 5px 7px 5px 10px;
+        flex: 1 0 230px;
+    }
+
+    .navbar-global-search .global-search-icon {
+        font-size: 15px;
+    }
+
+    .navbar-global-search input {
+        font-size: 11px;
     }
 
     .brand {
@@ -768,6 +840,34 @@ a.recommendation-action {
     position: relative;
     overflow: hidden;
     border-radius: 11px;
+}
+
+.collection-poster-reveal {
+    opacity: 0;
+    transform: scale(0.04);
+    transform-origin: center;
+    filter: blur(2px);
+    will-change: transform, opacity, filter;
+}
+
+.collection-poster-reveal.is-visible {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+    transition:
+        transform 280ms cubic-bezier(.18, .9, .26, 1.12),
+        opacity 170ms ease-out,
+        filter 190ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .collection-poster-reveal,
+    .collection-poster-reveal.is-visible {
+        opacity: 1;
+        transform: none;
+        filter: none;
+        transition: none;
+    }
 }
 
 
@@ -3330,30 +3430,11 @@ html.anime-category-active body::after {
 
 
 
-.connection-badges { margin-left:auto; display:flex; align-items:center; gap:7px; }
-.connection-badge { width:32px; height:32px; display:grid; place-items:center; border:1px solid rgba(255,255,255,.18); border-radius:50%; font-size:9px; font-weight:800; letter-spacing:-.2px; color:#fff; box-shadow:0 5px 18px rgba(0,0,0,.24); }
-.connection-badge[hidden] { display:none; }
-.mal-connection-badge { background:linear-gradient(135deg,#2e51a2,#5479d8); }
-.plex-connection-badge { background:#171717; color:#e5a00d; font-size:16px; }
-@media (max-width:760px) {
-    .connection-badges { margin-left:auto; gap:5px; }
-    .connection-badge { width:28px; height:28px; }
-}
-
-/* Keep the profile in its original right-hand navbar column.
-   Connected-service badges live inside that same column, immediately left of it. */
 .profile-area {
     display: flex;
     align-items: center;
     justify-self: end;
-    gap: 8px;
 }
-.profile-area .connection-badges {
-    margin-left: 0;
-}
-
-/* A connected Plex account uses the navbar badge instead of the setup card. */
-
 
 .plex-import-dialog { width:min(900px,calc(100% - 28px)); border:1px solid var(--glass-border); border-radius:20px; padding:28px; color:var(--text); background:#101126; box-shadow:0 28px 90px rgba(0,0,0,.55); }
 .plex-import-dialog::backdrop { background:rgba(4,5,16,.76); backdrop-filter:blur(7px); }
@@ -4310,13 +4391,48 @@ html[data-theme="flurple"] .global-search-dialog{
 }
 
 .entertainment-nav {
-    justify-content: center;
-    gap: 34px;
+    min-width: 0;
+    justify-content: flex-start;
+    align-items: center;
+    gap: clamp(14px, 1.6vw, 28px);
 }
 
 .entertainment-nav a {
+    flex: 0 0 auto;
     min-width: max-content;
     text-align: center;
+}
+
+.navbar-global-search {
+    width: clamp(290px, 31vw, 500px);
+    max-width: none;
+    min-width: 220px;
+    margin: 0 0 0 4px;
+    padding: 6px 8px 6px 12px;
+    flex: 1 1 420px;
+    border-radius: 14px;
+    box-shadow: none;
+}
+
+.navbar-global-search .global-search-icon {
+    font-size: 18px;
+}
+
+.navbar-global-search input {
+    font-size: 13px;
+}
+
+.navbar-global-search button {
+    min-height: 34px;
+    padding: 0 12px;
+    border-radius: 10px;
+    font-size: 11px;
+}
+
+html[data-theme="neon"] .entertainment-nav,
+html[data-theme="flurple"] .entertainment-nav,
+html[data-theme="sunset"] .entertainment-nav {
+    transform: none;
 }
 
 .entertainment-view-heading {
@@ -4342,15 +4458,13 @@ html[data-theme="flurple"] .global-search-dialog{
     margin-top: 26px;
 }
 
-#explore_view .global-search-panel {
-    margin: 12px 0;
-}
-
 .explore-media-block {
     margin-top: 14px;
-    padding: 18px 20px 20px;
+    margin-right: calc(50% - 50vw);
+    padding: 18px 0 20px 20px;
     overflow: hidden;
-    border-radius: 18px;
+    border-right: 0;
+    border-radius: 18px 0 0 18px;
 }
 
 .explore-media-block + .explore-media-block {
@@ -4445,11 +4559,10 @@ html[data-theme="flurple"] .global-search-dialog{
 }
 
 .explore-scroll-track.recommendation-grid {
-    width: calc(100% + 20px);
+    width: 100%;
     min-height: 0;
     margin-top: 10px;
-    margin-right: -20px;
-    padding-right: 20px;
+    padding-right: 34px;
     padding-bottom: 3px;
     display: flex;
     gap: 10px;
@@ -4459,6 +4572,16 @@ html[data-theme="flurple"] .global-search-dialog{
     scroll-snap-type: x proximity;
     scrollbar-width: none;
     overscroll-behavior-x: contain;
+    cursor: grab;
+}
+
+.explore-scroll-track.recommendation-grid:active {
+    cursor: grabbing;
+}
+
+.explore-scroll-track [data-explore-clone] {
+    pointer-events: none;
+    user-select: none;
 }
 
 .explore-scroll-track.recommendation-grid::-webkit-scrollbar {
@@ -4590,7 +4713,9 @@ html[data-theme="flurple"] .global-search-dialog{
     }
 
     .explore-media-block {
-        padding: 14px;
+        margin-right: calc(50% - 50vw);
+        padding: 14px 0 14px 14px;
+        border-radius: 16px 0 0 16px;
     }
 
     .explore-media-block + .explore-media-block {
@@ -4630,9 +4755,9 @@ html[data-theme="flurple"] .global-search-dialog{
     }
 
     .explore-scroll-track.recommendation-grid {
-        width: calc(100% + 14px);
-        margin-right: -14px;
-        padding-right: 14px;
+        width: 100%;
+        margin-right: 0;
+        padding-right: 22px;
         gap: 6px;
     }
 
