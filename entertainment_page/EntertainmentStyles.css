@@ -4216,39 +4216,40 @@ html[data-theme="flurple"] .global-search-dialog{
     margin-top: 26px;
 }
 
+#explore_view .global-search-panel {
+    margin: 12px 0;
+}
+
 .explore-media-block {
-    margin-top: 34px;
-    padding-top: 6px;
+    margin-top: 0;
+    padding-top: 0;
 }
 
 .explore-media-block + .explore-media-block {
-    margin-top: 48px;
-    padding-top: 32px;
+    margin-top: 24px;
+    padding-top: 20px;
     border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.explore-media-heading {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 18px;
-}
-
-.explore-media-heading h2 {
-    margin: 0;
-    color: #f4f5fb;
-    font-size: 28px;
-}
-
 .explore-panel {
-    margin-top: 18px;
+    margin-top: 10px;
+    padding: 18px 20px 20px;
+    border-radius: 18px;
+}
+
+.explore-panel .recommendations-header {
+    align-items: center;
+}
+
+.explore-panel .recommendation-grid {
+    margin-top: 14px;
 }
 
 .explore-panel .recommendations-header h3,
 .friend-activity-section h3 {
     margin: 0;
     color: #eef1fb;
-    font-size: 21px;
+    font-size: 18px;
 }
 
 .friends-directory-panel {
@@ -4363,12 +4364,12 @@ html[data-theme="flurple"] .global-search-dialog{
     }
 
     .explore-media-block + .explore-media-block {
-        margin-top: 34px;
-        padding-top: 24px;
+        margin-top: 20px;
+        padding-top: 16px;
     }
 
-    .explore-media-heading h2 {
-        font-size: 23px;
+    .explore-panel {
+        padding: 15px;
     }
 
     .explore-panel .recommendations-header h3,
