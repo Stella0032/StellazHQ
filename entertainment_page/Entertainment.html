@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Entertainment | Stellaz HQ</title>
     <link rel="icon" type="image/png" href="../images/stellaz_favicon.png">
-    <link rel="stylesheet" href="EntertainmentStyles.css?v=49">
+    <link rel="stylesheet" href="EntertainmentStyles.css?v=50">
     <link rel="stylesheet" href="../firebase/profile_widget.css?v=11">
 </head>
 <body>
@@ -48,158 +48,207 @@
 
     <main class="entertainment-dashboard">
         <section class="entertainment-view" id="explore_view" data-entertainment-view-panel="explore">
-        <section class="global-search-panel" aria-label="Search all entertainment">
-            <form class="global-search-form" id="global_search_form">
-                <span class="global-search-icon" aria-hidden="true">⌕</span>
-                <input id="global_search_input" type="search"
-                       autocomplete="off" minlength="2" maxlength="120"
-                       placeholder="Search movies, TV shows, anime, manga..."
-                       aria-label="Search movies, TV shows, anime and manga">
-                <button type="submit">Search</button>
-            </form>
-        </section>
-            <section class="explore-media-block" data-explore-media="movie">
-                <section class="recommendations-panel explore-panel">
-                    <div class="recommendations-header">
-                        <div>
-                            <h3>Recommended for you</h3>
-                        </div>
-                        <span class="recommendation-count" data-explore-recommendation-count="movie">LOADING</span>
-                    </div>
-                    <div class="recommendation-grid" id="explore_movie_recommendation_grid">
-                        <p class="recommendation-loading">Finding recommendations...</p>
-                    </div>
-                </section>
-
-                <section class="recommendations-panel release-panel explore-panel">
-                    <div class="recommendations-header">
-                        <div>
-                            <h3>Newly released</h3>
-                        </div>
-                    </div>
-                    <div class="recommendation-grid release-grid" id="explore_movie_new_grid">
-                        <p class="recommendation-loading">Loading new releases...</p>
-                    </div>
-                </section>
-
-                <section class="recommendations-panel release-panel explore-panel">
-                    <div class="recommendations-header">
-                        <div>
-                            <h3>Upcoming</h3>
-                        </div>
-                    </div>
-                    <div class="recommendation-grid release-grid" id="explore_movie_upcoming_grid">
-                        <p class="recommendation-loading">Loading upcoming releases...</p>
-                    </div>
-                </section>
+            <section class="global-search-panel" aria-label="Search all entertainment">
+                <form class="global-search-form" id="global_search_form">
+                    <span class="global-search-icon" aria-hidden="true">⌕</span>
+                    <input id="global_search_input" type="search"
+                           autocomplete="off" minlength="2" maxlength="120"
+                           placeholder="Search movies, TV shows, anime, manga..."
+                           aria-label="Search movies, TV shows, anime and manga">
+                    <button type="submit">Search</button>
+                </form>
             </section>
 
-            <section class="explore-media-block" data-explore-media="show">
-                <section class="recommendations-panel explore-panel">
-                    <div class="recommendations-header">
-                        <div>
-                            <h3>Recommended for you</h3>
+            <section class="recommendations-panel explore-media-block" data-explore-media="movie">
+                <div class="explore-media-header">
+                    <h2>Movies</h2>
+                </div>
+
+                <div class="explore-row">
+                    <div class="explore-row-header">
+                        <h3>Recommended for you</h3>
+                        <div class="explore-row-actions">
+                            <span class="recommendation-count" data-explore-recommendation-count="movie">LOADING</span>
+                            <div class="explore-scroll-controls" aria-label="Scroll Movies recommendations">
+                                <button type="button" data-explore-scroll="left" aria-label="Scroll recommendations left">‹</button>
+                                <button type="button" data-explore-scroll="right" aria-label="Scroll recommendations right">›</button>
+                            </div>
                         </div>
-                        <span class="recommendation-count" data-explore-recommendation-count="show">LOADING</span>
                     </div>
-                    <div class="recommendation-grid" id="explore_show_recommendation_grid">
+                    <div class="recommendation-grid explore-scroll-track" id="explore_movie_recommendation_grid">
                         <p class="recommendation-loading">Finding recommendations...</p>
                     </div>
-                </section>
+                </div>
 
-                <section class="recommendations-panel release-panel explore-panel">
-                    <div class="recommendations-header">
-                        <div>
-                            <h3>Newly released</h3>
+                <div class="explore-row">
+                    <div class="explore-row-header">
+                        <h3>Newly released</h3>
+                        <div class="explore-scroll-controls" aria-label="Scroll newly released Movies">
+                            <button type="button" data-explore-scroll="left" aria-label="Scroll newly released left">‹</button>
+                            <button type="button" data-explore-scroll="right" aria-label="Scroll newly released right">›</button>
                         </div>
                     </div>
-                    <div class="recommendation-grid release-grid" id="explore_show_new_grid">
+                    <div class="recommendation-grid release-grid explore-scroll-track" id="explore_movie_new_grid">
                         <p class="recommendation-loading">Loading new releases...</p>
                     </div>
-                </section>
+                </div>
 
-                <section class="recommendations-panel release-panel explore-panel">
-                    <div class="recommendations-header">
-                        <div>
-                            <h3>Upcoming</h3>
+                <div class="explore-row">
+                    <div class="explore-row-header">
+                        <h3>Upcoming</h3>
+                        <div class="explore-scroll-controls" aria-label="Scroll upcoming Movies">
+                            <button type="button" data-explore-scroll="left" aria-label="Scroll upcoming left">‹</button>
+                            <button type="button" data-explore-scroll="right" aria-label="Scroll upcoming right">›</button>
                         </div>
                     </div>
-                    <div class="recommendation-grid release-grid" id="explore_show_upcoming_grid">
+                    <div class="recommendation-grid release-grid explore-scroll-track" id="explore_movie_upcoming_grid">
                         <p class="recommendation-loading">Loading upcoming releases...</p>
                     </div>
-                </section>
+                </div>
             </section>
 
-            <section class="explore-media-block" data-explore-media="anime">
-                <section class="recommendations-panel explore-panel">
-                    <div class="recommendations-header">
-                        <div>
-                            <h3>Recommended for you</h3>
+            <section class="recommendations-panel explore-media-block" data-explore-media="show">
+                <div class="explore-media-header">
+                    <h2>TV Shows</h2>
+                </div>
+
+                <div class="explore-row">
+                    <div class="explore-row-header">
+                        <h3>Recommended for you</h3>
+                        <div class="explore-row-actions">
+                            <span class="recommendation-count" data-explore-recommendation-count="show">LOADING</span>
+                            <div class="explore-scroll-controls" aria-label="Scroll TV Shows recommendations">
+                                <button type="button" data-explore-scroll="left" aria-label="Scroll recommendations left">‹</button>
+                                <button type="button" data-explore-scroll="right" aria-label="Scroll recommendations right">›</button>
+                            </div>
                         </div>
-                        <span class="recommendation-count" data-explore-recommendation-count="anime">LOADING</span>
                     </div>
-                    <div class="recommendation-grid" id="explore_anime_recommendation_grid">
+                    <div class="recommendation-grid explore-scroll-track" id="explore_show_recommendation_grid">
                         <p class="recommendation-loading">Finding recommendations...</p>
                     </div>
-                </section>
+                </div>
 
-                <section class="recommendations-panel release-panel explore-panel">
-                    <div class="recommendations-header">
-                        <div>
-                            <h3>Newly released</h3>
+                <div class="explore-row">
+                    <div class="explore-row-header">
+                        <h3>Newly released</h3>
+                        <div class="explore-scroll-controls" aria-label="Scroll newly released TV Shows">
+                            <button type="button" data-explore-scroll="left" aria-label="Scroll newly released left">‹</button>
+                            <button type="button" data-explore-scroll="right" aria-label="Scroll newly released right">›</button>
                         </div>
                     </div>
-                    <div class="recommendation-grid release-grid" id="explore_anime_new_grid">
+                    <div class="recommendation-grid release-grid explore-scroll-track" id="explore_show_new_grid">
                         <p class="recommendation-loading">Loading new releases...</p>
                     </div>
-                </section>
+                </div>
 
-                <section class="recommendations-panel release-panel explore-panel">
-                    <div class="recommendations-header">
-                        <div>
-                            <h3>Upcoming</h3>
+                <div class="explore-row">
+                    <div class="explore-row-header">
+                        <h3>Upcoming</h3>
+                        <div class="explore-scroll-controls" aria-label="Scroll upcoming TV Shows">
+                            <button type="button" data-explore-scroll="left" aria-label="Scroll upcoming left">‹</button>
+                            <button type="button" data-explore-scroll="right" aria-label="Scroll upcoming right">›</button>
                         </div>
                     </div>
-                    <div class="recommendation-grid release-grid" id="explore_anime_upcoming_grid">
+                    <div class="recommendation-grid release-grid explore-scroll-track" id="explore_show_upcoming_grid">
                         <p class="recommendation-loading">Loading upcoming releases...</p>
                     </div>
-                </section>
+                </div>
             </section>
 
-            <section class="explore-media-block" data-explore-media="manga">
-                <section class="recommendations-panel explore-panel">
-                    <div class="recommendations-header">
-                        <div>
-                            <h3>Recommended for you</h3>
+            <section class="recommendations-panel explore-media-block" data-explore-media="anime">
+                <div class="explore-media-header">
+                    <h2>Anime</h2>
+                </div>
+
+                <div class="explore-row">
+                    <div class="explore-row-header">
+                        <h3>Recommended for you</h3>
+                        <div class="explore-row-actions">
+                            <span class="recommendation-count" data-explore-recommendation-count="anime">LOADING</span>
+                            <div class="explore-scroll-controls" aria-label="Scroll Anime recommendations">
+                                <button type="button" data-explore-scroll="left" aria-label="Scroll recommendations left">‹</button>
+                                <button type="button" data-explore-scroll="right" aria-label="Scroll recommendations right">›</button>
+                            </div>
                         </div>
-                        <span class="recommendation-count" data-explore-recommendation-count="manga">LOADING</span>
                     </div>
-                    <div class="recommendation-grid" id="explore_manga_recommendation_grid">
+                    <div class="recommendation-grid explore-scroll-track" id="explore_anime_recommendation_grid">
                         <p class="recommendation-loading">Finding recommendations...</p>
                     </div>
-                </section>
+                </div>
 
-                <section class="recommendations-panel release-panel explore-panel">
-                    <div class="recommendations-header">
-                        <div>
-                            <h3>Newly released</h3>
+                <div class="explore-row">
+                    <div class="explore-row-header">
+                        <h3>Newly released</h3>
+                        <div class="explore-scroll-controls" aria-label="Scroll newly released Anime">
+                            <button type="button" data-explore-scroll="left" aria-label="Scroll newly released left">‹</button>
+                            <button type="button" data-explore-scroll="right" aria-label="Scroll newly released right">›</button>
                         </div>
                     </div>
-                    <div class="recommendation-grid release-grid" id="explore_manga_new_grid">
+                    <div class="recommendation-grid release-grid explore-scroll-track" id="explore_anime_new_grid">
                         <p class="recommendation-loading">Loading new releases...</p>
                     </div>
-                </section>
+                </div>
 
-                <section class="recommendations-panel release-panel explore-panel">
-                    <div class="recommendations-header">
-                        <div>
-                            <h3>Upcoming</h3>
+                <div class="explore-row">
+                    <div class="explore-row-header">
+                        <h3>Upcoming</h3>
+                        <div class="explore-scroll-controls" aria-label="Scroll upcoming Anime">
+                            <button type="button" data-explore-scroll="left" aria-label="Scroll upcoming left">‹</button>
+                            <button type="button" data-explore-scroll="right" aria-label="Scroll upcoming right">›</button>
                         </div>
                     </div>
-                    <div class="recommendation-grid release-grid" id="explore_manga_upcoming_grid">
+                    <div class="recommendation-grid release-grid explore-scroll-track" id="explore_anime_upcoming_grid">
                         <p class="recommendation-loading">Loading upcoming releases...</p>
                     </div>
-                </section>
+                </div>
+            </section>
+
+            <section class="recommendations-panel explore-media-block" data-explore-media="manga">
+                <div class="explore-media-header">
+                    <h2>Manga / Manhwa</h2>
+                </div>
+
+                <div class="explore-row">
+                    <div class="explore-row-header">
+                        <h3>Recommended for you</h3>
+                        <div class="explore-row-actions">
+                            <span class="recommendation-count" data-explore-recommendation-count="manga">LOADING</span>
+                            <div class="explore-scroll-controls" aria-label="Scroll Manga / Manhwa recommendations">
+                                <button type="button" data-explore-scroll="left" aria-label="Scroll recommendations left">‹</button>
+                                <button type="button" data-explore-scroll="right" aria-label="Scroll recommendations right">›</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="recommendation-grid explore-scroll-track" id="explore_manga_recommendation_grid">
+                        <p class="recommendation-loading">Finding recommendations...</p>
+                    </div>
+                </div>
+
+                <div class="explore-row">
+                    <div class="explore-row-header">
+                        <h3>Newly released</h3>
+                        <div class="explore-scroll-controls" aria-label="Scroll newly released Manga / Manhwa">
+                            <button type="button" data-explore-scroll="left" aria-label="Scroll newly released left">‹</button>
+                            <button type="button" data-explore-scroll="right" aria-label="Scroll newly released right">›</button>
+                        </div>
+                    </div>
+                    <div class="recommendation-grid release-grid explore-scroll-track" id="explore_manga_new_grid">
+                        <p class="recommendation-loading">Loading new releases...</p>
+                    </div>
+                </div>
+
+                <div class="explore-row">
+                    <div class="explore-row-header">
+                        <h3>Upcoming</h3>
+                        <div class="explore-scroll-controls" aria-label="Scroll upcoming Manga / Manhwa">
+                            <button type="button" data-explore-scroll="left" aria-label="Scroll upcoming left">‹</button>
+                            <button type="button" data-explore-scroll="right" aria-label="Scroll upcoming right">›</button>
+                        </div>
+                    </div>
+                    <div class="recommendation-grid release-grid explore-scroll-track" id="explore_manga_upcoming_grid">
+                        <p class="recommendation-loading">Loading upcoming releases...</p>
+                    </div>
+                </div>
             </section>
         </section>
 
@@ -891,7 +940,7 @@
     </dialog>
 
     <div class="toast" id="toast" role="status"></div>
-    <script type="module" src="Entertainment.js?v=95"></script>
+    <script type="module" src="Entertainment.js?v=96"></script>
     <script type="module" src="../firebase/profile_widget.js?v=10"></script>
 </body>
 </html>
