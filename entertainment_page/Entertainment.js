@@ -413,6 +413,7 @@ function apply_recommendation_filter() {
 const recommendation_dialog = document.getElementById("recommendation_dialog");
 const recommendation_dialog_close = document.getElementById("recommendation_dialog_close");
 const recommendation_dialog_poster = document.getElementById("recommendation_dialog_poster");
+const recommendation_dialog_watch = document.getElementById("recommendation_dialog_watch");
 const recommendation_dialog_type = document.getElementById("recommendation_dialog_type");
 const recommendation_dialog_title = document.getElementById("recommendation_dialog_title");
 const recommendation_dialog_meta = document.getElementById("recommendation_dialog_meta");
@@ -879,23 +880,17 @@ async function open_recommendation_details(item) {
             <button type="button" class="recommendation-action primary"
                     data-dialog-action="manga_reading">＋ Start reading</button>`
                 : `
-            ${item.tmdb_id ? `
-                <div class="watch-section">
-                    <p class="eyebrow watch-section-label">WATCH</p>
-                    <div class="watch-section-row">
-                        <span data-seerr-watch-slot></span>
-                        <span data-watch-providers-slot></span>
-                        <span class="recommendation-action muted" data-seerr-slot>
-                            Checking Seerr…
-                        </span>
-                    </div>
-                </div>` : ""}
             <button type="button" class="recommendation-action primary"
                     data-dialog-action="watched">✓ I've seen it</button>
             <button type="button" class="recommendation-action"
                     data-dialog-action="watch_later">＋ Watch later</button>
             <button type="button" class="recommendation-action muted"
                     data-dialog-action="not_interested">Not interested</button>`;
+
+    recommendation_dialog_watch.innerHTML =
+        item.tmdb_id && active_recommendation_type !== "anime"
+            ? watch_area_loading_markup() : "";
+
     recommendation_dialog.showModal();
 
     if (active_recommendation_type === "manga") {
@@ -933,17 +928,16 @@ async function open_recommendation_details(item) {
 
     if (item.tmdb_id && active_recommendation_type !== "anime") {
         refresh_seerr_status_slot(
-            recommendation_dialog_actions,
+            recommendation_dialog_watch,
             item.tmdb_id,
             active_recommendation_type,
-            (state, label) => `<button type="button" class="recommendation-action" data-seerr-slot
-                     data-dialog-action="request_seerr"
+            (state) => `data-dialog-action="request_seerr"
                      data-seerr-french="${state.is_french}"
-                     data-seerr-anime="${state.is_anime}">${label}</button>`,
+                     data-seerr-anime="${state.is_anime}"`,
             () => active_recommendation_detail === item
         );
         refresh_watch_providers_slot(
-            recommendation_dialog_actions,
+            recommendation_dialog_watch,
             item.tmdb_id,
             active_recommendation_type,
             () => active_recommendation_detail === item
@@ -1099,23 +1093,137 @@ async function request_media_on_seerr(item, media_type, button) {
     }
 }
 
-// Watch and Request are independent now — Watch is just the Plex mark,
-// shown only once something is actually there, never mixed in with the
-// Request/Requested/Downloading text so the two can sit side by side.
+// One small, visually consistent box that cycles through every Seerr
+// state (loading/idle/requested/downloading/available) instead of a mix
+// of differently-shaped buttons and text pills — that inconsistency was
+// the actual complaint. Lives under the poster now, not in the actions
+// list. `clickable` picks <button> vs plain <div> — a passive state
+// (requested/downloading) has nothing to click.
+function watch_box_markup(inner_html, {
+    clickable = false, click_attrs = "", extra_class = "", title = ""
+} = {}) {
+    const tag = clickable ? "button" : "div";
+    return `<${tag} class="watch-box ${extra_class}"
+               ${clickable ? 'type="button"' : ""} ${click_attrs}
+               ${title ? `title="${title}" aria-label="${title}"` : ""}>
+               ${inner_html}
+            </${tag}>`;
+}
+
+function watch_box_spinner_markup() {
+    return '<span class="watch-box-spinner" aria-hidden="true"></span>';
+}
+
+// Same simple stroke-icon style for both — "to download" (idle, static)
+// and "downloading with no known percent yet" (pulsing) are the same
+// glyph, since the download destination is identical either way.
+function watch_box_download_icon_markup(pulsing) {
+    return `<svg class="watch-box-icon${pulsing ? " watch-box-icon-pulse" : ""}"
+                viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                aria-hidden="true">
+              <path d="M12 3v12m0 0l-5-5m5 5l5-5M5 19h14"/>
+            </svg>`;
+}
+
+function watch_box_clock_icon_markup() {
+    return `<svg class="watch-box-icon" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>
+            </svg>`;
+}
+
+function watch_box_plex_markup(state) {
+    return watch_box_markup(
+        '<img src="../images/plex.svg" alt="" class="watch-box-plex-icon">',
+        {
+            clickable: true,
+            click_attrs: `data-app-open data-app-web-url="${state.watch_url}" ` +
+                `data-app-mobile-url="${state.mobile_watch_url || ""}"`,
+            extra_class: "watch-box-plex",
+            title: "Watch on Plex"
+        }
+    );
+}
+
+// request_click_attrs(state) returns the data-attributes string for
+// whatever should handle the click (routed to request_media_on_seerr by
+// one of the existing delegated listeners, same as before), or null to
+// suppress the idle/count box entirely — e.g. the library detail dialog
+// only offers a request for a Watch Later item, never an already-watched
+// one, same gate that existed before this redesign.
 //
-// A <button> rather than a plain <a href> so a phone can try opening the
-// Plex app first (see open_app_or_web / the delegated handler below) —
-// mobile_watch_url carries the plex:// deep link when Seerr has one,
-// watch_url is always the plain web fallback, used as-is on desktop or
-// if there's no deep link.
-function seerr_watch_slot_markup(state) {
-    if (!state.watch_url) return "";
-    return `<button type="button" class="recommendation-action seerr-watch-button"
-               data-seerr-watch-slot data-app-open
-               data-app-web-url="${state.watch_url}"
-               data-app-mobile-url="${state.mobile_watch_url || ""}"
-               aria-label="Watch on Plex" title="Watch on Plex">
-               <img src="../images/plex.svg" alt="" class="seerr-plex-icon"></button>`;
+// TV/anime only splits into a second "X/Y" box once at least one season
+// is actually on Plex but not all of them are — before that point (0
+// available), it behaves exactly like a movie: one box, idle/requested/
+// downloading. Once every season is available, this collapses back to
+// just the Plex box, same as a movie.
+function watch_box_row_markup(state, media_type, request_click_attrs) {
+    const is_tv_partial = media_type === "show" &&
+        state.total_season_count &&
+        state.available_season_count > 0 &&
+        state.available_season_count < state.total_season_count;
+
+    if (is_tv_partial) {
+        const count_attrs = request_click_attrs(state);
+        const plex_box = watch_box_plex_markup(state);
+        if (count_attrs == null) return plex_box;
+
+        const count_box = watch_box_markup(
+            `${state.available_season_count}/${state.total_season_count}`,
+            {
+                clickable: true,
+                click_attrs: count_attrs,
+                extra_class: "watch-box-count",
+                title: "Request more seasons"
+            }
+        );
+        return count_box + plex_box;
+    }
+
+    if (state.status === "available") return watch_box_plex_markup(state);
+
+    if (state.status === "downloading") {
+        const content = state.progress_percent != null
+            ? `<span class="watch-box-percent">${state.progress_percent}%</span>`
+            : watch_box_download_icon_markup(true);
+        return watch_box_markup(
+            content, {extra_class: "watch-box-downloading", title: "Downloading"}
+        );
+    }
+
+    if (state.status === "requested") {
+        return watch_box_markup(
+            watch_box_clock_icon_markup(),
+            {extra_class: "watch-box-requested", title: "Requested"}
+        );
+    }
+
+    const idle_attrs = request_click_attrs(state);
+    if (idle_attrs == null) return "";
+    return watch_box_markup(
+        watch_box_download_icon_markup(false),
+        {
+            clickable: true,
+            click_attrs: idle_attrs,
+            extra_class: "watch-box-idle",
+            title: "Request"
+        }
+    );
+}
+
+// Sets the whole "under the poster" area to a loading placeholder —
+// called synchronously when a dialog opens, before either async refresh
+// below resolves.
+function watch_area_loading_markup() {
+    return `<div class="watch-box-row" data-watch-box-row>
+                ${watch_box_markup(
+                    watch_box_spinner_markup(),
+                    {extra_class: "watch-box-loading", title: "Checking Seerr…"}
+                )}
+            </div>
+            <div class="watch-provider-row" data-watch-providers-slot></div>`;
 }
 
 // Curated to just the mainstream subscription platforms actually wanted
@@ -1236,63 +1344,14 @@ async function refresh_watch_providers_slot(
         .join("");
 }
 
-function seerr_progress_bar_markup(percent) {
-    if (percent == null) return "";
-    return `<div class="seerr-progress" role="progressbar"
-                 aria-valuenow="${percent}" aria-valuemin="0" aria-valuemax="100">
-              <div class="seerr-progress-fill" style="width:${percent}%"></div>
-            </div>`;
-}
-
-// Shared by the recommendation/release dialog and the library detail
-// dialog: both show a Seerr-backed Request/status slot next to the same
-// title details, they just differ in what "idle" (nothing requested yet)
-// should offer — recommendations always offer Request, a Watch Later
-// library item does too, but e.g. an already-watched item doesn't.
-// request_markup_fn receives the fetched state and the label to show, so
-// the idle Request button (and the "X/Y downloaded" button re-using the
-// same click target) can carry is_french/is_anime through as data
-// attributes for request_media_on_seerr to read when it's clicked.
-//
-// A TV show once fully available (every season on Plex) hides this slot
-// entirely — the Watch button already covers it, nothing left to request.
-// Checked ahead of (and separately from) the movie-shaped status checks
-// below: Seerr sets watch_url — and so `state.status === "available"` —
-// as soon as the FIRST episode lands on Plex, well before every season
-// does, so a plain "is it available" check would hide this too early for
-// a partially-downloaded show. Season completeness is the only signal
-// that actually means "nothing left to request" for TV.
-function seerr_request_slot_markup(state, media_type, request_markup_fn) {
-    if (media_type === "show" && state.total_season_count) {
-        if (state.available_season_count >= state.total_season_count) {
-            return "";
-        }
-        if (state.status === "idle") {
-            return request_markup_fn(state, "📥 Request");
-        }
-        return request_markup_fn(
-            state,
-            `${state.available_season_count}/${state.total_season_count} downloaded`
-        ) + seerr_progress_bar_markup(state.progress_percent);
-    }
-
-    if (state.status === "available") return "";
-
-    if (state.status === "downloading") {
-        return '<span class="recommendation-action muted" data-seerr-slot>' +
-            '⬇ Downloading</span>' +
-            seerr_progress_bar_markup(state.progress_percent);
-    }
-    if (state.status === "requested") {
-        return '<span class="recommendation-action muted" ' +
-            'data-seerr-slot>✓ Requested</span>';
-    }
-
-    return request_markup_fn(state, "📥 Request");
-}
-
+// Shared by the recommendation/release dialog, the library detail
+// dialog, and the anime library dialog — all show the same box(es)
+// under the poster, just differing in what request_click_attrs offers
+// for the idle/count state (recommendations and the anime library
+// always offer a request; a movie/show library item only does for a
+// Watch Later entry, never an already-watched one).
 async function refresh_seerr_status_slot(
-    container, tmdb_id, media_type, idle_markup_fn, still_open
+    container, tmdb_id, media_type, request_click_attrs, still_open
 ) {
     let state = {
         status: "idle", watch_url: null, mobile_watch_url: null,
@@ -1312,13 +1371,10 @@ async function refresh_seerr_status_slot(
     }
     if (!still_open()) return;
 
-    const watch_slot = container.querySelector("[data-seerr-watch-slot]");
-    if (watch_slot) watch_slot.outerHTML = seerr_watch_slot_markup(state);
-
-    const request_slot = container.querySelector("[data-seerr-slot]");
-    if (request_slot) {
-        request_slot.outerHTML =
-            seerr_request_slot_markup(state, media_type, idle_markup_fn);
+    const box_row = container.querySelector("[data-watch-box-row]");
+    if (box_row) {
+        box_row.innerHTML =
+            watch_box_row_markup(state, media_type, request_click_attrs);
     }
 }
 
@@ -2694,17 +2750,6 @@ async function open_library_detail(type, item) {
                     data-library-dialog-id="${item.id}">
                 ✓ Mark watched
             </button>` : ""}
-        ${item.tmdb_id ? `
-            <div class="watch-section">
-                <p class="eyebrow watch-section-label">WATCH</p>
-                <div class="watch-section-row">
-                    <span data-seerr-watch-slot></span>
-                    <span data-watch-providers-slot></span>
-                    <span class="recommendation-action muted" data-seerr-slot>
-                        Checking Seerr…
-                    </span>
-                </div>
-            </div>` : ""}
         ${type === "show" ? `
             <button class="recommendation-action" type="button"
                     data-library-dialog-seasons="${item.id}">
@@ -2718,29 +2763,30 @@ async function open_library_detail(type, item) {
             </button>` : ""}
     `;
 
+    recommendation_dialog_watch.innerHTML =
+        item.tmdb_id ? watch_area_loading_markup() : "";
+
     recommendation_dialog.showModal();
 
     if (item.tmdb_id) {
         refresh_seerr_status_slot(
-            recommendation_dialog_actions,
+            recommendation_dialog_watch,
             item.tmdb_id,
             type,
             // Only offer to request something not yet on Plex if it's
             // sitting in Watch Later — an already-watched item you added
             // manually isn't necessarily something to re-request.
-            (state, label) => item.status === "watch_later" ? `
-                <button class="recommendation-action" type="button" data-seerr-slot
-                        data-library-dialog-request="${type}"
-                        data-library-dialog-id="${item.id}"
-                        data-seerr-french="${state.is_french}"
-                        data-seerr-anime="${state.is_anime}">
-                    ${label}
-                </button>` : "",
+            (state) => item.status === "watch_later"
+                ? `data-library-dialog-request="${type}"
+                   data-library-dialog-id="${item.id}"
+                   data-seerr-french="${state.is_french}"
+                   data-seerr-anime="${state.is_anime}"`
+                : null,
             () => active_library_detail?.item.id === item.id &&
                 active_library_detail?.type === type
         );
         refresh_watch_providers_slot(
-            recommendation_dialog_actions,
+            recommendation_dialog_watch,
             item.tmdb_id,
             type,
             () => active_library_detail?.item.id === item.id &&
@@ -5407,6 +5453,7 @@ async function open_anime_editor(anime_id) {
 
         active_anime_watch_tmdb_id = tmdb_id;
         anime_watch_section.hidden = false;
+        anime_watch_section.innerHTML = watch_area_loading_markup();
         const still_open = () =>
             active_anime?.id === opened_anime_id && anime_edit_dialog.open;
 
@@ -5414,10 +5461,9 @@ async function open_anime_editor(anime_id) {
             anime_watch_section,
             tmdb_id,
             "show",
-            (state, label) => `<button type="button" class="recommendation-action" data-seerr-slot
-                     data-anime-watch-request
+            (state) => `data-anime-watch-request
                      data-seerr-french="${state.is_french}"
-                     data-seerr-anime="${state.is_anime}">${label}</button>`,
+                     data-seerr-anime="${state.is_anime}"`,
             still_open
         );
         refresh_watch_providers_slot(

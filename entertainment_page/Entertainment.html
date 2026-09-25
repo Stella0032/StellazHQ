@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Entertainment | Stellaz HQ</title>
     <link rel="icon" type="image/png" href="../images/stellaz_favicon.png">
-    <link rel="stylesheet" href="EntertainmentStyles.css?v=55">
+    <link rel="stylesheet" href="EntertainmentStyles.css?v=56">
     <link rel="stylesheet" href="../firebase/profile_widget.css?v=11">
 </head>
 <body>
@@ -614,23 +614,16 @@
     <dialog class="recommendation-dialog anime-detail-dialog" id="anime_edit_dialog">
         <div class="recommendation-dialog-shell anime-detail-shell">
             <button class="library-dialog-close recommendation-dialog-close" id="anime_edit_close" type="button" aria-label="Close">×</button>
-            <img class="recommendation-dialog-poster" id="anime_edit_cover" alt="">
+            <div class="recommendation-dialog-poster-column">
+                <img class="recommendation-dialog-poster" id="anime_edit_cover" alt="">
+                <div class="watch-box-area" id="anime_watch_section" hidden></div>
+            </div>
             <div class="recommendation-dialog-content">
                 <p class="eyebrow">MYANIMELIST</p>
                 <h2 id="anime_edit_title">Anime</h2>
                 <p class="recommendation-dialog-meta" id="anime_detail_meta"></p>
                 <p class="recommendation-dialog-description" id="anime_detail_description"></p>
                 <div class="recommendation-dialog-facts" id="anime_detail_facts"></div>
-                <div class="watch-section" id="anime_watch_section" hidden>
-                    <p class="eyebrow watch-section-label">WATCH</p>
-                    <div class="watch-section-row">
-                        <span data-seerr-watch-slot></span>
-                        <span data-watch-providers-slot></span>
-                        <span class="recommendation-action muted" data-seerr-slot>
-                            Checking Seerr…
-                        </span>
-                    </div>
-                </div>
                 <form id="anime_edit_form" class="anime-detail-form">
                     <div class="anime-detail-controls">
                         <label>Status
@@ -686,7 +679,10 @@
     <dialog class="recommendation-dialog" id="recommendation_dialog">
         <div class="recommendation-dialog-shell">
             <button class="library-dialog-close recommendation-dialog-close" id="recommendation_dialog_close" type="button" aria-label="Close">×</button>
-            <img class="recommendation-dialog-poster" id="recommendation_dialog_poster" alt="">
+            <div class="recommendation-dialog-poster-column">
+                <img class="recommendation-dialog-poster" id="recommendation_dialog_poster" alt="">
+                <div class="watch-box-area" id="recommendation_dialog_watch"></div>
+            </div>
             <div class="recommendation-dialog-content">
                 <p class="eyebrow" id="recommendation_dialog_type">RECOMMENDATION</p>
                 <h2 id="recommendation_dialog_title"></h2>
@@ -963,7 +959,7 @@
     </dialog>
 
     <div class="toast" id="toast" role="status"></div>
-    <script type="module" src="Entertainment.js?v=100"></script>
+    <script type="module" src="Entertainment.js?v=101"></script>
     <script type="module" src="../firebase/profile_widget.js?v=10"></script>
 </body>
 </html>
