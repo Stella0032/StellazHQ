@@ -54,7 +54,7 @@ login_button.addEventListener("click", async () => {
             username.value.trim(),
             password.value
         );
-        window.location.href = "lobby_page/Lobby.html";
+        window.location.href = "entertainment_page/Entertainment.html";
     } catch (error) {
         alert(error.message);
     }
@@ -127,7 +127,7 @@ signup_form.addEventListener("submit", async (event) => {
             signup_password
         );
 
-        window.location.href = "lobby_page/Lobby.html";
+        window.location.href = "entertainment_page/Entertainment.html";
     } catch (error) {
         console.error("Unable to create account:", error);
 

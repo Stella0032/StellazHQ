@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Entertainment | Stellaz HQ</title>
     <link rel="icon" type="image/png" href="../images/stellaz_favicon.png">
-    <link rel="stylesheet" href="EntertainmentStyles.css?v=47">
+    <link rel="stylesheet" href="EntertainmentStyles.css?v=48">
     <link rel="stylesheet" href="../firebase/profile_widget.css?v=11">
 </head>
 <body>
@@ -18,14 +18,10 @@
             <span class="theme-brand-name flurpleverse-brand-name" aria-hidden="true">THE FLURPLEVERSE</span>
             <span class="theme-brand-name sunsetverse-brand-name" aria-hidden="true">THE SUNSETVERSE</span>
         </div>
-        <nav class="nav-links" aria-label="Stellaz navigation">
-            <a href="../lobby_page/Lobby.html">Home</a>
-            <a href="../lobby_page/Lobby.html">Robot</a>
-            <a href="../lobby_page/Lobby.html">Finances</a>
-            <a href="../lobby_page/Lobby.html">Smart Home</a>
-            <a class="active" href="Entertainment.html">Entertainment</a>
-            <a href="../lobby_page/Lobby.html">Calendar</a>
-            <a href="../lobby_page/Lobby.html">Notes</a>
+        <nav class="nav-links entertainment-nav" aria-label="Entertainment navigation">
+            <a class="active" href="#explore" data-entertainment-view="explore">Explore</a>
+            <a href="#friends" data-entertainment-view="friends">Friends</a>
+            <a href="#collection" data-entertainment-view="collection">Your Collection</a>
         </nav>
         <div class="profile-area">
             <div class="connection-badges" id="connection_badges" aria-label="Connected entertainment accounts">
@@ -51,6 +47,7 @@
     </header>
 
     <main class="entertainment-dashboard">
+        <section class="entertainment-view" id="explore_view" data-entertainment-view-panel="explore">
         <section class="global-search-panel" aria-label="Search all entertainment">
             <form class="global-search-form" id="global_search_form">
                 <span class="global-search-icon" aria-hidden="true">⌕</span>
@@ -61,7 +58,246 @@
                 <button type="submit">Search</button>
             </form>
         </section>
+            <div class="entertainment-view-heading">
+                <p class="eyebrow">DISCOVER</p>
+                <h1>Explore Entertainment</h1>
+                <p>Recommendations, new releases and what is coming next across your entertainment world.</p>
+            </div>
 
+            <section class="explore-media-block" data-explore-media="movie">
+                <div class="explore-media-heading">
+                    <div>
+                        <p class="eyebrow">MOVIES</p>
+                        <h2>Movies</h2>
+                    </div>
+                </div>
+
+                <section class="recommendations-panel explore-panel">
+                    <div class="recommendations-header">
+                        <div>
+                            <p class="eyebrow">PERSONAL PICKS</p>
+                            <h3>Recommended for you</h3>
+                        </div>
+                        <span class="recommendation-count" data-explore-recommendation-count="movie">LOADING</span>
+                    </div>
+                    <div class="recommendation-grid" id="explore_movie_recommendation_grid">
+                        <p class="recommendation-loading">Finding recommendations...</p>
+                    </div>
+                </section>
+
+                <section class="recommendations-panel release-panel explore-panel">
+                    <div class="recommendations-header">
+                        <div>
+                            <p class="eyebrow">JUST RELEASED</p>
+                            <h3>Newly released</h3>
+                        </div>
+                    </div>
+                    <div class="recommendation-grid release-grid" id="explore_movie_new_grid">
+                        <p class="recommendation-loading">Loading new releases...</p>
+                    </div>
+                </section>
+
+                <section class="recommendations-panel release-panel explore-panel">
+                    <div class="recommendations-header">
+                        <div>
+                            <p class="eyebrow">COMING SOON</p>
+                            <h3>Upcoming</h3>
+                        </div>
+                    </div>
+                    <div class="recommendation-grid release-grid" id="explore_movie_upcoming_grid">
+                        <p class="recommendation-loading">Loading upcoming releases...</p>
+                    </div>
+                </section>
+            </section>
+
+            <section class="explore-media-block" data-explore-media="show">
+                <div class="explore-media-heading">
+                    <div>
+                        <p class="eyebrow">TV SHOWS</p>
+                        <h2>TV Shows</h2>
+                    </div>
+                </div>
+
+                <section class="recommendations-panel explore-panel">
+                    <div class="recommendations-header">
+                        <div>
+                            <p class="eyebrow">PERSONAL PICKS</p>
+                            <h3>Recommended for you</h3>
+                        </div>
+                        <span class="recommendation-count" data-explore-recommendation-count="show">LOADING</span>
+                    </div>
+                    <div class="recommendation-grid" id="explore_show_recommendation_grid">
+                        <p class="recommendation-loading">Finding recommendations...</p>
+                    </div>
+                </section>
+
+                <section class="recommendations-panel release-panel explore-panel">
+                    <div class="recommendations-header">
+                        <div>
+                            <p class="eyebrow">JUST RELEASED</p>
+                            <h3>Newly released</h3>
+                        </div>
+                    </div>
+                    <div class="recommendation-grid release-grid" id="explore_show_new_grid">
+                        <p class="recommendation-loading">Loading new releases...</p>
+                    </div>
+                </section>
+
+                <section class="recommendations-panel release-panel explore-panel">
+                    <div class="recommendations-header">
+                        <div>
+                            <p class="eyebrow">COMING SOON</p>
+                            <h3>Upcoming</h3>
+                        </div>
+                    </div>
+                    <div class="recommendation-grid release-grid" id="explore_show_upcoming_grid">
+                        <p class="recommendation-loading">Loading upcoming releases...</p>
+                    </div>
+                </section>
+            </section>
+
+            <section class="explore-media-block" data-explore-media="anime">
+                <div class="explore-media-heading">
+                    <div>
+                        <p class="eyebrow">ANIME</p>
+                        <h2>Anime</h2>
+                    </div>
+                </div>
+
+                <section class="recommendations-panel explore-panel">
+                    <div class="recommendations-header">
+                        <div>
+                            <p class="eyebrow">PERSONAL PICKS</p>
+                            <h3>Recommended for you</h3>
+                        </div>
+                        <span class="recommendation-count" data-explore-recommendation-count="anime">LOADING</span>
+                    </div>
+                    <div class="recommendation-grid" id="explore_anime_recommendation_grid">
+                        <p class="recommendation-loading">Finding recommendations...</p>
+                    </div>
+                </section>
+
+                <section class="recommendations-panel release-panel explore-panel">
+                    <div class="recommendations-header">
+                        <div>
+                            <p class="eyebrow">JUST RELEASED</p>
+                            <h3>Newly released</h3>
+                        </div>
+                    </div>
+                    <div class="recommendation-grid release-grid" id="explore_anime_new_grid">
+                        <p class="recommendation-loading">Loading new releases...</p>
+                    </div>
+                </section>
+
+                <section class="recommendations-panel release-panel explore-panel">
+                    <div class="recommendations-header">
+                        <div>
+                            <p class="eyebrow">COMING SOON</p>
+                            <h3>Upcoming</h3>
+                        </div>
+                    </div>
+                    <div class="recommendation-grid release-grid" id="explore_anime_upcoming_grid">
+                        <p class="recommendation-loading">Loading upcoming releases...</p>
+                    </div>
+                </section>
+            </section>
+
+            <section class="explore-media-block" data-explore-media="manga">
+                <div class="explore-media-heading">
+                    <div>
+                        <p class="eyebrow">MANGA / MANHWA</p>
+                        <h2>Manga / Manhwa</h2>
+                    </div>
+                </div>
+
+                <section class="recommendations-panel explore-panel">
+                    <div class="recommendations-header">
+                        <div>
+                            <p class="eyebrow">PERSONAL PICKS</p>
+                            <h3>Recommended for you</h3>
+                        </div>
+                        <span class="recommendation-count" data-explore-recommendation-count="manga">LOADING</span>
+                    </div>
+                    <div class="recommendation-grid" id="explore_manga_recommendation_grid">
+                        <p class="recommendation-loading">Finding recommendations...</p>
+                    </div>
+                </section>
+
+                <section class="recommendations-panel release-panel explore-panel">
+                    <div class="recommendations-header">
+                        <div>
+                            <p class="eyebrow">JUST RELEASED</p>
+                            <h3>Newly released</h3>
+                        </div>
+                    </div>
+                    <div class="recommendation-grid release-grid" id="explore_manga_new_grid">
+                        <p class="recommendation-loading">Loading new releases...</p>
+                    </div>
+                </section>
+
+                <section class="recommendations-panel release-panel explore-panel">
+                    <div class="recommendations-header">
+                        <div>
+                            <p class="eyebrow">COMING SOON</p>
+                            <h3>Upcoming</h3>
+                        </div>
+                    </div>
+                    <div class="recommendation-grid release-grid" id="explore_manga_upcoming_grid">
+                        <p class="recommendation-loading">Loading upcoming releases...</p>
+                    </div>
+                </section>
+            </section>
+        </section>
+
+        <section class="entertainment-view" id="friends_view" data-entertainment-view-panel="friends" hidden>
+            <div class="entertainment-view-heading">
+                <p class="eyebrow">YOUR CIRCLE</p>
+                <h1>Friends</h1>
+                <p>See who you are connected with and what everyone has been watching or reading lately.</p>
+            </div>
+
+            <section class="recommendations-panel friends-directory-panel">
+                <div class="recommendations-header">
+                    <div>
+                        <p class="eyebrow">FRIENDS</p>
+                        <h2>Your Friends</h2>
+                    </div>
+                    <span class="recommendation-count" id="friends_overview_count">LOADING</span>
+                </div>
+                <div class="friends-overview-grid" id="friends_overview_grid">
+                    <p class="recommendation-loading">Loading friends...</p>
+                </div>
+            </section>
+
+            <section class="recommendations-panel friend-activity-panel" id="friend_activity_panel" hidden>
+                <div class="recommendations-header">
+                    <div>
+                        <p class="eyebrow">RECENT ACTIVITY</p>
+                        <h2>Friends Have Been Enjoying</h2>
+                    </div>
+                    <span class="recommendation-count" id="friend_activity_count">LOADING</span>
+                </div>
+
+                <div class="friend-activity-section">
+                    <h3>Movies</h3>
+                    <div class="recommendation-grid friend-activity-grid" id="friend_activity_movie_grid"></div>
+                </div>
+                <div class="friend-activity-section">
+                    <h3>TV Shows</h3>
+                    <div class="recommendation-grid friend-activity-grid" id="friend_activity_show_grid"></div>
+                </div>
+                <div class="friend-activity-section">
+                    <h3>Anime</h3>
+                    <div class="recommendation-grid friend-activity-grid" id="friend_activity_anime_grid"></div>
+                </div>
+                <div class="friend-activity-section">
+                    <h3>Manga / Manhwa</h3>
+                    <div class="recommendation-grid friend-activity-grid" id="friend_activity_manga_grid"></div>
+                </div>
+            </section>
+        </section>
+
+        <section class="entertainment-view" id="collection_view" data-entertainment-view-panel="collection" hidden>
         <section class="library-grid" aria-label="Entertainment libraries">
             <a class="library-card movies" href="#movie_library" data-library="Movies">
                 <span class="library-icon">🎬</span>
@@ -247,57 +483,42 @@
                 <p class="library-loading">Loading your TV shows...</p>
             </div>
         </section>
-
-        <section class="recommendations-panel" id="recommendations_panel">
-            <div class="recommendations-header">
-                <div>
-                    <p class="eyebrow">PERSONAL PICKS</p>
-                    <h2 id="recommendation_title">Recommended Movies For You</h2>
-                </div>
-                <div class="recommendation-header-actions">
-                    <select class="movie-filter recommendation-genre-filter" id="recommendation_genre_filter" aria-label="Filter recommendations by genre"><option value="">All genres</option></select>
-                    <span class="recommendation-count">7 PICKS</span>
-                </div>
-            </div>
-
-            <div class="recommendation-grid" id="recommendation_grid"></div>
         </section>
 
-        <section class="recommendations-panel friend-activity-panel" id="friend_activity_panel" hidden>
-            <div class="recommendations-header">
-                <div>
-                    <p class="eyebrow">FRIENDS</p>
-                    <h2>Friends Have Watched Recently</h2>
+        <section class="explore-staging" hidden aria-hidden="true">
+            <section class="recommendations-panel" id="recommendations_panel">
+                <div class="recommendations-header">
+                    <div>
+                        <p class="eyebrow">PERSONAL PICKS</p>
+                        <h2 id="recommendation_title">Recommended Movies For You</h2>
+                    </div>
+                    <div class="recommendation-header-actions">
+                        <select class="movie-filter recommendation-genre-filter" id="recommendation_genre_filter" aria-label="Filter recommendations by genre"><option value="">All genres</option></select>
+                        <span class="recommendation-count">0 PICKS</span>
+                    </div>
                 </div>
-                <span class="recommendation-count" id="friend_activity_count">LOADING</span>
-            </div>
-            <div class="recommendation-grid friend-activity-grid" id="friend_activity_grid">
-                <p class="recommendation-loading">Loading friend activity...</p>
-            </div>
-        </section>
+                <div class="recommendation-grid" id="recommendation_grid"></div>
+            </section>
 
-        <section class="recommendations-panel release-panel" id="new_release_panel">
-            <div class="recommendations-header">
-                <div>
-                    <p class="eyebrow">JUST RELEASED</p>
-                    <h2 id="new_release_title">Newly Released Movies</h2>
+            <section class="recommendations-panel release-panel" id="new_release_panel">
+                <div class="recommendations-header">
+                    <div>
+                        <p class="eyebrow">JUST RELEASED</p>
+                        <h2 id="new_release_title">Newly Released Movies</h2>
+                    </div>
                 </div>
-            </div>
-            <div class="recommendation-grid release-grid" id="new_release_grid">
-                <p class="recommendation-loading">Loading new releases...</p>
-            </div>
-        </section>
+                <div class="recommendation-grid release-grid" id="new_release_grid"></div>
+            </section>
 
-        <section class="recommendations-panel release-panel" id="upcoming_release_panel">
-            <div class="recommendations-header">
-                <div>
-                    <p class="eyebrow">COMING SOON</p>
-                    <h2 id="upcoming_release_title">Upcoming Movie Releases</h2>
+            <section class="recommendations-panel release-panel" id="upcoming_release_panel">
+                <div class="recommendations-header">
+                    <div>
+                        <p class="eyebrow">COMING SOON</p>
+                        <h2 id="upcoming_release_title">Upcoming Movie Releases</h2>
+                    </div>
                 </div>
-            </div>
-            <div class="recommendation-grid release-grid" id="upcoming_release_grid">
-                <p class="recommendation-loading">Loading upcoming releases...</p>
-            </div>
+                <div class="recommendation-grid release-grid" id="upcoming_release_grid"></div>
+            </section>
         </section>
     </main>
 
@@ -716,7 +937,7 @@
     </dialog>
 
     <div class="toast" id="toast" role="status"></div>
-    <script type="module" src="Entertainment.js?v=94"></script>
+    <script type="module" src="Entertainment.js?v=95"></script>
     <script type="module" src="../firebase/profile_widget.js?v=10"></script>
 </body>
 </html>
