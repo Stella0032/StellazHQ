@@ -8001,7 +8001,7 @@ function recent_sidebar_card(
             : "";
 
     return (
-        '<button class="recent-media-card" type="button"' +
+        '<button class="recent-deck-card" type="button"' +
             library_data +
             ' data-recent-carousel-index="' +
             index +
@@ -8018,7 +8018,7 @@ function set_recent_carousel_index(
     const cards =
         Array.from(
             stack.querySelectorAll(
-                ".recent-media-card"
+                ".recent-deck-card"
             )
         );
     if (!cards.length) return;
