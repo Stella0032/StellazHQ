@@ -4477,6 +4477,10 @@ html[data-theme="sunset"] .entertainment-nav {
     padding: 18px 20px 20px;
     overflow: hidden;
     border-radius: 18px;
+    background: rgba(13, 15, 35, 0.88);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    contain: layout paint style;
 }
 
 .explore-media-block + .explore-media-block {
@@ -4627,6 +4631,8 @@ html[data-theme="sunset"] .entertainment-nav {
 .explore-scroll-track .recommendation-card {
     padding: 5px;
     border-radius: 13px;
+    content-visibility: auto;
+    contain-intrinsic-size: 140px 220px;
 }
 
 .explore-card-overlay {
