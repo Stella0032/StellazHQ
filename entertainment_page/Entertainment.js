@@ -6786,6 +6786,7 @@ tmdb_show_sync_button.addEventListener("click", sync_tmdb_shows);
 const plex_connect_title = document.getElementById("plex_connect_title");
 const plex_connect_description = document.getElementById("plex_connect_description");
 const plex_connect_button = document.getElementById("plex_connect_button");
+let plex_connected_for_explore = false;
 
 async function load_plex_connection_status() {
     if (!plex_connect_button) return;
@@ -6797,6 +6798,8 @@ async function load_plex_connection_status() {
         const result = await httpsCallable(functions, "getPlexConnectionStatus")();
 
         if (result.data.connected) {
+            plex_connected_for_explore = true;
+            recent_plex_loaded = false;
             document.getElementById("plex_connection_badge")?.removeAttribute("hidden");
             document.getElementById("plex_import_button")?.removeAttribute("hidden");
             plex_connect_title.textContent = "Plex";
@@ -6808,9 +6811,16 @@ async function load_plex_connection_status() {
                 "Connected to Stellaz. Import to refresh movie and TV ratings, watched titles, and episode progress.";
             plex_connect_button.textContent = "Connected";
             plex_connect_button.disabled = true;
+            load_recent_plex_sidebar()
+                .catch(() => {});
             return;
         }
 
+        plex_connected_for_explore = false;
+        recent_plex_panel?.setAttribute(
+            "hidden",
+            ""
+        );
         document.getElementById("plex_connection_badge")?.setAttribute("hidden", "");
         document.getElementById("plex_import_button")?.setAttribute("hidden", "");
         plex_connect_title.textContent = "Plex";
@@ -7837,6 +7847,391 @@ const explore_view =
     document.getElementById(
         "explore_view"
     );
+const recent_library_stack =
+    document.getElementById(
+        "recent_library_stack"
+    );
+const recent_plex_panel =
+    document.getElementById(
+        "recent_plex_panel"
+    );
+const recent_plex_stack =
+    document.getElementById(
+        "recent_plex_stack"
+    );
+
+function recent_sidebar_escape(value) {
+    return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+}
+
+function recent_sidebar_time(value) {
+    const time =
+        new Date(value || 0).getTime();
+    if (!Number.isFinite(time) ||
+        time <= 0) {
+        return "";
+    }
+
+    const diff =
+        Math.max(
+            0,
+            Date.now() - time
+        );
+    const hours =
+        Math.floor(
+            diff / 3600000
+        );
+
+    if (hours < 1) return "Just added";
+    if (hours < 24) {
+        return hours + "h ago";
+    }
+
+    const days =
+        Math.floor(hours / 24);
+    if (days < 30) {
+        return days + "d ago";
+    }
+
+    return new Date(time)
+        .toLocaleDateString(
+            undefined,
+            {
+                month: "short",
+                day: "numeric"
+            }
+        );
+}
+
+function recent_library_items() {
+    const items = [
+        ...movie_library.map(
+            (item) => ({
+                ...item,
+                recent_type: "movie",
+                recent_label: "Movie",
+                recent_added_at:
+                    item.added_at
+            })
+        ),
+        ...show_library.map(
+            (item) => ({
+                ...item,
+                recent_type: "show",
+                recent_label: "TV Show",
+                recent_added_at:
+                    item.added_at
+            })
+        ),
+        ...anime_library.map(
+            (item) => ({
+                ...item,
+                recent_type: "anime",
+                recent_label: "Anime",
+                recent_added_at:
+                    item.added_at
+            })
+        ),
+        ...manga_library.map(
+            (item) => ({
+                ...item,
+                recent_type: "manga",
+                recent_label:
+                    item.media_kind ||
+                    "Manga",
+                recent_added_at:
+                    item.added_at
+            })
+        )
+    ];
+
+    return items
+        .filter(
+            (item) =>
+                item.recent_added_at
+        )
+        .sort(
+            (a, b) =>
+                new Date(
+                    b.recent_added_at
+                ).getTime() -
+                new Date(
+                    a.recent_added_at
+                ).getTime()
+        )
+        .slice(0, 6);
+}
+
+function recent_sidebar_card(
+    item,
+    {
+        library = false,
+        plex = false
+    } = {}
+) {
+    const title =
+        recent_sidebar_escape(
+            item.title ||
+            "Untitled"
+        );
+    const poster =
+        item.poster_url
+            ? '<img class="recent-media-poster" src="' +
+                recent_sidebar_escape(
+                    item.poster_url
+                ) +
+                '" alt="" loading="lazy" decoding="async">'
+            : '<span class="recent-media-poster-placeholder" aria-hidden="true">◇</span>';
+    const label =
+        recent_sidebar_escape(
+            item.recent_label ||
+            item.type ||
+            ""
+        );
+    const detail =
+        recent_sidebar_escape(
+            item.detail ||
+            (
+                item.year
+                    ? String(item.year)
+                    : ""
+            )
+        );
+    const time =
+        recent_sidebar_escape(
+            recent_sidebar_time(
+                item.recent_added_at ||
+                item.added_at
+            )
+        );
+    const copy =
+        '<span class="recent-media-copy">' +
+            '<strong title="' +
+                title + '">' +
+                title +
+            '</strong>' +
+            '<span>' +
+                [label, detail]
+                    .filter(Boolean)
+                    .join(" · ") +
+            '</span>' +
+            '<small>' +
+                time +
+            '</small>' +
+        '</span>';
+
+    if (library) {
+        return (
+            '<button class="recent-media-card" type="button" ' +
+                'data-recent-library-type="' +
+                recent_sidebar_escape(
+                    item.recent_type
+                ) +
+                '" data-recent-library-id="' +
+                recent_sidebar_escape(
+                    item.id
+                ) +
+                '">' +
+                poster +
+                copy +
+            '</button>'
+        );
+    }
+
+    return (
+        '<article class="recent-media-card' +
+            (plex ? ' recent-media-plex' : '') +
+            '">' +
+            poster +
+            copy +
+        '</article>'
+    );
+}
+
+function render_recent_library_sidebar() {
+    if (!recent_library_stack) {
+        return;
+    }
+
+    const items =
+        recent_library_items();
+
+    recent_library_stack.innerHTML =
+        items.length
+            ? items.map(
+                (item) =>
+                    recent_sidebar_card(
+                        item,
+                        {library: true}
+                    )
+            ).join("")
+            : '<p class="recent-media-empty">Your recent library additions will appear here.</p>';
+}
+
+recent_library_stack?.addEventListener(
+    "click",
+    (event) => {
+        const button =
+            event.target.closest(
+                "[data-recent-library-type]"
+            );
+        if (!button) return;
+
+        const type =
+            button.dataset
+                .recentLibraryType;
+        const id =
+            String(
+                button.dataset
+                    .recentLibraryId ||
+                ""
+            );
+
+        if (type === "movie") {
+            const item =
+                movie_library.find(
+                    (entry) =>
+                        String(entry.id) ===
+                        id
+                );
+            if (item) {
+                open_library_detail(
+                    "movie",
+                    item
+                );
+            }
+            return;
+        }
+
+        if (type === "show") {
+            const item =
+                show_library.find(
+                    (entry) =>
+                        String(entry.id) ===
+                        id
+                );
+            if (item) {
+                open_library_detail(
+                    "show",
+                    item
+                );
+            }
+            return;
+        }
+
+        if (type === "anime") {
+            open_anime_editor(
+                Number(id)
+            );
+            return;
+        }
+
+        if (type === "manga") {
+            open_manga_editor(
+                Number(id)
+            );
+        }
+    }
+);
+
+let recent_plex_loading = null;
+let recent_plex_loaded = false;
+
+async function load_recent_plex_sidebar(
+    force = false
+) {
+    if (!recent_plex_panel ||
+        !recent_plex_stack) {
+        return;
+    }
+
+    if (!plex_connected_for_explore) {
+        recent_plex_panel.hidden =
+            true;
+        return;
+    }
+
+    recent_plex_panel.hidden =
+        false;
+
+    if (recent_plex_loaded &&
+        !force) {
+        return;
+    }
+
+    if (recent_plex_loading) {
+        return recent_plex_loading;
+    }
+
+    recent_plex_stack.innerHTML =
+        '<p class="recent-media-empty">Loading Plex additions...</p>';
+
+    recent_plex_loading =
+        (async () => {
+            const result =
+                await httpsCallable(
+                    functions,
+                    "getPlexRecentlyAdded"
+                )();
+            const raw =
+                result.data?.items || [];
+
+            const items =
+                await Promise.all(
+                    raw.slice(0, 6)
+                        .map(
+                            async (item) => ({
+                                ...item,
+                                recent_label:
+                                    item.type ===
+                                    "movie"
+                                        ? "Movie"
+                                        : "TV Show",
+                                recent_added_at:
+                                    item.added_at,
+                                poster_url:
+                                    await get_plex_poster_data_url(
+                                        item.plex_thumb
+                                    )
+                            })
+                        )
+                );
+
+            recent_plex_stack.innerHTML =
+                items.length
+                    ? items.map(
+                        (item) =>
+                            recent_sidebar_card(
+                                item,
+                                {plex: true}
+                            )
+                    ).join("")
+                    : '<p class="recent-media-empty">Nothing has been added to Plex recently.</p>';
+
+            recent_plex_loaded =
+                true;
+        })();
+
+    try {
+        await recent_plex_loading;
+    } catch (error) {
+        console.error(
+            "Unable to load recent Plex additions:",
+            error
+        );
+        recent_plex_stack.innerHTML =
+            '<p class="recent-media-empty">Unable to load recent Plex additions.</p>';
+    } finally {
+        recent_plex_loading =
+            null;
+    }
+}
+
 
 const explore_state = {
     movie: {
@@ -8770,6 +9165,9 @@ function show_entertainment_view(
     }
 
     if (next === "explore") {
+        render_recent_library_sidebar();
+        load_recent_plex_sidebar()
+            .catch(() => {});
         load_explore_view()
             .catch((error) =>
                 console.error(
@@ -8865,6 +9263,7 @@ onAuthStateChanged(auth, async (user) => {
 
         entertainment_data_ready =
             true;
+        render_recent_library_sidebar();
 
         const params =
             new URLSearchParams(
