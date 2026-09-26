@@ -10319,6 +10319,261 @@ exports.getPlexConnectionStatus = onCall(async (request) => {
 });
 
 
+exports.getPlexRecentlyAdded = onCall(async (request) => {
+    if (!request.auth) {
+        throw new HttpsError(
+            "unauthenticated",
+            "You must be logged in."
+        );
+    }
+
+    const connection =
+        await db
+            .collection("plex_connections")
+            .doc(request.auth.uid)
+            .get();
+
+    if (!connection.exists ||
+        !connection.data().access_token) {
+        return {
+            connected: false,
+            items: [],
+        };
+    }
+
+    const account_token =
+        connection.data().access_token;
+    const resources =
+        await plex_json(
+            "https://clients.plex.tv/api/v2/resources?includeHttps=1&includeRelay=1",
+            account_token
+        );
+    const servers =
+        (resources || []).filter(
+            (resource) =>
+                resource.provides ===
+                    "server" ||
+                String(
+                    resource.provides ||
+                    ""
+                )
+                    .split(",")
+                    .includes("server")
+        );
+
+    let server = null;
+    let base_url = null;
+
+    for (const candidate of servers) {
+        const connections =
+            [...(candidate.connections || [])]
+                .sort((a, b) => {
+                    const score =
+                        (item) =>
+                            (
+                                item.protocol ===
+                                "https"
+                                    ? 4
+                                    : 0
+                            ) +
+                            (
+                                !item.relay
+                                    ? 2
+                                    : 0
+                            ) +
+                            (
+                                !item.local
+                                    ? 1
+                                    : 0
+                            );
+                    return (
+                        score(b) -
+                        score(a)
+                    );
+                });
+
+        for (const candidate_connection
+            of connections) {
+            if (!candidate_connection.uri) {
+                continue;
+            }
+
+            try {
+                await plex_json(
+                    candidate_connection.uri +
+                        "/",
+                    candidate.accessToken ||
+                        account_token
+                );
+                server = candidate;
+                base_url =
+                    candidate_connection.uri
+                        .replace(/\/$/, "");
+                break;
+            } catch (_) {}
+        }
+
+        if (server) break;
+    }
+
+    if (!server || !base_url) {
+        throw new HttpsError(
+            "unavailable",
+            "Stellaz could not reach your Plex Media Server."
+        );
+    }
+
+    const server_token =
+        server.accessToken ||
+        account_token;
+    const recent =
+        await plex_json(
+            base_url +
+                "/library/recentlyAdded" +
+                "?X-Plex-Container-Start=0" +
+                "&X-Plex-Container-Size=30",
+            server_token
+        );
+    const metadata =
+        recent.MediaContainer
+            ?.Metadata || [];
+    const seen = new Set();
+    const items = [];
+
+    for (const item of metadata) {
+        const type =
+            String(item.type || "");
+
+        let title = null;
+        let year = null;
+        let thumb = null;
+        let detail = null;
+        let key = null;
+
+        if (type === "movie") {
+            title = item.title;
+            year = plex_year(item);
+            thumb = item.thumb || null;
+            detail = "Movie";
+            key =
+                "movie:" +
+                String(
+                    item.ratingKey ||
+                    item.guid ||
+                    title
+                );
+        } else if (
+            type === "episode"
+        ) {
+            title =
+                item.grandparentTitle ||
+                item.parentTitle ||
+                item.title;
+            year =
+                Number(
+                    item.grandparentYear ||
+                    item.year ||
+                    0
+                ) || null;
+            thumb =
+                item.grandparentThumb ||
+                item.parentThumb ||
+                item.thumb ||
+                null;
+
+            const season =
+                Number(
+                    item.parentIndex ||
+                    0
+                );
+            const episode =
+                Number(
+                    item.index ||
+                    0
+                );
+            detail =
+                season > 0 &&
+                episode > 0
+                    ? "S" +
+                        season +
+                        " · E" +
+                        episode
+                    : "TV episode";
+            key =
+                "show:" +
+                String(
+                    item.grandparentRatingKey ||
+                    title
+                );
+        } else if (
+            type === "show"
+        ) {
+            title = item.title;
+            year = plex_year(item);
+            thumb = item.thumb || null;
+            detail = "TV Show";
+            key =
+                "show:" +
+                String(
+                    item.ratingKey ||
+                    item.guid ||
+                    title
+                );
+        } else {
+            continue;
+        }
+
+        if (!title ||
+            !key ||
+            seen.has(key)) {
+            continue;
+        }
+        seen.add(key);
+
+        const added_seconds =
+            Number(item.addedAt || 0);
+
+        items.push({
+            type:
+                type === "movie"
+                    ? "movie"
+                    : "show",
+            title,
+            year,
+            detail,
+            plex_thumb: thumb,
+            added_at:
+                added_seconds > 0
+                    ? new Date(
+                        added_seconds *
+                        1000
+                    ).toISOString()
+                    : null,
+        });
+
+        if (items.length >= 8) {
+            break;
+        }
+    }
+
+    items.sort(
+        (a, b) =>
+            String(
+                b.added_at || ""
+            ).localeCompare(
+                String(
+                    a.added_at || ""
+                )
+            )
+    );
+
+    return {
+        connected: true,
+        items,
+    };
+});
+
+
 async function plex_json(url, token) {
     const response = await fetch(url, {
         headers: {
