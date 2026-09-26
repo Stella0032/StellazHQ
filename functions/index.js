@@ -5003,11 +5003,6 @@ async function schedule_anime_release_notifications(anime_rows) {
             rows_by_anilist.get(media_id) || [];
 
         for (const item of library_rows) {
-            if (episode <=
-                Number(item.episodes_watched || 0)) {
-                continue;
-            }
-
             const title =
                 item.title ||
                 schedule.media?.title?.english ||
@@ -5479,12 +5474,6 @@ async function create_manga_release_notifications(manga_rows) {
         for (const target of targets) {
             const {item} = target;
 
-            if (Number.isFinite(numeric_chapter) &&
-                numeric_chapter <=
-                    Number(item.chapters_read || 0)) {
-                continue;
-            }
-
             const title = item.title || "Manga";
             const chapter_label =
                 chapter_number
@@ -5548,7 +5537,7 @@ exports.refreshEntertainmentReleases =
                 .collection("users")
                 .doc(uid)
                 .collection("release_state")
-                .doc("recent_refresh");
+                .doc("recent_refresh_v2");
             const state_snap =
                 await state_ref.get();
             const last_refresh =
