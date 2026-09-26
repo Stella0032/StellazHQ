@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Entertainment | Stellaz HQ</title>
     <link rel="icon" type="image/png" href="../images/stellaz_favicon.png">
-    <link rel="stylesheet" href="EntertainmentStyles.css?v=72">
+    <link rel="stylesheet" href="EntertainmentStyles.css?v=73">
     <link rel="stylesheet" href="../firebase/profile_widget.css?v=13">
 </head>
 <body>
@@ -50,6 +50,30 @@
 
     <main class="entertainment-dashboard">
         <section class="entertainment-view" id="explore_view" data-entertainment-view-panel="explore">
+            <div class="explore-layout">
+                <aside class="explore-side-rail" aria-label="Recent additions">
+                    <section class="explore-side-panel">
+                        <div class="explore-side-header">
+                            <p class="explore-side-eyebrow">STELLAZ</p>
+                            <h2>Recently added to library</h2>
+                        </div>
+                        <div class="recent-media-stack" id="recent_library_stack">
+                            <p class="recent-media-empty">Loading recent additions...</p>
+                        </div>
+                    </section>
+
+                    <section class="explore-side-panel explore-plex-recent" id="recent_plex_panel" hidden>
+                        <div class="explore-side-header">
+                            <p class="explore-side-eyebrow plex">PLEX</p>
+                            <h2>Recently added to Plex</h2>
+                        </div>
+                        <div class="recent-media-stack" id="recent_plex_stack">
+                            <p class="recent-media-empty">Loading Plex additions...</p>
+                        </div>
+                    </section>
+                </aside>
+
+                <div class="explore-main-column">
             <section class="recommendations-panel explore-media-block" data-explore-media="movie">
                 <div class="explore-media-header">
                     <h2>Movies</h2>
@@ -241,6 +265,8 @@
                     </div>
                 </div>
             </section>
+                </div>
+            </div>
         </section>
 
         <section class="entertainment-view" id="friends_view" data-entertainment-view-panel="friends" hidden>
@@ -938,7 +964,7 @@
     </dialog>
 
     <div class="toast" id="toast" role="status"></div>
-    <script type="module" src="Entertainment.js?v=113"></script>
+    <script type="module" src="Entertainment.js?v=114"></script>
     <script type="module" src="../firebase/profile_widget.js?v=14"></script>
 </body>
 </html>
