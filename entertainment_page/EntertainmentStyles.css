@@ -5537,3 +5537,53 @@ button.recent-media-card.is-active:focus-visible {
 .explore-side-rail .recent-media-card.is-active {
     cursor: pointer;
 }
+
+
+/* Keep the poster deck's centering transform intact on hover.
+   The old list-card hover translateX() was overriding the carousel transform. */
+.explore-side-rail button.recent-media-card:hover,
+.explore-side-rail button.recent-media-card:focus-visible {
+    border: 0;
+    background: transparent;
+    outline: none;
+}
+
+.explore-side-rail button.recent-media-card[data-carousel-offset="0"]:hover,
+.explore-side-rail button.recent-media-card[data-carousel-offset="0"]:focus-visible {
+    transform:
+        translate(-50%, -50%)
+        translateY(0)
+        scale(1.045);
+}
+
+.explore-side-rail button.recent-media-card[data-carousel-offset="-1"]:hover,
+.explore-side-rail button.recent-media-card[data-carousel-offset="-1"]:focus-visible {
+    transform:
+        translate(-50%, -50%)
+        translateY(-42px)
+        scale(0.88);
+}
+
+.explore-side-rail button.recent-media-card[data-carousel-offset="1"]:hover,
+.explore-side-rail button.recent-media-card[data-carousel-offset="1"]:focus-visible {
+    transform:
+        translate(-50%, -50%)
+        translateY(42px)
+        scale(0.88);
+}
+
+.explore-side-rail button.recent-media-card[data-carousel-offset="-2"]:hover,
+.explore-side-rail button.recent-media-card[data-carousel-offset="-2"]:focus-visible {
+    transform:
+        translate(-50%, -50%)
+        translateY(-68px)
+        scale(0.74);
+}
+
+.explore-side-rail button.recent-media-card[data-carousel-offset="2"]:hover,
+.explore-side-rail button.recent-media-card[data-carousel-offset="2"]:focus-visible {
+    transform:
+        translate(-50%, -50%)
+        translateY(68px)
+        scale(0.74);
+}
