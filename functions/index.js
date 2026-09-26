@@ -201,7 +201,7 @@ exports.getEntertainmentNotifications = onCall(async (request) => {
     const recent_since =
         new Date(
             now.getTime() -
-            7 * 24 * 60 * 60 * 1000
+            30 * 24 * 60 * 60 * 1000
         );
 
     const snapshot = await db
@@ -247,14 +247,14 @@ exports.getEntertainmentNotifications = onCall(async (request) => {
                 (item) =>
                     item.type === "anime_episode"
             )
-            .slice(0, 30);
+            .slice(0, 4);
     const manga_notifications =
         notifications
             .filter(
                 (item) =>
                     item.type === "manga_chapter"
             )
-            .slice(0, 30);
+            .slice(0, 4);
 
     const visible_notifications = [
         ...anime_notifications,
@@ -4932,7 +4932,7 @@ async function schedule_anime_release_notifications(anime_rows) {
         Math.floor(Date.now() / 1000);
     const after_seconds =
         now_seconds -
-        7 * 24 * 60 * 60;
+        30 * 24 * 60 * 60;
     const before_seconds =
         now_seconds + 60;
 
@@ -5285,39 +5285,46 @@ async function map_manga_release_sources(manga_rows) {
     return {active, mappings};
 }
 
+function mangadex_datetime_param(value) {
+    return value
+        .toISOString()
+        .replace(/\.\d{3}Z$/, "");
+}
+
 async function mangadex_recent_chapters(
     manga_ids,
     publish_since
 ) {
     const chapters = [];
 
-    for (let start = 0;
-        start < manga_ids.length;
-        start += 50) {
-        const chunk = manga_ids.slice(start, start + 50);
+    for (const manga_id of manga_ids) {
         let offset = 0;
 
-        while (offset < 1000) {
+        while (offset < 500) {
             const url = new URL(
-                "https://api.mangadex.org/chapter"
+                "https://api.mangadex.org/manga/" +
+                encodeURIComponent(manga_id) +
+                "/feed"
             );
 
-            chunk.forEach((id) =>
-                url.searchParams.append("manga[]", id)
-            );
             url.searchParams.append(
                 "translatedLanguage[]",
                 "en"
             );
             url.searchParams.set(
                 "publishAtSince",
-                publish_since.toISOString()
+                mangadex_datetime_param(
+                    publish_since
+                )
             );
             url.searchParams.set(
                 "order[publishAt]",
-                "asc"
+                "desc"
             );
-            url.searchParams.set("limit", "100");
+            url.searchParams.set(
+                "limit",
+                "100"
+            );
             url.searchParams.set(
                 "offset",
                 String(offset)
@@ -5340,20 +5347,38 @@ async function mangadex_recent_chapters(
             });
 
             if (!response.ok) {
-                throw new Error(
-                    "MangaDex chapter lookup failed (" +
-                    response.status + ")."
+                const error_text =
+                    await response.text();
+                logger.warn(
+                    "MangaDex feed lookup failed.",
+                    {
+                        manga_id,
+                        status: response.status,
+                        error:
+                            error_text.slice(0, 300),
+                    }
                 );
+                break;
             }
 
-            const payload = await response.json();
+            const payload =
+                await response.json();
             const data =
                 Array.isArray(payload.data)
                     ? payload.data
                     : [];
-            chapters.push(...data);
 
-            if (data.length < 100) break;
+            chapters.push(
+                ...data.map((chapter) => ({
+                    ...chapter,
+                    _stellaz_mangadex_id:
+                        manga_id,
+                }))
+            );
+
+            if (data.length < 100) {
+                break;
+            }
             offset += 100;
         }
     }
@@ -5375,7 +5400,7 @@ async function create_manga_release_notifications(manga_rows) {
     const publish_since =
         new Date(
             now.getTime() -
-            7 * 24 * 60 * 60 * 1000
+            30 * 24 * 60 * 60 * 1000
         );
 
     const manga_ids = [
@@ -5428,6 +5453,7 @@ async function create_manga_release_notifications(manga_rows) {
                     relation.type === "manga"
             );
         const mangadex_id =
+            chapter._stellaz_mangadex_id ||
             manga_relation?.id;
         if (!mangadex_id) continue;
 
