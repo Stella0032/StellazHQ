@@ -4027,6 +4027,7 @@ kitsu_username_input.addEventListener("keydown", (event) => {
 //? ---------------------------------
 //#region
 const manga_count = document.getElementById("manga_count");
+const manga_chapter_count = document.getElementById("manga_chapter_count");
 const manga_library_count = document.getElementById("manga_library_count");
 const manga_grid = document.getElementById("manga_grid");
 const manga_filters = document.getElementById("manga_filters");
@@ -4576,8 +4577,19 @@ async function load_manga_library() {
         const completed = manga_library.filter(
             (item) => item.user_status === "completed"
         );
+        const chapters_read = manga_library.reduce(
+            (total, item) =>
+                total +
+                Math.max(
+                    0,
+                    Number(item.chapters_read || 0)
+                ),
+            0
+        );
 
         manga_count.textContent = completed.length;
+        manga_chapter_count.textContent =
+            chapters_read.toLocaleString();
         manga_library_count.textContent =
             manga_library.length + (manga_library.length === 1 ? " TITLE" : " TITLES");
         manga_filters.hidden = manga_library.length === 0;
@@ -4592,6 +4604,7 @@ async function load_manga_library() {
     } catch (error) {
         console.error("Unable to load manga / manhwa library:", error);
         manga_count.textContent = "Error";
+        manga_chapter_count.textContent = "Error";
         manga_library_count.textContent = "ERROR";
         manga_grid.innerHTML =
             '<p class="library-loading">Unable to load your manga and manhwa.</p>';
