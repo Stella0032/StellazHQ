@@ -4831,8 +4831,6 @@ button.recent-media-card:focus-visible {
 .explore-scroll-track .recommendation-card {
     padding: 5px;
     border-radius: 13px;
-    content-visibility: auto;
-    contain-intrinsic-size: 140px 220px;
 }
 
 .explore-card-overlay {
