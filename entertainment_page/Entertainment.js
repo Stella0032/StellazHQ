@@ -8163,6 +8163,19 @@ recent_library_stack?.addEventListener(
             );
         if (!button) return;
 
+        if (!button.classList.contains(
+            "is-active"
+        )) {
+            set_recent_carousel_index(
+                recent_library_stack,
+                Number(
+                    button.dataset
+                        .recentCarouselIndex
+                )
+            );
+            return;
+        }
+
         const type =
             button.dataset
                 .recentLibraryType;
