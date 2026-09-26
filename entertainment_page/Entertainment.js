@@ -8074,14 +8074,25 @@ function initialize_recent_carousel(stack) {
     }
     stack.dataset.carouselReady = "true";
 
+    let wheel_locked = false;
     stack.addEventListener(
         "wheel",
         (event) => {
             if (Math.abs(event.deltaY) <
-                Math.abs(event.deltaX)) {
+                Math.abs(event.deltaX) ||
+                Math.abs(event.deltaY) < 8) {
                 return;
             }
             event.preventDefault();
+
+            if (wheel_locked) return;
+            wheel_locked = true;
+            window.setTimeout(
+                () => {
+                    wheel_locked = false;
+                },
+                240
+            );
 
             const current =
                 Number(
