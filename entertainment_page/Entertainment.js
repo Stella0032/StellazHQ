@@ -8599,6 +8599,8 @@ function clone_explore_loop_card(card) {
 function setup_explore_loop(track) {
     if (!track) return;
 
+    // Keep only the real cards. Clone-based infinite scrolling caused
+    // unstable hover/click hit testing once Explore became narrower.
     track
         .querySelectorAll(
             ":scope > [data-explore-clone]"
@@ -8607,130 +8609,27 @@ function setup_explore_loop(track) {
             (clone) => clone.remove()
         );
 
-    const cards =
-        [...track.children]
-            .filter(
-                (child) =>
-                    child.classList
-                        .contains(
-                            "recommendation-card"
-                        )
-            );
-
-    track.dataset.exploreLoopReady =
+    track.dataset.exploreLoop =
         "false";
-    track.dataset.exploreLoopCount =
-        String(cards.length);
-    track.closest(
-        ".explore-row"
-    )?.removeAttribute(
-        "data-explore-moved"
+    track.dataset.exploreLoopReady =
+        "true";
+    track.dataset.exploreLoopAdjusting =
+        "false";
+    track.removeAttribute(
+        "data-explore-loop-start"
+    );
+    track.removeAttribute(
+        "data-explore-loop-width"
+    );
+    track.removeAttribute(
+        "data-explore-loop-buffer"
     );
 
-    if (cards.length < 2 ||
-        track.scrollWidth <=
-            track.clientWidth + 4) {
-        track.dataset.exploreLoop =
-            "false";
-        track.scrollLeft = 0;
-        update_explore_scroll_controls(
-            track.closest(
-                ".explore-row"
-            )
-        );
-        return;
-    }
-
-    const first_card_width =
-        cards[0]
-            .getBoundingClientRect()
-            .width || 1;
-    const visible_card_count =
-        Math.ceil(
-            track.clientWidth /
-            first_card_width
-        );
-    const buffer_count =
-        Math.min(
-            cards.length,
-            Math.max(
-                4,
-                visible_card_count + 2
-            )
-        );
-
-    const before =
-        cards
-            .slice(-buffer_count)
-            .map(
-                clone_explore_loop_card
-            );
-    const after =
-        cards
-            .slice(0, buffer_count)
-            .map(
-                clone_explore_loop_card
-            );
-
-    before
-        .reverse()
-        .forEach((clone) => {
-            track.prepend(clone);
-        });
-    after.forEach((clone) => {
-        track.append(clone);
-    });
-
-    const original_start =
-        track.children[
-            buffer_count
-        ]?.offsetLeft || 0;
-    const next_copy_start =
-        track.children[
-            buffer_count +
-            cards.length
-        ]?.offsetLeft || 0;
-    const loop_width =
-        next_copy_start -
-        original_start;
-
-    if (loop_width <= 0) {
-        track.dataset.exploreLoop =
-            "false";
-        return;
-    }
-
-    track.dataset.exploreLoop =
-        "true";
-    track.dataset.exploreLoopStart =
-        String(original_start);
-    track.dataset.exploreLoopWidth =
-        String(loop_width);
-    track.dataset.exploreLoopBuffer =
-        String(buffer_count);
-    track.dataset.exploreLoopAdjusting =
-        "true";
-    track.style.scrollBehavior =
-        "auto";
-    track.scrollLeft =
-        original_start;
-
-    requestAnimationFrame(() => {
-        track.style.removeProperty(
-            "scroll-behavior"
-        );
-        track.dataset
-            .exploreLoopAdjusting =
-            "false";
-        track.dataset
-            .exploreLoopReady =
-            "true";
-        update_explore_scroll_controls(
-            track.closest(
-                ".explore-row"
-            )
-        );
-    });
+    update_explore_scroll_controls(
+        track.closest(
+            ".explore-row"
+        )
+    );
 }
 
 function normalize_explore_loop_position(
@@ -8995,12 +8894,40 @@ explore_view?.addEventListener(
                     260
                 );
 
-            track.scrollBy({
-                left:
-                    direction *
-                    distance,
-                behavior: "smooth"
-            });
+            const max_scroll =
+                Math.max(
+                    0,
+                    track.scrollWidth -
+                        track.clientWidth
+                );
+            const near_start =
+                track.scrollLeft <= 4;
+            const near_end =
+                track.scrollLeft >=
+                    max_scroll - 4;
+
+            if (direction > 0 &&
+                near_end) {
+                track.scrollTo({
+                    left: 0,
+                    behavior: "smooth"
+                });
+            } else if (
+                direction < 0 &&
+                near_start
+            ) {
+                track.scrollTo({
+                    left: max_scroll,
+                    behavior: "smooth"
+                });
+            } else {
+                track.scrollBy({
+                    left:
+                        direction *
+                        distance,
+                    behavior: "smooth"
+                });
+            }
             return;
         }
 
