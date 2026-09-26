@@ -1597,9 +1597,9 @@ function get_collection_poster_observer() {
                 });
             },
             {
-                threshold: 0.08,
+                threshold: 0.01,
                 rootMargin:
-                    "0px 0px -3% 0px"
+                    "0px 0px 80px 0px"
             }
         );
 
