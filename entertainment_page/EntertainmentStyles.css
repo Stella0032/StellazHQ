@@ -5499,3 +5499,41 @@ button.recent-media-card.is-active:focus-visible {
         height: 168px;
     }
 }
+
+
+/* Scope the poster deck above Explore cards so generic recommendation
+   hover/position rules cannot leak into the recent-additions carousel. */
+.explore-side-rail {
+    isolation: isolate;
+}
+
+.explore-side-panel {
+    contain: layout paint;
+}
+
+.explore-side-rail .recent-media-stack {
+    z-index: 0;
+}
+
+.explore-side-rail .recent-media-card,
+.explore-side-rail button.recent-media-card {
+    right: auto;
+    bottom: auto;
+    margin: 0;
+    grid-template-columns: none;
+    align-items: initial;
+    gap: 0;
+    text-align: initial;
+}
+
+.explore-side-rail .recent-media-card[aria-hidden="true"] {
+    visibility: hidden;
+}
+
+.explore-side-rail .recent-media-card:not(.is-active) {
+    cursor: pointer;
+}
+
+.explore-side-rail .recent-media-card.is-active {
+    cursor: pointer;
+}
