@@ -43,6 +43,7 @@ const manga_notification_count=
     notification_panel.querySelector('[data-release-count="manga"]');
 let notification_items=[];
 let notification_timer=null;
+let notification_refresh_promise=null;
 
 function notification_time_label(value){
     if(!value)return "";
@@ -157,6 +158,33 @@ function render_notifications(){
     );
 }
 
+async function refresh_recent_releases(){
+    if(!current_user)return null;
+    if(notification_refresh_promise){
+        return notification_refresh_promise;
+    }
+
+    notification_refresh_promise=(async()=>{
+        try{
+            const refresh=httpsCallable(
+                functions,
+                "refreshEntertainmentReleases"
+            );
+            return await refresh();
+        }catch(error){
+            console.error(
+                "Unable to refresh recent releases:",
+                error
+            );
+            return null;
+        }finally{
+            notification_refresh_promise=null;
+        }
+    })();
+
+    return notification_refresh_promise;
+}
+
 async function load_notifications({mark_seen=false}={}){
     if(!current_user)return;
     try{
@@ -201,14 +229,25 @@ function open_notification_library(library){
     window.location.href="../entertainment_page/Entertainment.html?library="+encodeURIComponent(library);
 }
 
-notification_button.addEventListener("click",event=>{
+notification_button.addEventListener("click",async event=>{
     event.stopPropagation();
     const will_open=notification_panel.hidden;
     notification_panel.hidden=!will_open;
     notification_button.setAttribute("aria-expanded",String(will_open));
     menu.hidden=true;
     trigger.setAttribute("aria-expanded","false");
-    if(will_open)load_notifications({mark_seen:true});
+
+    if(will_open){
+        anime_notification_list.innerHTML=
+            '<p class="notification-empty">Checking recent anime episodes…</p>';
+        manga_notification_list.innerHTML=
+            '<p class="notification-empty">Checking recent manga chapters…</p>';
+
+        await refresh_recent_releases();
+        await load_notifications({
+            mark_seen:true
+        });
+    }
 });
 
 notification_list.addEventListener("click",event=>{

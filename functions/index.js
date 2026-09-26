@@ -4323,6 +4323,41 @@ async function notification_supabase_select(table, select_fields) {
     return await response.json();
 }
 
+async function notification_supabase_select_for_user(
+    table,
+    select_fields,
+    uid
+) {
+    const endpoint = new URL(
+        supabase_url + "/rest/v1/" + table
+    );
+    endpoint.searchParams.set("select", select_fields);
+    endpoint.searchParams.set(
+        "user_id",
+        "eq." + uid
+    );
+
+    const response = await fetch(endpoint, {
+        headers: supabase_service_headers(),
+    });
+
+    if (!response.ok) {
+        const error_text = await response.text();
+        logger.error("User release refresh Supabase read failed.", {
+            table,
+            status: response.status,
+            error: error_text,
+        });
+        throw new HttpsError(
+            "internal",
+            "Unable to refresh recent releases."
+        );
+    }
+
+    const rows = await response.json();
+    return Array.isArray(rows) ? rows : [];
+}
+
 async function friend_library_supabase_select(
     table,
     select_fields,
@@ -5467,6 +5502,155 @@ async function create_manga_release_notifications(manga_rows) {
 
     return created;
 }
+
+exports.refreshEntertainmentReleases =
+    onCall(
+        {
+            timeoutSeconds: 180,
+            secrets: [supabase_secret_key],
+        },
+        async (request) => {
+            if (!request.auth) {
+                throw new HttpsError(
+                    "unauthenticated",
+                    "You must be logged in."
+                );
+            }
+
+            const uid = request.auth.uid;
+            const state_ref = db
+                .collection("users")
+                .doc(uid)
+                .collection("release_state")
+                .doc("recent_refresh");
+            const state_snap =
+                await state_ref.get();
+            const last_refresh =
+                state_snap.data()
+                    ?.last_refresh_at
+                    ?.toDate?.() || null;
+            const cooldown_ms =
+                5 * 60 * 1000;
+
+            if (last_refresh &&
+                Date.now() -
+                    last_refresh.getTime() <
+                    cooldown_ms) {
+                return {
+                    refreshed: false,
+                    cooldown: true,
+                    retry_after_seconds:
+                        Math.max(
+                            1,
+                            Math.ceil(
+                                (
+                                    cooldown_ms -
+                                    (
+                                        Date.now() -
+                                        last_refresh.getTime()
+                                    )
+                                ) / 1000
+                            )
+                        ),
+                };
+            }
+
+            await state_ref.set({
+                last_attempt_at: new Date(),
+            }, {merge: true});
+
+            const [anime_rows, manga_rows] =
+                await Promise.all([
+                    notification_supabase_select_for_user(
+                        "anime",
+                        [
+                            "id",
+                            "user_id",
+                            "title",
+                            "anilist_id",
+                            "mal_id",
+                            "kitsu_id",
+                            "status",
+                            "episodes_watched",
+                            "start_date",
+                        ].join(","),
+                        uid
+                    ),
+                    notification_supabase_select_for_user(
+                        "manga_library",
+                        [
+                            "id",
+                            "user_id",
+                            "title",
+                            "title_romaji",
+                            "title_native",
+                            "synonyms",
+                            "anilist_id",
+                            "mal_id",
+                            "kitsu_id",
+                            "user_status",
+                            "chapters_read",
+                            "start_date",
+                        ].join(","),
+                        uid
+                    ),
+                ]);
+
+            let anime_created = 0;
+            let manga_created = 0;
+
+            try {
+                [
+                    anime_created,
+                    manga_created,
+                ] = await Promise.all([
+                    schedule_anime_release_notifications(
+                        anime_rows
+                    ),
+                    create_manga_release_notifications(
+                        manga_rows
+                    ),
+                ]);
+            } catch (error) {
+                logger.error(
+                    "Immediate release refresh failed.",
+                    {
+                        uid,
+                        error:
+                            String(
+                                error?.message ||
+                                error
+                            ),
+                    }
+                );
+
+                throw new HttpsError(
+                    "internal",
+                    "Unable to refresh recent releases."
+                );
+            }
+
+            await state_ref.set({
+                last_refresh_at: new Date(),
+                last_anime_created:
+                    anime_created,
+                last_manga_created:
+                    manga_created,
+            }, {merge: true});
+
+            return {
+                refreshed: true,
+                cooldown: false,
+                anime_created,
+                manga_created,
+                anime_library_count:
+                    anime_rows.length,
+                manga_library_count:
+                    manga_rows.length,
+            };
+        }
+    );
+
 
 exports.checkEntertainmentReleases = onSchedule(
     {
