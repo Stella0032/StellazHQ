@@ -17,11 +17,30 @@ widget.insertBefore(notification_button,trigger);
 const notification_panel=document.createElement("div");
 notification_panel.className="notification-panel";
 notification_panel.hidden=true;
-notification_panel.innerHTML='<div class="notification-head"><div><strong>Recent releases</strong><span>Latest episodes and chapters in your library</span></div></div><div class="notification-list"><p class="notification-empty">Loading recent releases…</p></div>';
+notification_panel.innerHTML=
+    '<div class="notification-head"><div><strong>Recent releases</strong><span>New episodes and chapters from the last 7 days</span></div></div>'+
+    '<div class="notification-list">'+
+        '<section class="notification-section" data-release-section="anime">'+
+            '<div class="notification-section-head"><strong>Anime episodes</strong><span data-release-count="anime">0</span></div>'+
+            '<div class="notification-section-items" data-release-list="anime"><p class="notification-empty">Loading anime releases…</p></div>'+
+        '</section>'+
+        '<section class="notification-section" data-release-section="manga">'+
+            '<div class="notification-section-head"><strong>Manga / Manhwa chapters</strong><span data-release-count="manga">0</span></div>'+
+            '<div class="notification-section-items" data-release-list="manga"><p class="notification-empty">Loading manga releases…</p></div>'+
+        '</section>'+
+    '</div>';
 widget.appendChild(notification_panel);
 
 const notification_badge=notification_button.querySelector(".notification-badge");
 const notification_list=notification_panel.querySelector(".notification-list");
+const anime_notification_list=
+    notification_panel.querySelector('[data-release-list="anime"]');
+const manga_notification_list=
+    notification_panel.querySelector('[data-release-list="manga"]');
+const anime_notification_count=
+    notification_panel.querySelector('[data-release-count="anime"]');
+const manga_notification_count=
+    notification_panel.querySelector('[data-release-count="manga"]');
 let notification_items=[];
 let notification_timer=null;
 
@@ -62,50 +81,80 @@ function release_display_title(item){
         .replace(/^New chapter ·\s*/,"");
 }
 
-function render_notifications(){
-    const unseen=notification_items.filter(item=>!item.read).length;
-    notification_badge.hidden=unseen===0;
-    notification_badge.textContent=unseen>99?"99+":String(unseen);
+function create_notification_item(item){
+    const button=document.createElement("button");
+    button.type="button";
+    button.className="notification-item";
+    button.dataset.notificationId=item.id;
 
-    notification_list.replaceChildren();
+    const kind=document.createElement("span");
+    kind.className="release-kind "+(item.type==="anime_episode"?"anime":"manga");
+    kind.textContent=release_kind_label(item);
 
-    if(!notification_items.length){
+    const copy=document.createElement("span");
+    copy.className="notification-copy";
+
+    const title=document.createElement("strong");
+    title.textContent=release_display_title(item);
+
+    const message=document.createElement("span");
+    message.textContent=item.message||"";
+
+    const meta=document.createElement("small");
+    meta.textContent=[
+        item.source,
+        notification_time_label(item.deliver_at)
+    ].filter(Boolean).join(" · ");
+
+    copy.append(title,message,meta);
+    button.append(kind,copy);
+    return button;
+}
+
+function render_release_section(list,items,empty_text){
+    list.replaceChildren();
+
+    if(!items.length){
         const empty=document.createElement("p");
         empty.className="notification-empty";
-        empty.textContent="No recent releases yet.";
-        notification_list.appendChild(empty);
+        empty.textContent=empty_text;
+        list.appendChild(empty);
         return;
     }
 
-    notification_items.forEach(item=>{
-        const button=document.createElement("button");
-        button.type="button";
-        button.className="notification-item";
-        button.dataset.notificationId=item.id;
+    items.forEach(item=>
+        list.appendChild(
+            create_notification_item(item)
+        )
+    );
+}
 
-        const kind=document.createElement("span");
-        kind.className="release-kind "+(item.type==="anime_episode"?"anime":"manga");
-        kind.textContent=release_kind_label(item);
+function render_notifications(){
+    const anime_items=
+        notification_items.filter(
+            item=>item.type==="anime_episode"
+        );
+    const manga_items=
+        notification_items.filter(
+            item=>item.type==="manga_chapter"
+        );
+    const unseen=notification_items.filter(item=>!item.read).length;
 
-        const copy=document.createElement("span");
-        copy.className="notification-copy";
+    notification_badge.hidden=unseen===0;
+    notification_badge.textContent=unseen>99?"99+":String(unseen);
+    anime_notification_count.textContent=String(anime_items.length);
+    manga_notification_count.textContent=String(manga_items.length);
 
-        const title=document.createElement("strong");
-        title.textContent=release_display_title(item);
-
-        const message=document.createElement("span");
-        message.textContent=item.message||"";
-
-        const meta=document.createElement("small");
-        meta.textContent=[
-            item.source,
-            notification_time_label(item.deliver_at)
-        ].filter(Boolean).join(" · ");
-
-        copy.append(title,message,meta);
-        button.append(kind,copy);
-        notification_list.appendChild(button);
-    });
+    render_release_section(
+        anime_notification_list,
+        anime_items,
+        "No recent anime episodes."
+    );
+    render_release_section(
+        manga_notification_list,
+        manga_items,
+        "No recent manga or manhwa chapters."
+    );
 }
 
 async function load_notifications({mark_seen=false}={}){
@@ -113,7 +162,21 @@ async function load_notifications({mark_seen=false}={}){
     try{
         const get_notifications=httpsCallable(functions,"getEntertainmentNotifications");
         const result=await get_notifications();
-        notification_items=result.data?.notifications||[];
+        const anime_items=
+            result.data?.anime_notifications||
+            (result.data?.notifications||[])
+                .filter(item=>item.type==="anime_episode");
+        const manga_items=
+            result.data?.manga_notifications||
+            (result.data?.notifications||[])
+                .filter(item=>item.type==="manga_chapter");
+        notification_items=[
+            ...anime_items,
+            ...manga_items
+        ].sort((a,b)=>
+            String(b.deliver_at||"")
+                .localeCompare(String(a.deliver_at||""))
+        );
         render_notifications();
 
         if(mark_seen){
