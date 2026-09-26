@@ -9299,7 +9299,7 @@ const entertainment_view_panels =
         "[data-entertainment-view-panel]"
     )];
 let active_entertainment_view =
-    "explore";
+    "collection";
 
 function show_entertainment_view(
     view,
@@ -9349,6 +9349,8 @@ function show_entertainment_view(
             active_entertainment_category
         );
     }
+
+    update_stellaz_ai_visibility();
 
     if (update_hash) {
         history.replaceState(
@@ -9491,20 +9493,10 @@ onAuthStateChanged(auth, async (user) => {
             return;
         }
 
-        const hash_view =
-            String(
-                window.location.hash || ""
-            ).replace("#", "");
-
+        // Entertainment opens on Your Collection after login.
+        // Explicit library deep links above are still honored.
         show_entertainment_view(
-            [
-                "explore",
-                "friends",
-                "collection"
-            ].includes(hash_view)
-                ? hash_view
-                : "explore",
-            {update_hash: false}
+            "collection"
         );
     } catch (error) {
         console.error(
@@ -9593,6 +9585,8 @@ function show_entertainment_category(
         );
 }
 
+    update_stellaz_ai_visibility();
+
 library_cards.forEach((card) => {
     card.addEventListener(
         "click",
@@ -9649,6 +9643,30 @@ const stellaz_ai_form = document.getElementById("stellaz_ai_form");
 const stellaz_ai_input = document.getElementById("stellaz_ai_input");
 const stellaz_ai_send = document.getElementById("stellaz_ai_send");
 const stellaz_ai_messages = document.getElementById("stellaz_ai_messages");
+
+function update_stellaz_ai_visibility() {
+    if (!stellaz_ai_launcher ||
+        !stellaz_ai_panel) {
+        return;
+    }
+
+    const show_ai =
+        active_entertainment_view ===
+            "collection" &&
+        active_entertainment_category ===
+            "Movies";
+
+    stellaz_ai_launcher.hidden =
+        !show_ai;
+
+    if (!show_ai) {
+        stellaz_ai_panel.hidden = true;
+        stellaz_ai_launcher.setAttribute(
+            "aria-expanded",
+            "false"
+        );
+    }
+}
 
 function add_stellaz_ai_message(text, type, extra_class = "") {
     const message = document.createElement("div");
