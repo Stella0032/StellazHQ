@@ -4468,8 +4468,12 @@ html[data-theme="sunset"] .entertainment-nav {
 }
 
 .explore-media-block {
-    width: calc(100% - 56px);
-    margin: 14px auto 0;
+    width: auto;
+    margin-top: 14px;
+    margin-left:
+        calc(50% - 50vw + clamp(40px, 6.5vw, 130px));
+    margin-right:
+        calc(50% - 50vw + clamp(40px, 6.5vw, 130px));
     padding: 18px 20px 20px;
     overflow: hidden;
     border-radius: 18px;
