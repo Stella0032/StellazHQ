@@ -4749,7 +4749,7 @@ async function search_manga_add_catalog(query) {
         ++manga_add_search_request;
 
     manga_add_results.innerHTML =
-        '<p class="recommendation-loading">Searching AniList...</p>';
+        '<p class="recommendation-loading">Searching manga catalogs...</p>';
 
     try {
         const search_anilist =
@@ -4783,7 +4783,14 @@ async function search_manga_add_catalog(query) {
                             item.anilist_score
                                 ? "★ " +
                                     item.anilist_score +
-                                    "%"
+                                    "% AniList"
+                                : item.kitsu_score
+                                    ? "★ " +
+                                        item.kitsu_score +
+                                        "% Kitsu"
+                                    : null,
+                            item.sources?.length
+                                ? item.sources.join(" + ")
                                 : null
                         ]
                             .filter(Boolean)
@@ -4791,8 +4798,8 @@ async function search_manga_add_catalog(query) {
 
                         return (
                             '<button class="anime-add-result" type="button" ' +
-                            'data-anilist-add-id="' +
-                            item.anilist_id +
+                            'data-manga-add-index="' +
+                            manga_add_candidates.indexOf(item) +
                             '">' +
                             (item.poster_url
                                 ? '<img src="' +
@@ -4822,11 +4829,11 @@ async function search_manga_add_catalog(query) {
         }
 
         console.error(
-            "Unable to search AniList:",
+            "Unable to search manga catalogs:",
             error
         );
         manga_add_results.innerHTML =
-            '<p class="recommendation-loading">Unable to search AniList.</p>';
+            '<p class="recommendation-loading">Unable to search manga catalogs.</p>';
     }
 }
 
@@ -4920,18 +4927,14 @@ manga_add_search.addEventListener(
 manga_add_results.addEventListener("click", async (event) => {
     const button =
         event.target.closest(
-            "[data-anilist-add-id]"
+            "[data-manga-add-index]"
         );
     if (!button) return;
 
     const item =
-        manga_add_candidates.find(
-            (entry) =>
-                entry.anilist_id ===
-                Number(
-                    button.dataset.anilistAddId
-                )
-        );
+        manga_add_candidates[
+            Number(button.dataset.mangaAddIndex)
+        ];
     if (!item) return;
 
     button.disabled = true;
@@ -9580,9 +9583,15 @@ async function add_manga_catalog_item(
         await supabase
             .from("manga_library")
             .select("id")
-            .eq(
-                "anilist_id",
-                item.anilist_id
+            .or(
+                [
+                    item.anilist_id
+                        ? "anilist_id.eq." + Number(item.anilist_id)
+                        : null,
+                    item.kitsu_id
+                        ? "kitsu_id.eq." + Number(item.kitsu_id)
+                        : null
+                ].filter(Boolean).join(",")
             )
             .limit(1);
 
@@ -9599,7 +9608,9 @@ async function add_manga_catalog_item(
             .from("manga_library")
             .insert({
                 anilist_id:
-                    item.anilist_id,
+                    item.anilist_id || null,
+                kitsu_id:
+                    item.kitsu_id || null,
                 title:
                     item.title,
                 title_romaji:
@@ -9626,6 +9637,8 @@ async function add_manga_catalog_item(
                     item.total_volumes,
                 anilist_score:
                     item.anilist_score,
+                kitsu_score:
+                    item.kitsu_score || null,
                 poster_url:
                     item.poster_url,
                 banner_url:

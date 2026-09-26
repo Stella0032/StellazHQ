@@ -7280,65 +7280,58 @@ exports.searchAniListManga = onCall(async (request) => {
         throw new HttpsError("invalid-argument", "Search is too long.");
     }
 
-    const query_text = [
-        "query ($search: String!, $perPage: Int!) {",
-        "  Page(page: 1, perPage: $perPage) {",
-        "    media(search: $search, type: MANGA, isAdult: false) {",
-        "      id",
-        "      title { romaji english native userPreferred }",
-        "      synonyms",
-        "      countryOfOrigin",
-        "      format",
-        "      status",
-        "      chapters",
-        "      volumes",
-        "      averageScore",
-        "      description(asHtml: false)",
-        "      genres",
-        "      siteUrl",
-        "      coverImage { extraLarge large }",
-        "      bannerImage",
-        "      startDate { year month day }",
-        "      endDate { year month day }",
-        "    }",
-        "  }",
-        "}"
-    ].join("\n");
+    const search_anilist = async (search_text, per_page = 12) => {
+        const query_text = [
+            "query ($search: String!, $perPage: Int!) {",
+            "  Page(page: 1, perPage: $perPage) {",
+            "    media(search: $search, type: MANGA, isAdult: false) {",
+            "      id",
+            "      title { romaji english native userPreferred }",
+            "      synonyms",
+            "      countryOfOrigin",
+            "      format",
+            "      status",
+            "      chapters",
+            "      volumes",
+            "      averageScore",
+            "      description(asHtml: false)",
+            "      genres",
+            "      siteUrl",
+            "      coverImage { extraLarge large }",
+            "      bannerImage",
+            "      startDate { year month day }",
+            "      endDate { year month day }",
+            "    }",
+            "  }",
+            "}"
+        ].join("\n");
 
-    const response = await fetch("https://graphql.anilist.co", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-        },
-        body: JSON.stringify({
-            query: query_text,
-            variables: {search, perPage: 12},
-        }),
-    });
-
-    if (!response.ok) {
-        logger.error("AniList manga search failed.", {
-            status: response.status,
+        const response = await fetch("https://graphql.anilist.co", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+            body: JSON.stringify({
+                query: query_text,
+                variables: {search: search_text, perPage: per_page},
+            }),
         });
-        throw new HttpsError("internal", "AniList search failed.");
-    }
 
-    const payload = await response.json();
-    if (Array.isArray(payload.errors) && payload.errors.length) {
-        logger.error("AniList GraphQL search failed.", {
-            errors: payload.errors.map((error) => error.message),
-        });
-        throw new HttpsError("internal", "AniList search failed.");
-    }
+        if (!response.ok) {
+            throw new Error("AniList manga search failed with " + response.status);
+        }
 
-    const media = payload.data?.Page?.media || [];
+        const payload = await response.json();
+        if (Array.isArray(payload.errors) && payload.errors.length) {
+            throw new Error(payload.errors.map((error) => error.message).join("; "));
+        }
 
-    return {
-        results: media
+        return (payload.data?.Page?.media || [])
             .filter((item) => item.format !== "NOVEL")
             .map((item) => ({
                 anilist_id: Number(item.id),
+                kitsu_id: null,
                 title: item.title?.english ||
                     item.title?.userPreferred ||
                     item.title?.romaji ||
@@ -7355,6 +7348,7 @@ exports.searchAniListManga = onCall(async (request) => {
                 total_chapters: Number(item.chapters || 0) || null,
                 total_volumes: Number(item.volumes || 0) || null,
                 anilist_score: Number(item.averageScore || 0) || null,
+                kitsu_score: null,
                 poster_url: item.coverImage?.extraLarge ||
                     item.coverImage?.large || null,
                 banner_url: item.bannerImage || null,
@@ -7363,8 +7357,139 @@ exports.searchAniListManga = onCall(async (request) => {
                 site_url: item.siteUrl || null,
                 start_date: anilist_date_to_iso(item.startDate),
                 end_date: anilist_date_to_iso(item.endDate),
-            })),
+                sources: ["AniList"],
+            }));
     };
+
+    const search_kitsu = async () => {
+        const url =
+            "https://kitsu.io/api/edge/manga?filter[text]=" +
+            encodeURIComponent(search) +
+            "&page[limit]=12";
+
+        const response = await fetch(url, {
+            headers: {
+                Accept: "application/vnd.api+json",
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error("Kitsu manga search failed with " + response.status);
+        }
+
+        const payload = await response.json();
+        return (payload.data || []).map((item) => {
+            const attrs = item.attributes || {};
+            const titles = attrs.titles || {};
+            const aliases = [
+                titles.en,
+                titles.en_us,
+                titles.en_jp,
+                titles.ja_jp,
+                attrs.canonicalTitle,
+                ...(Array.isArray(attrs.abbreviatedTitles)
+                    ? attrs.abbreviatedTitles : []),
+            ].filter(Boolean);
+
+            return {
+                anilist_id: null,
+                kitsu_id: Number(item.id) || null,
+                title: titles.en ||
+                    titles.en_us ||
+                    attrs.canonicalTitle ||
+                    titles.en_jp ||
+                    titles.ja_jp ||
+                    "Untitled",
+                title_romaji: titles.en_jp || null,
+                title_native: titles.ja_jp || null,
+                synonyms: [...new Set(aliases)].slice(0, 20),
+                country_of_origin: "JP",
+                media_kind: "Manga",
+                format: null,
+                publication_status: attrs.status || null,
+                total_chapters: Number(attrs.chapterCount || 0) || null,
+                total_volumes: Number(attrs.volumeCount || 0) || null,
+                anilist_score: null,
+                kitsu_score: Number(attrs.averageRating || 0) || null,
+                poster_url: attrs.posterImage?.original ||
+                    attrs.posterImage?.large ||
+                    attrs.posterImage?.medium ||
+                    null,
+                banner_url: attrs.coverImage?.original ||
+                    attrs.coverImage?.large ||
+                    null,
+                description: attrs.synopsis || attrs.description || null,
+                genres: [],
+                site_url: "https://kitsu.app/manga/" +
+                    (attrs.slug || String(item.id)),
+                start_date: attrs.startDate || null,
+                end_date: attrs.endDate || null,
+                sources: ["Kitsu"],
+            };
+        });
+    };
+
+    const settled = await Promise.allSettled([
+        search_anilist(search),
+        search_kitsu(),
+    ]);
+
+    const anilist_rows =
+        settled[0].status === "fulfilled" ? settled[0].value : [];
+    const kitsu_rows =
+        settled[1].status === "fulfilled" ? settled[1].value : [];
+
+    if (!anilist_rows.length && !kitsu_rows.length &&
+        settled.every((entry) => entry.status === "rejected")) {
+        logger.error("Manga catalog search failed.", {
+            errors: settled.map((entry) =>
+                entry.status === "rejected"
+                    ? entry.reason?.message || String(entry.reason)
+                    : null
+            ),
+        });
+        throw new HttpsError("internal", "Manga search failed.");
+    }
+
+    const normalize = (value) =>
+        String(value || "")
+            .normalize("NFKD")
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, " ")
+            .trim();
+
+    const aliases_for = (item) => [
+        item.title,
+        item.title_romaji,
+        item.title_native,
+        ...(item.synonyms || []),
+    ].map(normalize).filter(Boolean);
+
+    const results = [...anilist_rows];
+
+    for (const kitsu_item of kitsu_rows) {
+        const kitsu_aliases = new Set(aliases_for(kitsu_item));
+        const existing = results.find((item) =>
+            aliases_for(item).some((alias) => kitsu_aliases.has(alias))
+        );
+
+        if (existing) {
+            existing.kitsu_id = existing.kitsu_id || kitsu_item.kitsu_id;
+            existing.kitsu_score = existing.kitsu_score || kitsu_item.kitsu_score;
+            existing.sources = [...new Set([
+                ...(existing.sources || []),
+                "Kitsu",
+            ])];
+            existing.synonyms = [...new Set([
+                ...(existing.synonyms || []),
+                ...(kitsu_item.synonyms || []),
+            ])].slice(0, 30);
+        } else {
+            results.push(kitsu_item);
+        }
+    }
+
+    return {results: results.slice(0, 24)};
 });
 //#endregion
 
