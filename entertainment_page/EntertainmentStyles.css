@@ -5585,3 +5585,29 @@ button.recent-media-card.is-active:focus-visible {
         translateY(68px)
         scale(0.74);
 }
+
+
+/* Keep Explore recommendation hover overlays compositor-stable.
+   The card itself no longer advertises a transform transition because
+   only the overlay should animate in this compact Explore layout. */
+.explore-scroll-track .recommendation-card {
+    transition:
+        border-color 0.2s ease,
+        background 0.2s ease;
+    transform: none;
+}
+
+.explore-scroll-track .recommendation-poster-wrap {
+    isolation: isolate;
+    transform: translateZ(0);
+}
+
+.explore-scroll-track .explore-card-overlay {
+    backface-visibility: hidden;
+    will-change: opacity, transform;
+}
+
+.explore-scroll-track .explore-card-overlay strong {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+}
