@@ -8688,6 +8688,9 @@ function setup_explore_loop(track) {
     update_recommendation_focus_deck(
         track
     );
+    enable_explore_focus_deck_drag(
+        track
+    );
 }
 
 function normalize_explore_loop_position(
@@ -8835,6 +8838,107 @@ function handle_explore_track_scroll(
     );
     update_recommendation_focus_deck(
         track
+    );
+}
+
+function enable_explore_focus_deck_drag(track) {
+    if (!track?.classList.contains(
+        "recommendation-focus-deck"
+    ) ||
+        track.dataset.focusDragReady ===
+            "true") {
+        return;
+    }
+
+    track.dataset.focusDragReady = "true";
+
+    let dragging = false;
+    let moved = false;
+    let start_x = 0;
+    let start_scroll = 0;
+
+    track.addEventListener(
+        "pointerdown",
+        (event) => {
+            if (event.button !== 0) return;
+            dragging = true;
+            moved = false;
+            start_x = event.clientX;
+            start_scroll = track.scrollLeft;
+            track.classList.add(
+                "is-dragging"
+            );
+            track.setPointerCapture?.(
+                event.pointerId
+            );
+        }
+    );
+
+    track.addEventListener(
+        "pointermove",
+        (event) => {
+            if (!dragging) return;
+            const delta =
+                event.clientX - start_x;
+            if (Math.abs(delta) > 5) {
+                moved = true;
+            }
+            if (!moved) return;
+            event.preventDefault();
+            track.scrollLeft =
+                start_scroll - delta;
+        }
+    );
+
+    const finish_drag = (event) => {
+        if (!dragging) return;
+        dragging = false;
+        track.classList.remove(
+            "is-dragging"
+        );
+        try {
+            track.releasePointerCapture?.(
+                event.pointerId
+            );
+        } catch (_) {}
+    };
+
+    track.addEventListener(
+        "pointerup",
+        finish_drag
+    );
+    track.addEventListener(
+        "pointercancel",
+        finish_drag
+    );
+
+    track.addEventListener(
+        "click",
+        (event) => {
+            if (!moved) return;
+            event.preventDefault();
+            event.stopPropagation();
+            moved = false;
+        },
+        true
+    );
+
+    track.addEventListener(
+        "wheel",
+        (event) => {
+            if (Math.abs(event.deltaY) <=
+                Math.abs(event.deltaX)) {
+                return;
+            }
+            if (track.scrollWidth <=
+                track.clientWidth + 4) {
+                return;
+            }
+            event.preventDefault();
+            track.scrollLeft +=
+                event.deltaY;
+        },
+        { passive: false }
     );
 }
 
