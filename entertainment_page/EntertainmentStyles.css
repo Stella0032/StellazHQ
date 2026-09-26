@@ -5650,3 +5650,68 @@ button.recent-deck-card.is-active:focus-visible {
 .explore-side-rail .recent-deck-card[aria-hidden="true"] {
     pointer-events: none;
 }
+
+
+/* Recommended rows: horizontal focus deck inspired by the recent-additions stack.
+   Keep five central recommendations fully sharp; soften the outer shoulders. */
+.explore-row:first-of-type .explore-scroll-track.recommendation-grid {
+    gap: 7px;
+    padding-left: 18px;
+    padding-right: 18px;
+    -webkit-mask-image: none;
+    mask-image: none;
+    overflow-x: auto;
+    scroll-padding-inline: 18px;
+}
+
+.explore-row:first-of-type .explore-scroll-track >
+    .recommendation-card {
+    flex: 0 0 calc((100% - 28px) / 7);
+    opacity: .32;
+    filter: blur(3px);
+    transform: scale(.88);
+    transform-origin: center;
+    transition:
+        opacity 190ms ease,
+        filter 190ms ease,
+        transform 190ms ease;
+}
+
+.explore-row:first-of-type .explore-scroll-track >
+    .recommendation-card:nth-child(n + 2):nth-child(-n + 6) {
+    opacity: 1;
+    filter: none;
+    transform: scale(1);
+}
+
+.explore-row:first-of-type .explore-scroll-track >
+    .recommendation-card:first-child,
+.explore-row:first-of-type .explore-scroll-track >
+    .recommendation-card:nth-child(7) {
+    opacity: .66;
+    filter: blur(1.25px);
+    transform: scale(.94);
+}
+
+/* Hovering/focusing any visible recommendation always brings that poster
+   fully forward without changing its four existing poster actions. */
+.explore-row:first-of-type .explore-scroll-track >
+    .recommendation-card:hover,
+.explore-row:first-of-type .explore-scroll-track >
+    .recommendation-card:focus-within {
+    z-index: 5;
+    opacity: 1;
+    filter: none;
+    transform: scale(1.035);
+}
+
+.explore-row:first-of-type .recommendation-poster-wrap {
+    overflow: hidden;
+}
+
+@media (max-width: 1180px) {
+    .explore-row:first-of-type .explore-scroll-track >
+        .recommendation-card {
+        flex-basis: calc((100% - 24px) / 7);
+    }
+}
