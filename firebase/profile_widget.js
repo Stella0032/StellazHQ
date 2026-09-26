@@ -18,7 +18,7 @@ const notification_panel=document.createElement("div");
 notification_panel.className="notification-panel";
 notification_panel.hidden=true;
 notification_panel.innerHTML=
-    '<div class="notification-head"><div><strong>Recent releases</strong><span>New episodes and chapters from the last 7 days</span></div></div>'+
+    '<div class="notification-head"><div><strong>Recent releases</strong><span>Latest 4 episodes and chapters from the last 30 days</span></div></div>'+
     '<div class="notification-list">'+
         '<section class="notification-section" data-release-section="anime">'+
             '<div class="notification-section-head"><strong>Anime episodes</strong><span data-release-count="anime">0</span></div>'+
