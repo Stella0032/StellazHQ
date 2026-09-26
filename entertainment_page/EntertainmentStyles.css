@@ -5611,3 +5611,22 @@ button.recent-media-card.is-active:focus-visible {
     transform: translateZ(0);
     backface-visibility: hidden;
 }
+
+
+/* Prevent fractional scroll-snap settling from repeatedly crossing a
+   recommendation hover boundary while the pointer is stationary. */
+.explore-scroll-track {
+    scroll-snap-type: none;
+}
+
+.explore-scroll-track .explore-card-overlay {
+    transform: none;
+    transition: opacity 140ms ease;
+}
+
+.explore-scroll-track .recommendation-poster-wrap:hover
+    .explore-card-overlay,
+.explore-scroll-track .recommendation-poster-wrap:focus-within
+    .explore-card-overlay {
+    transform: none;
+}
