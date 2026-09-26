@@ -7964,14 +7964,14 @@ function recent_library_items() {
                     a.recent_added_at
                 ).getTime()
         )
-        .slice(0, 6);
+        .slice(0, 8);
 }
 
 function recent_sidebar_card(
     item,
     {
         library = false,
-        plex = false
+        index = 0
     } = {}
 ) {
     const title =
@@ -7985,71 +7985,145 @@ function recent_sidebar_card(
                 recent_sidebar_escape(
                     item.poster_url
                 ) +
-                '" alt="" loading="lazy" decoding="async">'
+                '" alt="' + title +
+                '" loading="lazy" decoding="async">'
             : '<span class="recent-media-poster-placeholder" aria-hidden="true">◇</span>';
-    const label =
-        recent_sidebar_escape(
-            item.recent_label ||
-            item.type ||
-            ""
-        );
-    const detail =
-        recent_sidebar_escape(
-            item.detail ||
-            (
-                item.year
-                    ? String(item.year)
-                    : ""
-            )
-        );
-    const time =
-        recent_sidebar_escape(
-            recent_sidebar_time(
-                item.recent_added_at ||
-                item.added_at
-            )
-        );
-    const copy =
-        '<span class="recent-media-copy">' +
-            '<strong title="' +
-                title + '">' +
-                title +
-            '</strong>' +
-            '<span>' +
-                [label, detail]
-                    .filter(Boolean)
-                    .join(" · ") +
-            '</span>' +
-            '<small>' +
-                time +
-            '</small>' +
-        '</span>';
-
-    if (library) {
-        return (
-            '<button class="recent-media-card" type="button" ' +
-                'data-recent-library-type="' +
+    const library_data =
+        library
+            ? ' data-recent-library-type="' +
                 recent_sidebar_escape(
                     item.recent_type
                 ) +
                 '" data-recent-library-id="' +
                 recent_sidebar_escape(
                     item.id
-                ) +
-                '">' +
-                poster +
-                copy +
-            '</button>'
-        );
-    }
+                ) + '"'
+            : "";
 
     return (
-        '<article class="recent-media-card' +
-            (plex ? ' recent-media-plex' : '') +
-            '">' +
+        '<button class="recent-media-card" type="button"' +
+            library_data +
+            ' data-recent-carousel-index="' +
+            index +
+            '" aria-label="' + title + '">' +
             poster +
-            copy +
-        '</article>'
+        '</button>'
+    );
+}
+
+function set_recent_carousel_index(
+    stack,
+    next_index
+) {
+    const cards =
+        Array.from(
+            stack.querySelectorAll(
+                ".recent-media-card"
+            )
+        );
+    if (!cards.length) return;
+
+    const index =
+        Math.max(
+            0,
+            Math.min(
+                cards.length - 1,
+                next_index
+            )
+        );
+    stack.dataset.recentCarouselIndex =
+        String(index);
+
+    cards.forEach((card, card_index) => {
+        const offset =
+            card_index - index;
+        card.dataset.carouselOffset =
+            String(offset);
+        card.classList.toggle(
+            "is-active",
+            offset === 0
+        );
+        card.tabIndex =
+            Math.abs(offset) <= 2
+                ? 0
+                : -1;
+        card.setAttribute(
+            "aria-hidden",
+            Math.abs(offset) > 2
+                ? "true"
+                : "false"
+        );
+    });
+}
+
+function initialize_recent_carousel(stack) {
+    if (!stack) return;
+
+    set_recent_carousel_index(
+        stack,
+        Number(
+            stack.dataset
+                .recentCarouselIndex ||
+            0
+        )
+    );
+
+    if (stack.dataset.carouselReady ===
+        "true") {
+        return;
+    }
+    stack.dataset.carouselReady = "true";
+
+    stack.addEventListener(
+        "wheel",
+        (event) => {
+            if (Math.abs(event.deltaY) <
+                Math.abs(event.deltaX)) {
+                return;
+            }
+            event.preventDefault();
+
+            const current =
+                Number(
+                    stack.dataset
+                        .recentCarouselIndex ||
+                    0
+                );
+            set_recent_carousel_index(
+                stack,
+                current +
+                    (event.deltaY > 0
+                        ? 1
+                        : -1)
+            );
+        },
+        {passive: false}
+    );
+
+    stack.addEventListener(
+        "click",
+        (event) => {
+            const card =
+                event.target.closest(
+                    "[data-recent-carousel-index]"
+                );
+            if (!card ||
+                card.classList.contains(
+                    "is-active"
+                )) {
+                return;
+            }
+
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            set_recent_carousel_index(
+                stack,
+                Number(
+                    card.dataset
+                        .recentCarouselIndex
+                )
+            );
+        }
     );
 }
 
@@ -8064,13 +8138,20 @@ function render_recent_library_sidebar() {
     recent_library_stack.innerHTML =
         items.length
             ? items.map(
-                (item) =>
+                (item, index) =>
                     recent_sidebar_card(
                         item,
-                        {library: true}
+                        {
+                            library: true,
+                            index
+                        }
                     )
             ).join("")
             : '<p class="recent-media-empty">Your recent library additions will appear here.</p>';
+
+    initialize_recent_carousel(
+        recent_library_stack
+    );
 }
 
 recent_library_stack?.addEventListener(
@@ -8081,6 +8162,19 @@ recent_library_stack?.addEventListener(
                 "[data-recent-library-type]"
             );
         if (!button) return;
+
+        if (!button.classList.contains(
+            "is-active"
+        )) {
+            set_recent_carousel_index(
+                recent_library_stack,
+                Number(
+                    button.dataset
+                        .recentCarouselIndex
+                )
+            );
+            return;
+        }
 
         const type =
             button.dataset
@@ -8183,7 +8277,7 @@ async function load_recent_plex_sidebar(
 
             const items =
                 await Promise.all(
-                    raw.slice(0, 6)
+                    raw.slice(0, 8)
                         .map(
                             async (item) => ({
                                 ...item,
@@ -8205,13 +8299,17 @@ async function load_recent_plex_sidebar(
             recent_plex_stack.innerHTML =
                 items.length
                     ? items.map(
-                        (item) =>
+                        (item, index) =>
                             recent_sidebar_card(
                                 item,
-                                {plex: true}
+                                {index}
                             )
                     ).join("")
                     : '<p class="recent-media-empty">Nothing has been added to Plex recently.</p>';
+
+            initialize_recent_carousel(
+                recent_plex_stack
+            );
 
             recent_plex_loaded =
                 true;
