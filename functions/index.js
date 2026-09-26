@@ -197,35 +197,83 @@ exports.getEntertainmentNotifications = onCall(async (request) => {
         );
     }
 
+    const now = new Date();
+    const recent_since =
+        new Date(
+            now.getTime() -
+            7 * 24 * 60 * 60 * 1000
+        );
+
     const snapshot = await db
         .collection("users")
         .doc(request.auth.uid)
         .collection("notifications")
-        .where("deliver_at", "<=", new Date())
+        .where("deliver_at", ">=", recent_since)
+        .where("deliver_at", "<=", now)
         .orderBy("deliver_at", "desc")
-        .limit(40)
+        .limit(300)
         .get();
 
-    const notifications = snapshot.docs.map((doc_snapshot) => {
-        const data = doc_snapshot.data();
-        return {
-            id: doc_snapshot.id,
-            type: data.type || "release",
-            title: data.title || "New release",
-            message: data.message || "",
-            library: data.library || null,
-            source: data.source || null,
-            read: data.read === true,
-            deliver_at:
-                data.deliver_at?.toDate?.().toISOString?.() ||
-                null,
-        };
-    });
+    const notifications = snapshot.docs
+        .map((doc_snapshot) => {
+            const data = doc_snapshot.data();
+            return {
+                id: doc_snapshot.id,
+                type: data.type || "release",
+                title: data.title || "New release",
+                message: data.message || "",
+                library: data.library || null,
+                source: data.source || null,
+                read: data.read === true,
+                deliver_at:
+                    data.deliver_at?.toDate?.().toISOString?.() ||
+                    null,
+                media_title:
+                    data.media_title || null,
+                episode:
+                    data.episode ?? null,
+                chapter:
+                    data.chapter ?? null,
+            };
+        })
+        .filter((item) =>
+            item.type === "anime_episode" ||
+            item.type === "manga_chapter"
+        );
+
+    const anime_notifications =
+        notifications
+            .filter(
+                (item) =>
+                    item.type === "anime_episode"
+            )
+            .slice(0, 30);
+    const manga_notifications =
+        notifications
+            .filter(
+                (item) =>
+                    item.type === "manga_chapter"
+            )
+            .slice(0, 30);
+
+    const visible_notifications = [
+        ...anime_notifications,
+        ...manga_notifications,
+    ].sort((a, b) =>
+        String(b.deliver_at || "")
+            .localeCompare(
+                String(a.deliver_at || "")
+            )
+    );
 
     return {
-        notifications,
+        notifications: visible_notifications,
+        anime_notifications,
+        manga_notifications,
         unread_count:
-            notifications.filter((item) => !item.read).length,
+            visible_notifications.filter(
+                (item) => !item.read
+            ).length,
     };
 });
 
@@ -4832,9 +4880,7 @@ async function resolve_anilist_ids_for_anime(anime_rows) {
 
 async function schedule_anime_release_notifications(anime_rows) {
     const active = anime_rows.filter((item) =>
-        !["completed", "dropped"].includes(
-            String(item.status || "")
-        )
+        String(item.status || "") !== "dropped"
     );
 
     if (!active.length) return 0;
@@ -4849,8 +4895,11 @@ async function schedule_anime_release_notifications(anime_rows) {
 
     const now_seconds =
         Math.floor(Date.now() / 1000);
+    const after_seconds =
+        now_seconds -
+        7 * 24 * 60 * 60;
     const before_seconds =
-        now_seconds + 24 * 60 * 60;
+        now_seconds + 60;
 
     const query = [
         "query ($ids: [Int], $after: Int, $before: Int, $page: Int) {",
@@ -4878,7 +4927,7 @@ async function schedule_anime_release_notifications(anime_rows) {
             query,
             {
                 ids: media_ids,
-                after: now_seconds - 60,
+                after: after_seconds,
                 before: before_seconds,
                 page,
             }
@@ -5161,9 +5210,7 @@ async function resolve_mangadex_mapping(item) {
 
 async function map_manga_release_sources(manga_rows) {
     const active = manga_rows.filter((item) =>
-        !["completed", "dropped"].includes(
-            String(item.user_status || "")
-        )
+        String(item.user_status || "") !== "dropped"
     );
 
     const by_key = new Map();
@@ -5176,21 +5223,21 @@ async function map_manga_release_sources(manga_rows) {
 
     const mappings = new Map();
     const entries = [...by_key.entries()];
+    let new_lookup_count = 0;
 
-    // Limit new source lookups per run so a newly deployed public site
-    // cannot create a large burst against MangaDex.
-    for (let index = 0;
-        index < entries.length;
-        index += 1) {
-        const [key, item] = entries[index];
-
+    // Limit genuinely new source lookups per run without permanently
+    // starving titles that happen to sit after the first 35 entries.
+    for (const [key, item] of entries) {
         const ref = db
             .collection("release_source_maps")
             .doc("manga_" + key);
         const snap = await ref.get();
 
-        if (!snap.exists && index >= 35) {
-            continue;
+        if (!snap.exists) {
+            if (new_lookup_count >= 35) {
+                continue;
+            }
+            new_lookup_count += 1;
         }
 
         const mapping =
@@ -5288,20 +5335,13 @@ async function create_manga_release_notifications(manga_rows) {
     const state_ref = db
         .collection("release_checker_state")
         .doc("manga");
-    const state_snap = await state_ref.get();
 
     const now = new Date();
-    const previous =
-        state_snap.data()?.last_success_at?.toDate?.();
-
-    const publish_since = previous
-        ? new Date(
-            Math.max(
-                previous.getTime() - 10 * 60 * 1000,
-                now.getTime() - 48 * 60 * 60 * 1000
-            )
-        )
-        : new Date(now.getTime() - 5 * 60 * 1000);
+    const publish_since =
+        new Date(
+            now.getTime() -
+            7 * 24 * 60 * 60 * 1000
+        );
 
     const manga_ids = [
         ...new Set(
@@ -5339,11 +5379,7 @@ async function create_manga_release_notifications(manga_rows) {
 
         users_by_mangadex
             .get(mapping.mangadex_id)
-            .push({
-                item,
-                tracked_from:
-                    mapping.tracked_from,
-            });
+            .push({item});
     }
 
     let created = 0;
@@ -5380,12 +5416,7 @@ async function create_manga_release_notifications(manga_rows) {
             users_by_mangadex.get(mangadex_id) || [];
 
         for (const target of targets) {
-            const {item, tracked_from} = target;
-
-            if (tracked_from &&
-                publish_at <= tracked_from) {
-                continue;
-            }
+            const {item} = target;
 
             if (Number.isFinite(numeric_chapter) &&
                 numeric_chapter <=

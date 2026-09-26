@@ -547,6 +547,39 @@ html[data-theme="sunset"] .recommendation-genre-filter:focus{
     max-height:445px;
     overflow-y:auto;
 }
+.notification-section + .notification-section{
+    border-top:1px solid rgba(255,255,255,.09);
+}
+.notification-section-head{
+    position:sticky;
+    top:0;
+    z-index:2;
+    padding:10px 15px 8px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    color:#a9bed0;
+    background:rgba(7,13,29,.98);
+    font-size:9px;
+    font-weight:800;
+    letter-spacing:.7px;
+    text-transform:uppercase;
+}
+.notification-section-head span{
+    min-width:22px;
+    padding:2px 6px;
+    border-radius:999px;
+    color:#dcecff;
+    text-align:center;
+    background:rgba(255,255,255,.07);
+}
+.notification-section-items{
+    display:grid;
+}
+.notification-section .notification-empty{
+    padding:18px 15px 21px;
+}
 .notification-item{
     width:100%;
     padding:13px 15px;
@@ -615,10 +648,16 @@ html[data-theme="neon"] .notification-panel{
     border-color:rgba(52,255,96,.22);
     background:rgba(1,8,3,.97);
 }
+html[data-theme="neon"] .notification-section-head{
+    background:rgba(1,8,3,.98);
+}
 html[data-theme="flurple"] .notification-trigger,
 html[data-theme="flurple"] .notification-panel{
     border-color:rgba(225,170,69,.25);
     background:rgba(16,6,27,.98);
+}
+html[data-theme="flurple"] .notification-section-head{
+    background:rgba(16,6,27,.99);
 }
 @media(max-width:600px){
     .notification-trigger{
