@@ -5358,8 +5358,8 @@ button.watch-box:hover {
     overscroll-behavior: contain;
 }
 
-.recent-media-card,
-button.recent-media-card {
+.recent-deck-card,
+button.recent-deck-card {
     position: absolute;
     top: 50%;
     left: 50%;
@@ -5383,15 +5383,15 @@ button.recent-media-card {
     will-change: transform, opacity, filter;
 }
 
-.recent-media-card .recent-media-poster,
-.recent-media-card .recent-media-poster-placeholder {
+.recent-deck-card .recent-media-poster,
+.recent-deck-card .recent-media-poster-placeholder {
     width: 100%;
     height: 100%;
     aspect-ratio: 2 / 3;
     border-radius: inherit;
 }
 
-.recent-media-card[data-carousel-offset="0"] {
+.recent-deck-card[data-carousel-offset="0"] {
     z-index: 5;
     opacity: 1;
     filter: none;
@@ -5401,7 +5401,7 @@ button.recent-media-card {
         scale(1);
 }
 
-.recent-media-card[data-carousel-offset="-1"] {
+.recent-deck-card[data-carousel-offset="-1"] {
     z-index: 4;
     opacity: 0.72;
     filter: blur(1.2px);
@@ -5411,7 +5411,7 @@ button.recent-media-card {
         scale(0.86);
 }
 
-.recent-media-card[data-carousel-offset="1"] {
+.recent-deck-card[data-carousel-offset="1"] {
     z-index: 4;
     opacity: 0.72;
     filter: blur(1.2px);
@@ -5421,7 +5421,7 @@ button.recent-media-card {
         scale(0.86);
 }
 
-.recent-media-card[data-carousel-offset="-2"] {
+.recent-deck-card[data-carousel-offset="-2"] {
     z-index: 3;
     opacity: 0.4;
     filter: blur(3px);
@@ -5431,7 +5431,7 @@ button.recent-media-card {
         scale(0.72);
 }
 
-.recent-media-card[data-carousel-offset="2"] {
+.recent-deck-card[data-carousel-offset="2"] {
     z-index: 3;
     opacity: 0.4;
     filter: blur(3px);
@@ -5441,7 +5441,7 @@ button.recent-media-card {
         scale(0.72);
 }
 
-.recent-media-card:not(
+.recent-deck-card:not(
     [data-carousel-offset="-2"]
 ):not(
     [data-carousel-offset="-1"]
@@ -5460,15 +5460,15 @@ button.recent-media-card {
         scale(0.62);
 }
 
-button.recent-media-card:hover,
-button.recent-media-card:focus-visible {
+button.recent-deck-card:hover,
+button.recent-deck-card:focus-visible {
     border: 0;
     background: transparent;
     outline: none;
 }
 
-button.recent-media-card.is-active:hover,
-button.recent-media-card.is-active:focus-visible {
+button.recent-deck-card.is-active:hover,
+button.recent-deck-card.is-active:focus-visible {
     box-shadow:
         0 10px 28px rgba(0, 0, 0, 0.38),
         0 0 0 2px rgba(123, 220, 255, 0.28);
@@ -5491,8 +5491,8 @@ button.recent-media-card.is-active:focus-visible {
         display: block;
     }
 
-    .recent-media-card,
-    button.recent-media-card {
+    .recent-deck-card,
+    button.recent-deck-card {
         width: 112px;
         height: 168px;
     }
@@ -5513,8 +5513,8 @@ button.recent-media-card.is-active:focus-visible {
     z-index: 0;
 }
 
-.explore-side-rail .recent-media-card,
-.explore-side-rail button.recent-media-card {
+.explore-side-rail .recent-deck-card,
+.explore-side-rail button.recent-deck-card {
     right: auto;
     bottom: auto;
     margin: 0;
@@ -5524,62 +5524,62 @@ button.recent-media-card.is-active:focus-visible {
     text-align: initial;
 }
 
-.explore-side-rail .recent-media-card[aria-hidden="true"] {
+.explore-side-rail .recent-deck-card[aria-hidden="true"] {
     visibility: hidden;
 }
 
-.explore-side-rail .recent-media-card:not(.is-active) {
+.explore-side-rail .recent-deck-card:not(.is-active) {
     cursor: pointer;
 }
 
-.explore-side-rail .recent-media-card.is-active {
+.explore-side-rail .recent-deck-card.is-active {
     cursor: pointer;
 }
 
 
 /* Keep the poster deck's centering transform intact on hover.
    The old list-card hover translateX() was overriding the carousel transform. */
-.explore-side-rail button.recent-media-card:hover,
-.explore-side-rail button.recent-media-card:focus-visible {
+.explore-side-rail button.recent-deck-card:hover,
+.explore-side-rail button.recent-deck-card:focus-visible {
     border: 0;
     background: transparent;
     outline: none;
 }
 
-.explore-side-rail button.recent-media-card[data-carousel-offset="0"]:hover,
-.explore-side-rail button.recent-media-card[data-carousel-offset="0"]:focus-visible {
+.explore-side-rail button.recent-deck-card[data-carousel-offset="0"]:hover,
+.explore-side-rail button.recent-deck-card[data-carousel-offset="0"]:focus-visible {
     transform:
         translate(-50%, -50%)
         translateY(0)
         scale(1.045);
 }
 
-.explore-side-rail button.recent-media-card[data-carousel-offset="-1"]:hover,
-.explore-side-rail button.recent-media-card[data-carousel-offset="-1"]:focus-visible {
+.explore-side-rail button.recent-deck-card[data-carousel-offset="-1"]:hover,
+.explore-side-rail button.recent-deck-card[data-carousel-offset="-1"]:focus-visible {
     transform:
         translate(-50%, -50%)
         translateY(-42px)
         scale(0.88);
 }
 
-.explore-side-rail button.recent-media-card[data-carousel-offset="1"]:hover,
-.explore-side-rail button.recent-media-card[data-carousel-offset="1"]:focus-visible {
+.explore-side-rail button.recent-deck-card[data-carousel-offset="1"]:hover,
+.explore-side-rail button.recent-deck-card[data-carousel-offset="1"]:focus-visible {
     transform:
         translate(-50%, -50%)
         translateY(42px)
         scale(0.88);
 }
 
-.explore-side-rail button.recent-media-card[data-carousel-offset="-2"]:hover,
-.explore-side-rail button.recent-media-card[data-carousel-offset="-2"]:focus-visible {
+.explore-side-rail button.recent-deck-card[data-carousel-offset="-2"]:hover,
+.explore-side-rail button.recent-deck-card[data-carousel-offset="-2"]:focus-visible {
     transform:
         translate(-50%, -50%)
         translateY(-68px)
         scale(0.74);
 }
 
-.explore-side-rail button.recent-media-card[data-carousel-offset="2"]:hover,
-.explore-side-rail button.recent-media-card[data-carousel-offset="2"]:focus-visible {
+.explore-side-rail button.recent-deck-card[data-carousel-offset="2"]:hover,
+.explore-side-rail button.recent-deck-card[data-carousel-offset="2"]:focus-visible {
     transform:
         translate(-50%, -50%)
         translateY(68px)
@@ -5629,4 +5629,24 @@ button.recent-media-card.is-active:focus-visible {
 .explore-scroll-track .recommendation-poster-wrap:focus-within
     .explore-card-overlay {
     transform: none;
+}
+
+
+/* Hard interaction boundary: the sidebar deck can only receive pointer
+   input inside its own visible stack. It must never sit over Explore rows. */
+.explore-side-rail {
+    z-index: 1;
+}
+
+.explore-main-column {
+    position: relative;
+    z-index: 2;
+}
+
+.explore-side-rail .recent-deck-card {
+    pointer-events: auto;
+}
+
+.explore-side-rail .recent-deck-card[aria-hidden="true"] {
+    pointer-events: none;
 }
