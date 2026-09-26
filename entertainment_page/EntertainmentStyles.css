@@ -4468,37 +4468,37 @@ html[data-theme="sunset"] .entertainment-nav {
 }
 
 .explore-media-block {
-    margin-top: 14px;
+    margin-top: 10px;
     margin-left: calc(50% - 50vw + 16px);
     margin-right: calc(50% - 50vw);
-    padding: 18px 0 20px 20px;
+    padding: 12px 0 13px 18px;
     overflow: hidden;
     border-right: 0;
     border-radius: 18px 0 0 18px;
 }
 
 .explore-media-block + .explore-media-block {
-    margin-top: 20px;
+    margin-top: 14px;
 }
 
 .explore-media-header {
-    padding-bottom: 12px;
+    padding-bottom: 7px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .explore-media-header h2 {
     margin: 0;
     color: #f4f5fb;
-    font-size: 22px;
+    font-size: 18px;
 }
 
 .explore-row {
     position: relative;
-    padding-top: 14px;
+    padding-top: 8px;
 }
 
 .explore-row + .explore-row {
-    margin-top: 14px;
+    margin-top: 8px;
     border-top: 1px solid rgba(255, 255, 255, 0.07);
 }
 
@@ -4514,7 +4514,7 @@ html[data-theme="sunset"] .entertainment-nav {
 .friend-activity-section h3 {
     margin: 0;
     color: #eef1fb;
-    font-size: 17px;
+    font-size: 14px;
 }
 
 .explore-row-actions {
@@ -4571,7 +4571,7 @@ html[data-theme="sunset"] .entertainment-nav {
 .explore-scroll-track.recommendation-grid {
     width: 100%;
     min-height: 0;
-    margin-top: 10px;
+    margin-top: 6px;
     padding-right: 34px;
     padding-bottom: 3px;
     box-sizing: border-box;
@@ -4614,7 +4614,7 @@ html[data-theme="sunset"] .entertainment-nav {
 }
 
 .explore-scroll-track > .recommendation-card {
-    flex: 0 0 10.8%;
+    flex: 0 0 8.7%;
     scroll-snap-align: start;
 }
 
@@ -4623,8 +4623,8 @@ html[data-theme="sunset"] .entertainment-nav {
 }
 
 .explore-scroll-track .recommendation-card {
-    padding: 5px;
-    border-radius: 13px;
+    padding: 3px;
+    border-radius: 11px;
 }
 
 .explore-card-overlay {
@@ -4806,7 +4806,7 @@ html[data-theme="sunset"] .entertainment-nav {
 
 @media (max-width: 1100px) {
     .explore-scroll-track > .recommendation-card {
-        flex-basis: 15%;
+        flex-basis: 12.5%;
     }
 
     .friends-overview-grid {
@@ -4842,30 +4842,30 @@ html[data-theme="sunset"] .entertainment-nav {
     .explore-media-block {
         margin-left: calc(50% - 50vw + 8px);
         margin-right: calc(50% - 50vw);
-        padding: 14px 0 14px 14px;
+        padding: 10px 0 10px 12px;
         border-right: 0;
         border-radius: 16px 0 0 16px;
     }
 
     .explore-media-block + .explore-media-block {
-        margin-top: 16px;
+        margin-top: 11px;
     }
 
     .explore-media-header h2 {
-        font-size: 19px;
+        font-size: 16px;
     }
 
     .explore-row {
-        padding-top: 11px;
+        padding-top: 7px;
     }
 
     .explore-row + .explore-row {
-        margin-top: 11px;
+        margin-top: 7px;
     }
 
     .explore-row-header h3,
     .friend-activity-section h3 {
-        font-size: 14px;
+        font-size: 12px;
     }
 
     .explore-row-header {
@@ -4905,7 +4905,7 @@ html[data-theme="sunset"] .entertainment-nav {
     }
 
     .explore-scroll-track > .recommendation-card {
-        flex-basis: 13.5%;
+        flex-basis: 11.8%;
     }
 
     .explore-scroll-track .recommendation-card {
