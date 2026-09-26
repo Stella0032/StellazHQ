@@ -5798,3 +5798,54 @@ button.recent-deck-card.is-active:focus-visible {
     filter: blur(0);
     transform: scale(1.035);
 }
+
+
+/* Refine all Explore focus decks: restore the previous compact poster size,
+   leave enough visible shoulder cards on both sides, and support direct
+   mouse/touch scrolling in addition to the arrow controls. */
+.recommendation-focus-deck.explore-scroll-track {
+    gap: 8px;
+    padding: 8px 30px 10px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-inline: contain;
+    touch-action: pan-x pan-y;
+    cursor: grab;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+}
+
+.recommendation-focus-deck.explore-scroll-track::-webkit-scrollbar {
+    display: none;
+}
+
+.recommendation-focus-deck.explore-scroll-track.is-dragging {
+    cursor: grabbing;
+    user-select: none;
+}
+
+.recommendation-focus-deck.explore-scroll-track >
+    .recommendation-card {
+    flex: 0 0 140px;
+}
+
+.recommendation-focus-deck.explore-scroll-track >
+    .recommendation-card[data-focus-deck="sharp"] {
+    opacity: 1;
+    filter: none;
+    transform: scale(1);
+}
+
+.recommendation-focus-deck.explore-scroll-track >
+    .recommendation-card[data-focus-deck="soft"] {
+    opacity: .58;
+    filter: blur(1.6px);
+    transform: scale(.94);
+}
+
+.recommendation-focus-deck.explore-scroll-track >
+    .recommendation-card[data-focus-deck="far"] {
+    opacity: .22;
+    filter: blur(4px);
+    transform: scale(.88);
+}
