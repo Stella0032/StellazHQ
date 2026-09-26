@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Entertainment | Stellaz HQ</title>
     <link rel="icon" type="image/png" href="../images/stellaz_favicon.png">
-    <link rel="stylesheet" href="EntertainmentStyles.css?v=85">
+    <link rel="stylesheet" href="EntertainmentStyles.css?v=84">
     <link rel="stylesheet" href="../firebase/profile_widget.css?v=13">
 </head>
 <body>
@@ -19,9 +19,9 @@
             <span class="theme-brand-name sunsetverse-brand-name" aria-hidden="true">THE SUNSETVERSE</span>
         </div>
         <nav class="nav-links entertainment-nav" aria-label="Entertainment navigation">
-            <a href="#explore" data-entertainment-view="explore">Explore</a>
+            <a class="active" href="#explore" data-entertainment-view="explore">Explore</a>
             <a href="#friends" data-entertainment-view="friends">Friends</a>
-            <a class="active" href="#collection" data-entertainment-view="collection">Your Collection</a>
+            <a href="#collection" data-entertainment-view="collection">Your Collection</a>
         </nav>
         <div class="profile-area">
             <form class="global-search-form navbar-global-search" id="global_search_form"
@@ -49,7 +49,7 @@
     </header>
 
     <main class="entertainment-dashboard">
-        <section class="entertainment-view" id="explore_view" data-entertainment-view-panel="explore" hidden>
+        <section class="entertainment-view" id="explore_view" data-entertainment-view-panel="explore">
             <div class="explore-layout">
                 <aside class="explore-side-rail" aria-label="Recent additions">
                     <section class="explore-side-panel">
@@ -311,7 +311,7 @@
             </section>
         </section>
 
-        <section class="entertainment-view" id="collection_view" data-entertainment-view-panel="collection">
+        <section class="entertainment-view" id="collection_view" data-entertainment-view-panel="collection" hidden>
         <section class="library-grid" aria-label="Entertainment libraries">
             <a class="library-card movies" href="#movie_library" data-library="Movies">
                 <span class="library-icon">🎬</span>
@@ -964,7 +964,7 @@
     </dialog>
 
     <div class="toast" id="toast" role="status"></div>
-    <script type="module" src="Entertainment.js?v=122"></script>
+    <script type="module" src="Entertainment.js?v=121"></script>
     <script type="module" src="../firebase/profile_widget.js?v=14"></script>
 </body>
 </html>

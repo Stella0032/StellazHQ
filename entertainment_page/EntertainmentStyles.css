@@ -5849,18 +5849,3 @@ button.recent-deck-card.is-active:focus-visible {
     filter: blur(4px);
     transform: scale(.88);
 }
-
-
-/* Give the navbar search a little more breathing room. */
-.navbar-global-search {
-    width: clamp(190px, 15vw, 245px);
-    max-width: 245px;
-    min-width: 190px;
-    flex-basis: clamp(190px, 15vw, 245px);
-}
-
-/* The launcher is only useful for the current movie-franchise AI workflow. */
-.stellaz-ai-launcher[hidden],
-.stellaz-ai-panel[hidden] {
-    display: none !important;
-}
