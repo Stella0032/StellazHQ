@@ -580,6 +580,27 @@ html[data-theme="sunset"] .recommendation-genre-filter:focus{
 .notification-section .notification-empty{
     padding:18px 15px 21px;
 }
+.notification-expand{
+    width:100%;
+    min-height:42px;
+    border:0;
+    border-top:1px solid rgba(255,255,255,.09);
+    color:#bcd4e8;
+    background:rgba(255,255,255,.025);
+    font:inherit;
+    font-size:10px;
+    font-weight:800;
+    letter-spacing:.45px;
+    text-transform:uppercase;
+    cursor:pointer;
+}
+.notification-expand:hover{
+    color:#eef8ff;
+    background:rgba(83,190,255,.08);
+}
+.notification-expand[hidden]{
+    display:none;
+}
 .notification-item{
     width:100%;
     padding:13px 15px;

@@ -18,7 +18,7 @@ const notification_panel=document.createElement("div");
 notification_panel.className="notification-panel";
 notification_panel.hidden=true;
 notification_panel.innerHTML=
-    '<div class="notification-head"><div><strong>Recent releases</strong><span>Latest 4 episodes and chapters from the last 30 days</span></div></div>'+
+    '<div class="notification-head"><div><strong>Recent releases</strong><span>Recent episodes and chapters from the last 30 days</span></div></div>'+
     '<div class="notification-list">'+
         '<section class="notification-section" data-release-section="anime">'+
             '<div class="notification-section-head"><strong>Anime episodes</strong><span data-release-count="anime">0</span></div>'+
@@ -28,7 +28,8 @@ notification_panel.innerHTML=
             '<div class="notification-section-head"><strong>Manga / Manhwa chapters</strong><span data-release-count="manga">0</span></div>'+
             '<div class="notification-section-items" data-release-list="manga"><p class="notification-empty">Loading manga releases…</p></div>'+
         '</section>'+
-    '</div>';
+    '</div>'+
+    '<button class="notification-expand" type="button" data-release-expand hidden>Expand</button>';
 widget.appendChild(notification_panel);
 
 const notification_badge=notification_button.querySelector(".notification-badge");
@@ -41,9 +42,12 @@ const anime_notification_count=
     notification_panel.querySelector('[data-release-count="anime"]');
 const manga_notification_count=
     notification_panel.querySelector('[data-release-count="manga"]');
+const notification_expand=
+    notification_panel.querySelector('[data-release-expand]');
 let notification_items=[];
 let notification_timer=null;
 let notification_refresh_promise=null;
+let notification_expanded=false;
 
 function notification_time_label(value){
     if(!value)return "";
@@ -139,7 +143,18 @@ function render_notifications(){
         notification_items.filter(
             item=>item.type==="manga_chapter"
         );
+    const visible_anime=
+        notification_expanded
+            ? anime_items
+            : anime_items.slice(0,4);
+    const visible_manga=
+        notification_expanded
+            ? manga_items
+            : manga_items.slice(0,4);
     const unseen=notification_items.filter(item=>!item.read).length;
+    const can_expand=
+        anime_items.length>4||
+        manga_items.length>4;
 
     notification_badge.hidden=unseen===0;
     notification_badge.textContent=unseen>99?"99+":String(unseen);
@@ -148,13 +163,23 @@ function render_notifications(){
 
     render_release_section(
         anime_notification_list,
-        anime_items,
+        visible_anime,
         "No recent anime episodes."
     );
     render_release_section(
         manga_notification_list,
-        manga_items,
+        visible_manga,
         "No recent manga or manhwa chapters."
+    );
+
+    notification_expand.hidden=!can_expand;
+    notification_expand.textContent=
+        notification_expanded
+            ?"Show less"
+            :"Expand";
+    notification_expand.setAttribute(
+        "aria-expanded",
+        String(notification_expanded)
     );
 }
 
@@ -238,14 +263,30 @@ notification_button.addEventListener("click",async event=>{
     trigger.setAttribute("aria-expanded","false");
 
     if(will_open){
+        notification_expanded=false;
         anime_notification_list.innerHTML=
             '<p class="notification-empty">Checking recent anime episodes…</p>';
         manga_notification_list.innerHTML=
             '<p class="notification-empty">Checking recent manga chapters…</p>';
+        notification_expand.hidden=true;
 
         await refresh_recent_releases();
         await load_notifications({
             mark_seen:true
+        });
+    }
+});
+
+notification_expand.addEventListener("click",event=>{
+    event.stopPropagation();
+    notification_expanded=
+        !notification_expanded;
+    render_notifications();
+
+    if(!notification_expanded){
+        notification_list.scrollTo({
+            top:0,
+            behavior:"smooth"
         });
     }
 });

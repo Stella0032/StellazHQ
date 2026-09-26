@@ -247,14 +247,14 @@ exports.getEntertainmentNotifications = onCall(async (request) => {
                 (item) =>
                     item.type === "anime_episode"
             )
-            .slice(0, 4);
+            .slice(0, 24);
     const manga_notifications =
         notifications
             .filter(
                 (item) =>
                     item.type === "manga_chapter"
             )
-            .slice(0, 4);
+            .slice(0, 24);
 
     const visible_notifications = [
         ...anime_notifications,
