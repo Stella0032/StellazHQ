@@ -192,7 +192,7 @@ function create_release_card(item) {
                     <img class="recommendation-poster"
                          src="${item.poster_url}"
                          alt="${item.title} poster"
-                         loading="lazy">
+                         loading="lazy" decoding="async" fetchpriority="low">
                 </button>
                 <div class="explore-card-overlay">
                     <strong>${item.title}</strong>
@@ -488,7 +488,7 @@ function create_recommendation_card(item) {
                 <button class="recommendation-open" type="button"
                         data-rec-open aria-label="View details for ${item.title}">
                     <img class="recommendation-poster" src="${item.poster_url}"
-                         alt="${item.title} poster" loading="lazy">
+                         alt="${item.title} poster" loading="lazy" decoding="async" fetchpriority="low">
                 </button>
                 <div class="explore-card-overlay">
                     <strong>${item.title}</strong>
@@ -8068,6 +8068,14 @@ function clone_explore_loop_card(card) {
             );
         });
 
+    clone
+        .querySelectorAll("img")
+        .forEach((image) => {
+            image.loading = "lazy";
+            image.decoding = "async";
+            image.fetchPriority = "low";
+        });
+
     return clone;
 }
 
@@ -8116,14 +8124,36 @@ function setup_explore_loop(track) {
         return;
     }
 
+    const first_card_width =
+        cards[0]
+            .getBoundingClientRect()
+            .width || 1;
+    const visible_card_count =
+        Math.ceil(
+            track.clientWidth /
+            first_card_width
+        );
+    const buffer_count =
+        Math.min(
+            cards.length,
+            Math.max(
+                4,
+                visible_card_count + 2
+            )
+        );
+
     const before =
-        cards.map(
-            clone_explore_loop_card
-        );
+        cards
+            .slice(-buffer_count)
+            .map(
+                clone_explore_loop_card
+            );
     const after =
-        cards.map(
-            clone_explore_loop_card
-        );
+        cards
+            .slice(0, buffer_count)
+            .map(
+                clone_explore_loop_card
+            );
 
     before
         .reverse()
@@ -8134,15 +8164,14 @@ function setup_explore_loop(track) {
         track.append(clone);
     });
 
-    const original_count =
-        cards.length;
     const original_start =
         track.children[
-            original_count
+            buffer_count
         ]?.offsetLeft || 0;
     const next_copy_start =
         track.children[
-            original_count * 2
+            buffer_count +
+            cards.length
         ]?.offsetLeft || 0;
     const loop_width =
         next_copy_start -
@@ -8160,6 +8189,8 @@ function setup_explore_loop(track) {
         String(original_start);
     track.dataset.exploreLoopWidth =
         String(loop_width);
+    track.dataset.exploreLoopBuffer =
+        String(buffer_count);
     track.dataset.exploreLoopAdjusting =
         "true";
     track.style.scrollBehavior =
@@ -8262,12 +8293,13 @@ function update_explore_scroll_controls(row) {
         row.querySelector(
             '[data-explore-scroll="right"]'
         );
-    const has_overflow =
-        track.scrollWidth >
-            track.clientWidth + 4;
     const is_looping =
         track.dataset.exploreLoop ===
             "true";
+    const has_overflow =
+        is_looping ||
+        track.scrollWidth >
+            track.clientWidth + 4;
 
     if (!has_overflow) {
         left_button?.classList.add(
@@ -8329,6 +8361,33 @@ function handle_explore_track_scroll(
     );
 }
 
+const explore_scroll_frames =
+    new WeakSet();
+
+function schedule_explore_track_scroll(
+    track
+) {
+    if (!track ||
+        explore_scroll_frames.has(
+            track
+        )) {
+        return;
+    }
+
+    explore_scroll_frames.add(
+        track
+    );
+
+    requestAnimationFrame(() => {
+        explore_scroll_frames.delete(
+            track
+        );
+        handle_explore_track_scroll(
+            track
+        );
+    });
+}
+
 function refresh_explore_scroll_controls() {
     explore_view
         ?.querySelectorAll(
@@ -8359,7 +8418,7 @@ explore_view
         track.addEventListener(
             "scroll",
             () =>
-                handle_explore_track_scroll(
+                schedule_explore_track_scroll(
                     track
                 ),
             {passive: true}
