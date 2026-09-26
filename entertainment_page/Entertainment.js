@@ -8597,17 +8597,9 @@ function clone_explore_loop_card(card) {
 }
 
 function update_recommendation_focus_deck(track) {
-    if (!track?.matches(
-        ".explore-scroll-track.recommendation-grid"
+    if (!track?.classList.contains(
+        "recommendation-focus-deck"
     )) return;
-
-    const row = track.closest(".explore-row");
-    if (!row ||
-        row.parentElement?.querySelector(
-            ".explore-row"
-        ) !== row) {
-        return;
-    }
 
     const cards = Array.from(
         track.querySelectorAll(
