@@ -8596,6 +8596,69 @@ function clone_explore_loop_card(card) {
     return clone;
 }
 
+function update_recommendation_focus_deck(track) {
+    if (!track?.matches(
+        ".explore-scroll-track.recommendation-grid"
+    )) return;
+
+    const row = track.closest(".explore-row");
+    if (!row ||
+        row.parentElement?.querySelector(
+            ".explore-row"
+        ) !== row) {
+        return;
+    }
+
+    const cards = Array.from(
+        track.querySelectorAll(
+            ":scope > .recommendation-card"
+        )
+    );
+    if (!cards.length) return;
+
+    const track_rect =
+        track.getBoundingClientRect();
+    const center =
+        track_rect.left +
+        track_rect.width / 2;
+
+    const ordered = cards
+        .map((card) => {
+            const rect =
+                card.getBoundingClientRect();
+            return {
+                card,
+                distance: Math.abs(
+                    rect.left +
+                    rect.width / 2 -
+                    center
+                )
+            };
+        })
+        .sort(
+            (a, b) =>
+                a.distance -
+                b.distance
+        );
+
+    cards.forEach((card) => {
+        card.dataset.focusDeck =
+            "far";
+    });
+
+    ordered.slice(0, 5)
+        .forEach(({card}) => {
+            card.dataset.focusDeck =
+                "sharp";
+        });
+
+    ordered.slice(5, 7)
+        .forEach(({card}) => {
+            card.dataset.focusDeck =
+                "soft";
+        });
+}
+
 function setup_explore_loop(track) {
     if (!track) return;
 
@@ -8629,6 +8692,9 @@ function setup_explore_loop(track) {
         track.closest(
             ".explore-row"
         )
+    );
+    update_recommendation_focus_deck(
+        track
     );
 }
 
@@ -8774,6 +8840,9 @@ function handle_explore_track_scroll(
         track.closest(
             ".explore-row"
         )
+    );
+    update_recommendation_focus_deck(
+        track
     );
 }
 

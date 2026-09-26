@@ -5715,3 +5715,27 @@ button.recent-deck-card.is-active:focus-visible {
         flex-basis: calc((100% - 24px) / 7);
     }
 }
+
+
+/* Dynamic focus states for the Recommended deck. JS updates these as the
+   row scrolls, so the five sharp posters move with the viewport. */
+.explore-row:first-of-type .explore-scroll-track >
+    .recommendation-card[data-focus-deck="sharp"] {
+    opacity: 1;
+    filter: none;
+    transform: scale(1);
+}
+
+.explore-row:first-of-type .explore-scroll-track >
+    .recommendation-card[data-focus-deck="soft"] {
+    opacity: .62;
+    filter: blur(1.35px);
+    transform: scale(.94);
+}
+
+.explore-row:first-of-type .explore-scroll-track >
+    .recommendation-card[data-focus-deck="far"] {
+    opacity: .28;
+    filter: blur(3.2px);
+    transform: scale(.88);
+}
